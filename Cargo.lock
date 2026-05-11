@@ -1794,8 +1794,10 @@ dependencies = [
  "clap",
  "linkpilot-core",
  "linkpilot-ipc",
+ "linkpilot-platform-mac",
  "tracing",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]

@@ -1,8 +1,12 @@
 //! Configuration document — the on-disk JSON single source of truth.
 //!
-//! The full anti-echo / fsnotify pipeline lands in a later step. v0.1 step 1
-//! only ships the schema and a minimal in-memory store; persistence and
-//! file-watching are wired up alongside `platform-mac` in step 4.
+//! [`ConfigDocument`] defines the schema; [`store`] handles load/save and
+//! path resolution. The fsnotify pipeline and anti-echo token enforcement
+//! land in a later slice alongside the IPC server.
+
+pub mod store;
+
+pub use store::{default_config_path, ConfigStore};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -38,6 +42,40 @@ impl ConfigDocument {
             version: SCHEMA_VERSION,
             default_target: target,
             rules: Vec::new(),
+            workspaces: Vec::new(),
+            settings: Settings::default(),
+            meta: Meta::default(),
+        }
+    }
+
+    /// Demo config matching PRD §22. Used when no config exists on disk.
+    pub fn demo() -> Self {
+        use crate::rules::{Action, MatcherTree, RuleId, RuleSource};
+
+        let chrome_work = BrowserTarget::new(BrowserId::new("chrome")).with_profile("Default");
+        let arc = BrowserTarget::new(BrowserId::new("arc"));
+
+        let mk = |host: &str, target: BrowserTarget, prio: i32| Rule {
+            id: RuleId::default(),
+            priority: prio,
+            enabled: true,
+            when: MatcherTree::UrlHost {
+                pattern: host.to_string(),
+            },
+            then: Action::Open { target },
+            source: RuleSource::Gui,
+            note: None,
+        };
+
+        Self {
+            version: SCHEMA_VERSION,
+            default_target: arc.clone(),
+            rules: vec![
+                mk("github.com", chrome_work.clone(), 10),
+                mk("notion.so", chrome_work.clone(), 10),
+                mk("figma.com", arc.clone(), 10),
+                mk("youtube.com", arc, 10),
+            ],
             workspaces: Vec::new(),
             settings: Settings::default(),
             meta: Meta::default(),
