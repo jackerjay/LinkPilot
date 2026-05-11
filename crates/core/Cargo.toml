@@ -1,0 +1,15 @@
+[package]
+name = "linkpilot-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Core domain model, routing engine, and platform traits for LinkPilot."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+url = { workspace = true }
+tracing = { workspace = true }

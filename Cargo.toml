@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/platform-mac",
+    "crates/platform-win",
+    "crates/platform-linux",
+    "crates/ipc",
+    "crates/native-host",
+    "crates/cli",
+    "crates/headless-daemon",
+    "apps/desktop/src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/jackerjay/linkpolit"
+
+[workspace.dependencies]
+linkpilot-core = { path = "crates/core" }
+linkpilot-ipc = { path = "crates/ipc" }
+linkpilot-platform-mac = { path = "crates/platform-mac" }
+linkpilot-platform-win = { path = "crates/platform-win" }
+linkpilot-platform-linux = { path = "crates/platform-linux" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+anyhow = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+url = { version = "2", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

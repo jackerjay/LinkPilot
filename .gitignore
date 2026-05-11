@@ -1,0 +1,23 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Tauri
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# LinkPilot runtime data (local dev)
+.linkpilot/
+*.log
