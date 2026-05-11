@@ -1,0 +1,11 @@
+{
+  "name": "linkpilot-desktop-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LinkPilot desktop UI (Tauri frontend). v0.1 step 1 ships a static placeholder; Vite + React land in step 7.",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "echo 'Frontend dev server not yet wired (step 7)' && exit 1",
+    "build": "echo 'Frontend build not yet wired (step 7)' && exit 1"
+  }
+}

@@ -1,0 +1,18 @@
+[package]
+name = "linkpilot-headless-daemon"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Standalone daemon binary (placeholder; v0.1 runs the daemon inside the Tauri app)."
+
+[[bin]]
+name = "linkpilot-daemon"
+path = "src/main.rs"
+
+[dependencies]
+linkpilot-core = { workspace = true }
+linkpilot-ipc = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

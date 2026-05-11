@@ -1,0 +1,10 @@
+[package]
+name = "linkpilot-platform-linux"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Linux implementation of the LinkPilot platform traits (stub in v0.1)."
+
+[dependencies]
+linkpilot-core = { workspace = true }

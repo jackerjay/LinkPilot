@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Info.plist additions for LinkPilot.app. Merged into the Tauri-generated
+  Info.plist by `tauri.conf.json -> bundle.macOS.exceptionDomain` flow (wired
+  in step 6, when the URL handler goes live).
+
+  CFBundleURLTypes declares LinkPilot as a handler for http/https so the
+  user can pick it under System Settings → Default Web Browser.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>HTTP URL</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>http</string>
+      </array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>HTTPS URL</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>https</string>
+      </array>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+    </dict>
+  </array>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.productivity</string>
+  <key>LSUIElement</key>
+  <true/>
+</dict>
+</plist>

@@ -1,0 +1,38 @@
+[package]
+name = "linkpilot-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "LinkPilot desktop app — Tauri shell hosting the daemon, tray, and config UI."
+
+[lib]
+name = "linkpilot_desktop"
+path = "src/lib.rs"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "linkpilot-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+linkpilot-core = { workspace = true }
+linkpilot-ipc = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tauri = { version = "2", features = ["tray-icon"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+linkpilot-platform-mac = { workspace = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+linkpilot-platform-win = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+linkpilot-platform-linux = { workspace = true }
