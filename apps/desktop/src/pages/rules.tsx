@@ -77,25 +77,17 @@ export function RulesPage({ configEpoch }: Props) {
   // so the highest item wins. Step 10 leaves room to nudge a single rule
   // by editing its priority manually later.
   const commitReorder = async (orderedIds: string[]) => {
-    if (!doc) {
-      console.warn("[dnd] commit skipped: no doc");
-      return;
-    }
+    if (!doc) return;
     const byId = new Map(doc.rules.map((r) => [r.id, r] as const));
     const total = orderedIds.length;
     const next: Rule[] = orderedIds.map((id, idx) => ({
       ...byId.get(id)!,
       priority: (total - idx) * 10,
     }));
-    console.log(
-      "[dnd] commit",
-      next.map((r) => `${r.priority}=${r.id.slice(0, 8)}`),
-    );
     try {
       await ipc.configReplace({ ...doc, rules: next });
       await refresh();
     } catch (e) {
-      console.error("[dnd] commit failed", e);
       setError(String(e));
     }
   };
@@ -157,16 +149,13 @@ export function RulesPage({ configEpoch }: Props) {
                     // Firefox requires SOME payload to start the drag.
                     e.dataTransfer.setData("text/plain", r.id);
                     setDraggedId(r.id);
-                    console.log("[dnd] start", r.id);
                   }}
                   onDragEnter={(e) => {
-                    // WKWebView quirk: preventDefault on dragover alone
-                    // sometimes isn't enough — the engine wants dragenter
-                    // canceled too before it'll mark a row as droppable.
+                    // WKWebView wants dragenter canceled too, not just
+                    // dragover, before it marks the row as droppable.
                     const src = draggedIdRef.current;
                     if (!src || src === r.id) return;
                     e.preventDefault();
-                    console.log("[dnd] enter", r.id.slice(0, 8));
                   }}
                   onDragOver={(e) => {
                     const src = draggedIdRef.current;
@@ -179,16 +168,12 @@ export function RulesPage({ configEpoch }: Props) {
                     const mid = rect.top + rect.height / 2;
                     const pos: DropPos =
                       e.clientY < mid ? "before" : "after";
-                    if (dropTargetId !== r.id) {
-                      setDropTargetId(r.id);
-                      console.log("[dnd] over →", r.id.slice(0, 8), pos);
-                    }
+                    if (dropTargetId !== r.id) setDropTargetId(r.id);
                     if (dropPos !== pos) setDropPos(pos);
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
                     const sourceId = draggedIdRef.current;
-                    console.log("[dnd] drop", { sourceId, target: r.id });
                     if (!sourceId || sourceId === r.id) {
                       clearDrag();
                       return;
@@ -215,11 +200,6 @@ export function RulesPage({ configEpoch }: Props) {
                     );
                   }}
                   onDragEnd={() => {
-                    console.log(
-                      "[dnd] end (ref still:",
-                      draggedIdRef.current,
-                      ")",
-                    );
                     // Clear visuals only; ref is cleared in onDrop. This
                     // avoids a WKWebView race where dragend fires before
                     // drop, nuking the ref the drop handler needs to read.
