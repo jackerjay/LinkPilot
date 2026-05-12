@@ -1,30 +1,33 @@
 //! Tauri shell that hosts the LinkPilot daemon.
 //!
-//! In v0.1 this app is the daemon: the Rust side owns the router, the config
-//! store, and (later) the IPC server; the web frontend is just a client over
-//! `tauri::command`.
+//! v0.1: the Rust side owns the router, the config store, route history, and
+//! the fsnotify watcher; the web frontend talks to it via [`tauri::command`].
+//! macOS URL events arrive through `tauri-plugin-deep-link`.
 
 mod commands;
 mod nmh_supervisor;
+mod state;
 mod tray;
 mod url_handler;
 
-use tauri::Manager;
+use std::sync::Arc;
 
-/// Construct the runtime [`PlatformProvider`] for the current target.
+use linkpilot_core::config::{default_config_path, ConfigStore};
+use linkpilot_core::history::RouteHistory;
+use linkpilot_core::platform::PlatformProvider;
+use tauri::{Emitter, Manager};
+use tauri_plugin_deep_link::DeepLinkExt;
+
+pub use state::AppState;
+
 #[cfg(target_os = "macos")]
-fn make_platform() -> Box<dyn linkpilot_core::platform::PlatformProvider> {
-    Box::new(linkpilot_platform_mac::MacProvider::new())
+fn make_platform() -> Arc<dyn PlatformProvider> {
+    Arc::new(linkpilot_platform_mac::MacProvider::new())
 }
 
 #[cfg(not(target_os = "macos"))]
-fn make_platform() -> Box<dyn linkpilot_core::platform::PlatformProvider> {
-    Box::new(linkpilot_core::platform::StubProvider)
-}
-
-/// Daemon-level state stored in Tauri's managed state.
-pub struct AppState {
-    pub platform: Box<dyn linkpilot_core::platform::PlatformProvider>,
+fn make_platform() -> Arc<dyn PlatformProvider> {
+    Arc::new(linkpilot_core::platform::StubProvider)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,22 +35,67 @@ pub fn run() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info,linkpilot=debug")),
         )
         .init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let state = AppState {
-                platform: make_platform(),
-            };
-            app.manage(state);
+            let config_path = default_config_path()
+                .map_err(|e| anyhow::anyhow!("resolve config path: {e}"))?;
+            let (config_store, created) = ConfigStore::load_or_init(config_path.clone())
+                .map_err(|e| anyhow::anyhow!("load config {}: {e}", config_path.display()))?;
+            if created {
+                tracing::info!(path = %config_path.display(), "wrote first-run config");
+            }
+
+            let history = Arc::new(RouteHistory::new());
+            let platform = make_platform();
+
+            let state = AppState::new(config_store.clone(), Arc::clone(&history), platform);
+
+            // fsnotify: rebroadcast external edits to the front-end.
+            let app_handle = app.handle().clone();
+            let watcher = config_store
+                .watch(move |origin| match origin {
+                    linkpilot_core::config::store::ChangeOrigin::External => {
+                        let _ = app_handle.emit("config-changed", "external");
+                    }
+                    linkpilot_core::config::store::ChangeOrigin::Echo => {}
+                })
+                .map_err(|e| anyhow::anyhow!("watch config: {e}"))?;
+            state.attach_watcher(watcher);
+
+            // macOS / Linux: incoming http(s) URLs from `open` events.
+            let url_state = state.clone();
+            let url_handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                for url in event.urls() {
+                    url_handler::dispatch_system_url(&url_state, &url_handle, url.to_string());
+                }
+            });
+
             tray::install(&app.handle())?;
+            app.manage(state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::config_get,
+            commands::config_replace,
+            commands::rule_upsert,
+            commands::rule_delete,
             commands::doctor,
             commands::list_browsers,
+            commands::list_profiles,
+            commands::route_open,
+            commands::route_evaluate,
+            commands::route_history,
+            commands::is_default_browser,
+            commands::request_set_default_browser,
+            commands::import_config,
+            commands::export_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running LinkPilot");

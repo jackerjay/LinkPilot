@@ -4,6 +4,10 @@
   "description": "Default capabilities for the LinkPilot main window",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:window:default",
+    "core:event:default",
+    "deep-link:default",
+    "opener:default"
   ]
 }

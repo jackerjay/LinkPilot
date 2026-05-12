@@ -1,10 +1,17 @@
 # Icons
 
-1×1 transparent placeholders to satisfy `tauri-build`. Replace with real
-artwork before any bundle goes to users:
+1×1 transparent placeholders to satisfy `tauri-build`. **Real artwork:** the
+LinkPilot P-compass icon. To install:
 
-- `icon.png` / `icon.icns` / `icon.ico` — application bundle icons
-- `tray.png` — menu-bar / system-tray icon (rendered as template image on macOS)
-- `32x32.png`, `128x128.png`, `128x128@2x.png` — Linux .desktop variants
+```sh
+# Save the source PNG as ~/Downloads/icon.png (≥1024×1024), then:
+cd apps/desktop
+cargo tauri icon ~/Downloads/icon.png
+```
+
+`cargo tauri icon` regenerates the full matrix (`icon.png`, `icon.icns`,
+`icon.ico`, `32x32.png`, `128x128.png`, `128x128@2x.png`, …) for every
+platform. Drop a 22×22 alpha template at `tray.png` for the menu-bar icon
+(macOS menu-bar wants single-channel template images).
 
 Source artwork (SVG) lives at `../../../docs/brand/` once it exists.

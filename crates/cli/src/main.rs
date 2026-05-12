@@ -120,7 +120,8 @@ fn cmd_open(
         environment: None,
     };
 
-    let router = Router::new(store.document());
+    let doc = store.document();
+    let router = Router::new(&doc);
     let decision = router.evaluate(&context);
     print_decision(&decision);
 
@@ -171,18 +172,14 @@ fn print_decision(decision: &RoutingDecision) {
 }
 
 fn cmd_doctor(store: &ConfigStore, platform: &dyn PlatformProvider) -> Result<()> {
+    let doc = store.document();
     println!("LinkPilot doctor");
     println!("  config:   {}", store.path().display());
-    println!("  rules:    {}", store.document().rules.len());
+    println!("  rules:    {}", doc.rules.len());
     println!(
         "  default:  {} / profile={}",
-        store.document().default_target.browser,
-        store
-            .document()
-            .default_target
-            .profile
-            .as_deref()
-            .unwrap_or("-")
+        doc.default_target.browser,
+        doc.default_target.profile.as_deref().unwrap_or("-")
     );
 
     let installed = platform
@@ -215,7 +212,8 @@ fn cmd_doctor(store: &ConfigStore, platform: &dyn PlatformProvider) -> Result<()
 }
 
 fn cmd_rules_list(store: &ConfigStore) -> Result<()> {
-    let mut rules: Vec<_> = store.document().rules.iter().collect();
+    let doc = store.document();
+    let mut rules: Vec<_> = doc.rules.iter().collect();
     rules.sort_by(|a, b| b.priority.cmp(&a.priority));
     if rules.is_empty() {
         println!("(no rules)");
