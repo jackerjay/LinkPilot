@@ -1,21 +1,31 @@
 import { useCallback, useEffect, useState } from "react";
+import { RuleEditor } from "../components/RuleEditor";
 import { ipc } from "../lib/ipc";
-import type { ConfigDocument, Rule } from "../lib/types";
+import type { ConfigDocument, InstalledBrowser, Rule } from "../lib/types";
 
 interface Props {
   configEpoch: number;
 }
 
+type EditorState =
+  | { kind: "closed" }
+  | { kind: "new" }
+  | { kind: "edit"; rule: Rule };
+
 export function RulesPage({ configEpoch }: Props) {
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
-  const [draft, setDraft] = useState<string>("");
+  const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
+  const [editor, setEditor] = useState<EditorState>({ kind: "closed" });
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    const next = await ipc.configGet();
-    setDoc(next);
-    setDraft(JSON.stringify(next, null, 2));
+    const [nextDoc, nextBrowsers] = await Promise.all([
+      ipc.configGet(),
+      ipc.listBrowsers().catch(() => [] as InstalledBrowser[]),
+    ]);
+    setDoc(nextDoc);
+    setBrowsers(nextBrowsers);
     setError(null);
   }, []);
 
@@ -23,18 +33,10 @@ export function RulesPage({ configEpoch }: Props) {
     refresh().catch((e) => setError(String(e)));
   }, [refresh, configEpoch]);
 
-  const save = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const parsed = JSON.parse(draft) as ConfigDocument;
-      await ipc.configReplace(parsed);
-      await refresh();
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
+  const saveRule = async (rule: Rule) => {
+    await ipc.ruleUpsert(rule);
+    setEditor({ kind: "closed" });
+    await refresh();
   };
 
   const removeRule = async (rule: Rule) => {
@@ -50,60 +52,94 @@ export function RulesPage({ configEpoch }: Props) {
     <>
       <h2>Rules</h2>
       <p className="subtitle">
-        Rules evaluated highest-priority first. Edit the JSON below to add /
-        modify rules; saving rewrites the config file and broadcasts to other
-        clients.
+        Rules evaluated highest-priority first. Click <em>Edit</em> or{" "}
+        <em>Add rule</em> to use the structured editor; advanced users can fall
+        back to JSON below.
       </p>
 
       <div className="card">
-        <h3>Quick list ({doc?.rules.length ?? 0})</h3>
+        <div className="row">
+          <h3 className="grow" style={{ margin: 0 }}>
+            Rules ({doc?.rules.length ?? 0})
+          </h3>
+          <button
+            className="primary"
+            onClick={() => setEditor({ kind: "new" })}
+            disabled={editor.kind !== "closed"}
+          >
+            + Add rule
+          </button>
+        </div>
         {doc && doc.rules.length === 0 && (
-          <div className="empty">No rules yet — add some in the JSON editor.</div>
+          <div className="empty">No rules yet — click “Add rule”.</div>
         )}
         {doc &&
           [...doc.rules]
             .sort((a, b) => b.priority - a.priority)
-            .map((r) => <RuleRow key={r.id} rule={r} onDelete={removeRule} />)}
+            .map((r) => (
+              <RuleRow
+                key={r.id}
+                rule={r}
+                onEdit={() => setEditor({ kind: "edit", rule: r })}
+                onDelete={removeRule}
+              />
+            ))}
+      </div>
+
+      {editor.kind !== "closed" && (
+        <RuleEditor
+          initial={editor.kind === "edit" ? editor.rule : null}
+          browsers={browsers}
+          onSave={saveRule}
+          onCancel={() => setEditor({ kind: "closed" })}
+        />
+      )}
+
+      <div className="card">
+        <div className="row">
+          <h3 className="grow" style={{ margin: 0 }}>
+            Default target
+          </h3>
+          <span className="mono muted">
+            {doc?.default_target.browser}
+            {doc?.default_target.profile ? ` / ${doc.default_target.profile}` : ""}
+          </span>
+        </div>
+        <div className="muted">
+          The default target is used when no rule matches. Edit it in the JSON
+          view below or via <span className="mono">lp doctor</span>.
+        </div>
       </div>
 
       <div className="card">
-        <h3>JSON editor</h3>
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          spellCheck={false}
-        />
-        {error && (
-          <div className="row">
-            <span className="tag danger">error</span>
-            <span className="muted grow">{error}</span>
-          </div>
-        )}
         <div className="row">
-          <span className="grow muted">
-            Default target:{" "}
-            <span className="mono">
-              {doc?.default_target.browser}
-              {doc?.default_target.profile ? ` / ${doc.default_target.profile}` : ""}
-            </span>
-          </span>
-          <button onClick={refresh} disabled={busy}>
-            Revert
-          </button>
-          <button className="primary" onClick={save} disabled={busy}>
-            {busy ? "Saving…" : "Save"}
+          <h3 className="grow" style={{ margin: 0 }}>
+            Advanced: raw JSON
+          </h3>
+          <button onClick={() => setShowAdvanced((v) => !v)}>
+            {showAdvanced ? "Hide" : "Show"}
           </button>
         </div>
+        {showAdvanced && doc && <AdvancedJsonEditor doc={doc} onSaved={refresh} />}
       </div>
+
+      {error && (
+        <div className="card">
+          <span className="tag danger">error</span>
+          <span className="muted"> {error}</span>
+        </div>
+      )}
     </>
   );
 }
 
 function RuleRow({
   rule,
+  onEdit,
   onDelete,
 }: {
   rule: Rule;
+  onEdit: () => void;
   onDelete: (rule: Rule) => void;
 }) {
   return (
@@ -117,10 +153,69 @@ function RuleRow({
       <span className="mono muted">{describeAction(rule.then)}</span>
       {!rule.enabled && <span className="tag danger">disabled</span>}
       {rule.source === "ts-compiled" && <span className="tag">ts</span>}
+      <button onClick={onEdit}>Edit</button>
       <button className="danger" onClick={() => onDelete(rule)}>
         Delete
       </button>
     </div>
+  );
+}
+
+function AdvancedJsonEditor({
+  doc,
+  onSaved,
+}: {
+  doc: ConfigDocument;
+  onSaved: () => Promise<void>;
+}) {
+  const [draft, setDraft] = useState(() => JSON.stringify(doc, null, 2));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraft(JSON.stringify(doc, null, 2));
+  }, [doc]);
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const parsed = JSON.parse(draft) as ConfigDocument;
+      await ipc.configReplace(parsed);
+      await onSaved();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        spellCheck={false}
+      />
+      {error && (
+        <div className="row">
+          <span className="tag danger">error</span>
+          <span className="muted grow">{error}</span>
+        </div>
+      )}
+      <div className="row">
+        <span className="grow" />
+        <button
+          onClick={() => setDraft(JSON.stringify(doc, null, 2))}
+          disabled={busy}
+        >
+          Revert
+        </button>
+        <button className="primary" onClick={save} disabled={busy}>
+          {busy ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </>
   );
 }
 
