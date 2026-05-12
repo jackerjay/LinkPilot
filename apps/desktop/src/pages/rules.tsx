@@ -159,11 +159,16 @@ export function RulesPage({ configEpoch }: Props) {
                     setDraggedId(r.id);
                     console.log("[dnd] start", r.id);
                   }}
+                  onDragEnter={(e) => {
+                    // WKWebView quirk: preventDefault on dragover alone
+                    // sometimes isn't enough — the engine wants dragenter
+                    // canceled too before it'll mark a row as droppable.
+                    const src = draggedIdRef.current;
+                    if (!src || src === r.id) return;
+                    e.preventDefault();
+                    console.log("[dnd] enter", r.id.slice(0, 8));
+                  }}
                   onDragOver={(e) => {
-                    // Use the ref (sync, no stale closure) and DON'T
-                    // look at dataTransfer.types — WKWebView doesn't
-                    // expose custom MIMEs during dragover, and standard
-                    // ones would over-match (URL drags, text selection).
                     const src = draggedIdRef.current;
                     if (!src || src === r.id) return;
                     e.preventDefault();
@@ -174,7 +179,10 @@ export function RulesPage({ configEpoch }: Props) {
                     const mid = rect.top + rect.height / 2;
                     const pos: DropPos =
                       e.clientY < mid ? "before" : "after";
-                    if (dropTargetId !== r.id) setDropTargetId(r.id);
+                    if (dropTargetId !== r.id) {
+                      setDropTargetId(r.id);
+                      console.log("[dnd] over →", r.id.slice(0, 8), pos);
+                    }
                     if (dropPos !== pos) setDropPos(pos);
                   }}
                   onDrop={(e) => {
@@ -277,6 +285,7 @@ interface RuleRowProps {
   onEdit: () => void;
   onDelete: (rule: Rule) => void;
   onDragStart: (e: DragEvent<HTMLDivElement>) => void;
+  onDragEnter: (e: DragEvent<HTMLDivElement>) => void;
   onDragOver: (e: DragEvent<HTMLDivElement>) => void;
   onDrop: (e: DragEvent<HTMLDivElement>) => void;
   onDragEnd: (e: DragEvent<HTMLDivElement>) => void;
@@ -290,6 +299,7 @@ function RuleRow({
   onEdit,
   onDelete,
   onDragStart,
+  onDragEnter,
   onDragOver,
   onDrop,
   onDragEnd,
@@ -303,6 +313,7 @@ function RuleRow({
       className={classes.join(" ")}
       draggable
       onDragStart={onDragStart}
+      onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
