@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { RuleEditor } from "../components/RuleEditor";
 import { ipc } from "../lib/ipc";
@@ -15,17 +15,17 @@ type EditorState =
 
 type DropPos = "before" | "after";
 
-// Custom MIME so cross-page drags (e.g. URL drag from outside) don't trigger
-// our rule reorder logic. The payload is the dragged rule's id.
-const DRAG_MIME = "application/x-linkpilot-rule-id";
-
 export function RulesPage({ configEpoch }: Props) {
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
   const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
   const [editor, setEditor] = useState<EditorState>({ kind: "closed" });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Drag-to-reorder state — kept local to this page; not persisted.
+  // Drag-to-reorder. The ref is the source of truth across the entire
+  // drag lifecycle (no React stale-closure, no WKWebView dataTransfer.types
+  // limitations during dragover). State drives the visual indicator only —
+  // a one-frame lag there is harmless.
+  const draggedIdRef = useRef<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [dropPos, setDropPos] = useState<DropPos | null>(null);
@@ -60,6 +60,7 @@ export function RulesPage({ configEpoch }: Props) {
   };
 
   const clearDrag = () => {
+    draggedIdRef.current = null;
     setDraggedId(null);
     setDropTargetId(null);
     setDropPos(null);
@@ -136,20 +137,19 @@ export function RulesPage({ configEpoch }: Props) {
                   onEdit={() => setEditor({ kind: "edit", rule: r })}
                   onDelete={removeRule}
                   onDragStart={(e) => {
-                    // dataTransfer is the canonical source of the dragged
-                    // id across the entire drag lifecycle — using React
-                    // state alone hits stale-closure bugs in WKWebView
-                    // because dragover fires before the re-render commits.
+                    draggedIdRef.current = r.id;
                     e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData(DRAG_MIME, r.id);
+                    // Firefox requires SOME payload to start the drag.
+                    e.dataTransfer.setData("text/plain", r.id);
                     setDraggedId(r.id);
                   }}
                   onDragOver={(e) => {
-                    // Always allow drop on a rule row — we filter by
-                    // dataTransfer.types so dropping a random file or
-                    // text selection is a no-op. preventDefault is what
-                    // tells the browser "this is a valid drop target".
-                    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+                    // Use the ref (sync, no stale closure) and DON'T
+                    // look at dataTransfer.types — WKWebView doesn't
+                    // expose custom MIMEs during dragover, and standard
+                    // ones would over-match (URL drags, text selection).
+                    const src = draggedIdRef.current;
+                    if (!src || src === r.id) return;
                     e.preventDefault();
                     e.dataTransfer.dropEffect = "move";
                     const rect = (
@@ -163,13 +163,11 @@ export function RulesPage({ configEpoch }: Props) {
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    const sourceId = e.dataTransfer.getData(DRAG_MIME);
+                    const sourceId = draggedIdRef.current;
                     if (!sourceId || sourceId === r.id) {
                       clearDrag();
                       return;
                     }
-                    // dropPos may lag a frame; recompute from the cursor
-                    // for the source of truth at drop time.
                     const rect = (
                       e.currentTarget as HTMLElement
                     ).getBoundingClientRect();
