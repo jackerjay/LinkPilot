@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { TargetEditor } from "../components/TargetEditor";
 import { ipc } from "../lib/ipc";
+import { useTheme, type ThemeMode } from "../lib/theme";
 import type {
   BrowserTarget,
   ConfigDocument,
@@ -21,6 +22,8 @@ export function SettingsPage({ configEpoch }: Props) {
   const [exportPath, setExportPath] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { mode: themeMode, active: themeActive, setMode: setThemeMode } =
+    useTheme();
 
   const refresh = useCallback(async () => {
     try {
@@ -174,6 +177,30 @@ export function SettingsPage({ configEpoch }: Props) {
         <div className="row">
           <span className="grow">Config file</span>
           <span className="mono muted">{configPath ?? "…"}</span>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>Appearance</h3>
+        <div className="row">
+          <span className="grow">
+            Theme
+            {themeMode === "system" && (
+              <span className="muted">
+                {" "}
+                — currently <span className="mono">{themeActive}</span>
+              </span>
+            )}
+          </span>
+          <select
+            value={themeMode}
+            onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
+            style={{ width: 160 }}
+          >
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
         </div>
       </div>
 
