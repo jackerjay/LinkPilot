@@ -59,28 +59,43 @@ export function RulesPage({ configEpoch }: Props) {
     }
   };
 
-  const clearDrag = () => {
-    draggedIdRef.current = null;
+  // Visual indicator only — does NOT clear the ref. WKWebView occasionally
+  // fires dragend before drop, and if dragend clears the ref the drop
+  // handler bails out before commitReorder runs. The ref is cleared
+  // explicitly inside onDrop after the commit (or its bailouts).
+  const clearVisuals = () => {
     setDraggedId(null);
     setDropTargetId(null);
     setDropPos(null);
+  };
+  const clearDrag = () => {
+    draggedIdRef.current = null;
+    clearVisuals();
   };
 
   // Commit a reorder: assign priorities N*10 down to 10 in the new order
   // so the highest item wins. Step 10 leaves room to nudge a single rule
   // by editing its priority manually later.
   const commitReorder = async (orderedIds: string[]) => {
-    if (!doc) return;
+    if (!doc) {
+      console.warn("[dnd] commit skipped: no doc");
+      return;
+    }
     const byId = new Map(doc.rules.map((r) => [r.id, r] as const));
     const total = orderedIds.length;
     const next: Rule[] = orderedIds.map((id, idx) => ({
       ...byId.get(id)!,
       priority: (total - idx) * 10,
     }));
+    console.log(
+      "[dnd] commit",
+      next.map((r) => `${r.priority}=${r.id.slice(0, 8)}`),
+    );
     try {
       await ipc.configReplace({ ...doc, rules: next });
       await refresh();
     } catch (e) {
+      console.error("[dnd] commit failed", e);
       setError(String(e));
     }
   };
@@ -142,6 +157,7 @@ export function RulesPage({ configEpoch }: Props) {
                     // Firefox requires SOME payload to start the drag.
                     e.dataTransfer.setData("text/plain", r.id);
                     setDraggedId(r.id);
+                    console.log("[dnd] start", r.id);
                   }}
                   onDragOver={(e) => {
                     // Use the ref (sync, no stale closure) and DON'T
@@ -164,6 +180,7 @@ export function RulesPage({ configEpoch }: Props) {
                   onDrop={(e) => {
                     e.preventDefault();
                     const sourceId = draggedIdRef.current;
+                    console.log("[dnd] drop", { sourceId, target: r.id });
                     if (!sourceId || sourceId === r.id) {
                       clearDrag();
                       return;
@@ -189,7 +206,17 @@ export function RulesPage({ configEpoch }: Props) {
                       setError(String(err)),
                     );
                   }}
-                  onDragEnd={clearDrag}
+                  onDragEnd={() => {
+                    console.log(
+                      "[dnd] end (ref still:",
+                      draggedIdRef.current,
+                      ")",
+                    );
+                    // Clear visuals only; ref is cleared in onDrop. This
+                    // avoids a WKWebView race where dragend fires before
+                    // drop, nuking the ref the drop handler needs to read.
+                    clearVisuals();
+                  }}
                 />
               );
             });
