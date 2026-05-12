@@ -9,8 +9,6 @@ interface Props {
 export function MenuBarPage({ configEpoch }: Props) {
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
   const [recent, setRecent] = useState<RouteRecord[]>([]);
-  const [testUrl, setTestUrl] = useState("https://github.com/anthropics/anthropic-cookbook");
-  const [testDecision, setTestDecision] = useState<RoutingDecision | null>(null);
 
   const refresh = useCallback(async () => {
     setDoctor(await ipc.doctor());
@@ -33,21 +31,13 @@ export function MenuBarPage({ configEpoch }: Props) {
     };
   }, []);
 
-  const runTest = async () => {
-    try {
-      setTestDecision(await ipc.routeEvaluate({ url: testUrl }));
-    } catch (err) {
-      setTestDecision({
-        action: "block",
-        reason: String(err),
-      });
-    }
-  };
-
   return (
     <>
       <h2>Overview</h2>
-      <p className="subtitle">Daemon status and the most recent routing decisions.</p>
+      <p className="subtitle">
+        Daemon status and the most recent routing decisions. Use the{" "}
+        <em>Test URL</em> tab to dry-run a URL through the router.
+      </p>
 
       <div className="card">
         <h3>Status</h3>
@@ -69,21 +59,6 @@ export function MenuBarPage({ configEpoch }: Props) {
           <span className="grow">Config file</span>
           <span className="mono muted">{doctor?.config_path ?? "…"}</span>
         </div>
-      </div>
-
-      <div className="card">
-        <h3>Test a URL</h3>
-        <div className="row">
-          <input
-            value={testUrl}
-            onChange={(e) => setTestUrl(e.target.value)}
-            placeholder="https://example.com"
-          />
-          <button className="primary" onClick={runTest}>
-            Evaluate
-          </button>
-        </div>
-        {testDecision && <DecisionLine decision={testDecision} />}
       </div>
 
       <div className="card">

@@ -122,6 +122,14 @@ export type RoutingDecision =
   | { action: "ask"; candidates: BrowserTarget[]; reason: string }
   | { action: "block"; reason: string };
 
+// Mirrors `routing::Explained`: a decision + the matched rule's eval tree.
+// Returned by the Tauri `route_evaluate` command — drives the Test-URL panel
+// (and matches what's also recorded in RouteRecord.explanation).
+export interface Explained {
+  decision: RoutingDecision;
+  explanation: MatcherEval | null;
+}
+
 export interface RouteRecord {
   timestamp_ms: number;
   context: RoutingContext;
