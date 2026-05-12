@@ -13,9 +13,11 @@ tray, fsnotify-backed config store, route history, all five GUI pages, and an
 end-to-end macOS `lp open` flow. See `docs/linkpilot-design-v0.1.md` (PRD)
 and the implementation plan saved to your Claude session.
 
-Outstanding for v0.1 polish: real artwork (see `apps/desktop/src-tauri/icons/`),
-`Set as Default Browser` Cocoa wiring, IPC server for cross-process CLI talk,
-and replacing the JSON-textarea rule editor with a structured form.
+Outstanding for v0.1 polish: real artwork (see
+`apps/desktop/src-tauri/icons/`) and replacing the JSON-textarea rule editor
+with a structured form. `Set as Default Browser` (LaunchServices),
+`Launch at Login` (LaunchAgent plist), and the daemon's Unix-socket IPC
+server are all wired.
 
 ## Quick start (macOS)
 
@@ -29,6 +31,11 @@ cargo build -p linkpilot-cli
 ./target/debug/lp open https://figma.com --dry-run
 ./target/debug/lp open https://github.com --from-app Slack
 ```
+
+`lp` talks to the running daemon over a Unix socket
+(`~/Library/Application Support/LinkPilot/linkpilot.sock`) when one is up,
+and falls back to local execution otherwise. Force the local path with
+`--local`.
 
 First run writes a starter config to
 `~/Library/Application Support/LinkPilot/linkpilot.config.json` (PRD §22 demo:

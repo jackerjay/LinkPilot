@@ -1,7 +1,4 @@
 //! macOS backend for LinkPilot's platform traits.
-//!
-//! v0.1 step 1 wires up the module layout so other crates can already depend
-//! on `MacProvider`. Real Cocoa / `LaunchServices` calls land in steps 5–6.
 
 #![cfg(target_os = "macos")]
 
@@ -17,6 +14,10 @@ use linkpilot_core::platform::{
     PlatformProvider, UrlLauncher,
 };
 
+/// Bundle identifier baked into `tauri.conf.json`. Used as the fallback when
+/// the caller doesn't pass one explicitly (e.g. CLI invocations).
+pub const DEFAULT_BUNDLE_ID: &str = "app.linkpilot.desktop";
+
 pub struct MacProvider {
     default_browser: default_browser::MacDefaultBrowser,
     inventory: inventory::MacInventory,
@@ -27,12 +28,15 @@ pub struct MacProvider {
 }
 
 impl MacProvider {
-    pub fn new() -> Self {
+    /// Construct a provider rooted at the given bundle identifier (the value
+    /// of `CFBundleIdentifier` in the running `.app`).
+    pub fn new(bundle_id: impl Into<String>) -> Self {
+        let bundle_id = bundle_id.into();
         Self {
-            default_browser: default_browser::MacDefaultBrowser,
+            default_browser: default_browser::MacDefaultBrowser::new(bundle_id.clone()),
             inventory: inventory::MacInventory,
             launcher: launcher::MacUrlLauncher,
-            autostart: autostart::MacAutostart,
+            autostart: autostart::MacAutostart::new(bundle_id),
             notifier: notifier::MacNotifier,
             opener: opener::MacOpenerDetector,
         }
@@ -41,7 +45,7 @@ impl MacProvider {
 
 impl Default for MacProvider {
     fn default() -> Self {
-        Self::new()
+        Self::new(DEFAULT_BUNDLE_ID)
     }
 }
 
