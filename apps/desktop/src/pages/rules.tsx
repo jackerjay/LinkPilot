@@ -106,8 +106,7 @@ export function RulesPage({ configEpoch }: Props) {
           </span>
         </div>
         <div className="muted">
-          The default target is used when no rule matches. Edit it in the JSON
-          view below or via <span className="mono">lp doctor</span>.
+          Fires when no rule matches. Change it in the <em>Settings</em> tab.
         </div>
       </div>
 

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { TargetEditor } from "../components/TargetEditor";
 import { ipc } from "../lib/ipc";
-import type { ConfigDocument, SetDefaultOutcome } from "../lib/types";
+import type {
+  BrowserTarget,
+  ConfigDocument,
+  InstalledBrowser,
+  SetDefaultOutcome,
+} from "../lib/types";
 
 interface Props {
   configEpoch: number;
@@ -10,6 +16,7 @@ export function SettingsPage({ configEpoch }: Props) {
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
   const [configPath, setConfigPath] = useState<string | null>(null);
   const [isDefault, setIsDefault] = useState<boolean | null>(null);
+  const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
   const [importPath, setImportPath] = useState("");
   const [exportPath, setExportPath] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -17,10 +24,15 @@ export function SettingsPage({ configEpoch }: Props) {
 
   const refresh = useCallback(async () => {
     try {
-      const d = await ipc.doctor();
+      const [d, c, b] = await Promise.all([
+        ipc.doctor(),
+        ipc.configGet(),
+        ipc.listBrowsers().catch(() => [] as InstalledBrowser[]),
+      ]);
       setConfigPath(d.config_path ?? null);
       setIsDefault(d.is_default_browser);
-      setDoc(await ipc.configGet());
+      setDoc(c);
+      setBrowsers(b);
     } catch (err) {
       setError(String(err));
     }
@@ -29,6 +41,17 @@ export function SettingsPage({ configEpoch }: Props) {
   useEffect(() => {
     refresh().catch((e) => setError(String(e)));
   }, [refresh, configEpoch]);
+
+  const updateDefaultTarget = async (next: BrowserTarget) => {
+    if (!doc) return;
+    setError(null);
+    try {
+      await ipc.configReplace({ ...doc, default_target: next });
+      await refresh();
+    } catch (err) {
+      setError(String(err));
+    }
+  };
 
   const setAsDefault = async () => {
     setError(null);
@@ -116,6 +139,25 @@ export function SettingsPage({ configEpoch }: Props) {
             Set LinkPilot as default
           </button>
         </div>
+      </div>
+
+      <div className="card">
+        <h3>Default target</h3>
+        <p className="muted" style={{ margin: "0 0 12px" }}>
+          Where to open links when <strong>no rule matches</strong>. Changing
+          this rewrites the config file.
+        </p>
+        {doc ? (
+          <div className="row">
+            <TargetEditor
+              value={doc.default_target}
+              browsers={browsers}
+              onChange={updateDefaultTarget}
+            />
+          </div>
+        ) : (
+          <div className="muted">Loading…</div>
+        )}
       </div>
 
       <div className="card">
