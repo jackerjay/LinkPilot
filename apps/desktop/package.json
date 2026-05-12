@@ -1,11 +1,28 @@
 {
-  "name": "linkpilot-desktop-frontend",
+  "name": "linkpilot-desktop",
   "private": true,
   "version": "0.1.0",
-  "description": "LinkPilot desktop UI (Tauri frontend). v0.1 step 1 ships a static placeholder; Vite + React land in step 7.",
+  "type": "module",
   "scripts": {
-    "tauri": "tauri",
-    "dev": "echo 'Frontend dev server not yet wired (step 7)' && exit 1",
-    "build": "echo 'Frontend build not yet wired (step 7)' && exit 1"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-deep-link": "^2.0.0",
+    "@tauri-apps/plugin-opener": "^2.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/node": "^25.7.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.5"
   }
 }
