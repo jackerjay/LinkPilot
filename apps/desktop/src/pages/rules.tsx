@@ -15,6 +15,10 @@ type EditorState =
 
 type DropPos = "before" | "after";
 
+// Custom MIME so cross-page drags (e.g. URL drag from outside) don't trigger
+// our rule reorder logic. The payload is the dragged rule's id.
+const DRAG_MIME = "application/x-linkpilot-rule-id";
+
 export function RulesPage({ configEpoch }: Props) {
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
   const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
@@ -132,44 +136,56 @@ export function RulesPage({ configEpoch }: Props) {
                   onEdit={() => setEditor({ kind: "edit", rule: r })}
                   onDelete={removeRule}
                   onDragStart={(e) => {
-                    setDraggedId(r.id);
-                    // Required by Firefox; the actual payload is unused.
+                    // dataTransfer is the canonical source of the dragged
+                    // id across the entire drag lifecycle — using React
+                    // state alone hits stale-closure bugs in WKWebView
+                    // because dragover fires before the re-render commits.
                     e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/plain", r.id);
+                    e.dataTransfer.setData(DRAG_MIME, r.id);
+                    setDraggedId(r.id);
                   }}
                   onDragOver={(e) => {
-                    if (!draggedId || draggedId === r.id) return;
+                    // Always allow drop on a rule row — we filter by
+                    // dataTransfer.types so dropping a random file or
+                    // text selection is a no-op. preventDefault is what
+                    // tells the browser "this is a valid drop target".
+                    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
                     e.preventDefault();
                     e.dataTransfer.dropEffect = "move";
                     const rect = (
                       e.currentTarget as HTMLElement
                     ).getBoundingClientRect();
                     const mid = rect.top + rect.height / 2;
-                    setDropTargetId(r.id);
-                    setDropPos(e.clientY < mid ? "before" : "after");
+                    const pos: DropPos =
+                      e.clientY < mid ? "before" : "after";
+                    if (dropTargetId !== r.id) setDropTargetId(r.id);
+                    if (dropPos !== pos) setDropPos(pos);
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    if (
-                      !draggedId ||
-                      draggedId === r.id ||
-                      !dropPos ||
-                      dropTargetId !== r.id
-                    ) {
+                    const sourceId = e.dataTransfer.getData(DRAG_MIME);
+                    if (!sourceId || sourceId === r.id) {
                       clearDrag();
                       return;
                     }
+                    // dropPos may lag a frame; recompute from the cursor
+                    // for the source of truth at drop time.
+                    const rect = (
+                      e.currentTarget as HTMLElement
+                    ).getBoundingClientRect();
+                    const mid = rect.top + rect.height / 2;
+                    const pos: DropPos =
+                      e.clientY < mid ? "before" : "after";
                     const ids = sorted.map((s) => s.id);
-                    const from = ids.indexOf(draggedId);
-                    const to = ids.indexOf(r.id);
-                    if (from < 0 || to < 0) {
+                    const from = ids.indexOf(sourceId);
+                    if (from < 0) {
                       clearDrag();
                       return;
                     }
                     const reordered = ids.filter((_, i) => i !== from);
                     let insertAt = reordered.indexOf(r.id);
-                    if (dropPos === "after") insertAt += 1;
-                    reordered.splice(insertAt, 0, draggedId);
+                    if (pos === "after") insertAt += 1;
+                    reordered.splice(insertAt, 0, sourceId);
                     clearDrag();
                     commitReorder(reordered).catch((err) =>
                       setError(String(err)),

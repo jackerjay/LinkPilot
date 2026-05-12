@@ -262,6 +262,11 @@ button.small {
 .rule-row {
   position: relative;
   transition: opacity 0.15s ease;
+  /* Block text-selection so click-and-drag starts an HTML5 drag instead
+     of selecting the rule's text. WKWebView (Tauri on macOS) is strict
+     about this — without it, dragstart never fires. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .rule-row.dragging {
