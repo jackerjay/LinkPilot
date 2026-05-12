@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { DragEvent } from "react";
 import { RuleEditor } from "../components/RuleEditor";
 import { ipc } from "../lib/ipc";
 import type { ConfigDocument, InstalledBrowser, Rule } from "../lib/types";
@@ -12,12 +13,18 @@ type EditorState =
   | { kind: "new" }
   | { kind: "edit"; rule: Rule };
 
+type DropPos = "before" | "after";
+
 export function RulesPage({ configEpoch }: Props) {
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
   const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
   const [editor, setEditor] = useState<EditorState>({ kind: "closed" });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Drag-to-reorder state — kept local to this page; not persisted.
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropPos, setDropPos] = useState<DropPos | null>(null);
 
   const refresh = useCallback(async () => {
     const [nextDoc, nextBrowsers] = await Promise.all([
@@ -42,6 +49,31 @@ export function RulesPage({ configEpoch }: Props) {
   const removeRule = async (rule: Rule) => {
     try {
       await ipc.ruleDelete(rule.id);
+      await refresh();
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  const clearDrag = () => {
+    setDraggedId(null);
+    setDropTargetId(null);
+    setDropPos(null);
+  };
+
+  // Commit a reorder: assign priorities N*10 down to 10 in the new order
+  // so the highest item wins. Step 10 leaves room to nudge a single rule
+  // by editing its priority manually later.
+  const commitReorder = async (orderedIds: string[]) => {
+    if (!doc) return;
+    const byId = new Map(doc.rules.map((r) => [r.id, r] as const));
+    const total = orderedIds.length;
+    const next: Rule[] = orderedIds.map((id, idx) => ({
+      ...byId.get(id)!,
+      priority: (total - idx) * 10,
+    }));
+    try {
+      await ipc.configReplace({ ...doc, rules: next });
       await refresh();
     } catch (e) {
       setError(String(e));
@@ -73,17 +105,81 @@ export function RulesPage({ configEpoch }: Props) {
         {doc && doc.rules.length === 0 && (
           <div className="empty">No rules yet — click “Add rule”.</div>
         )}
+        {doc && doc.rules.length > 1 && (
+          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+            Drag a row to reorder. Highest priority wins; the priority
+            number is restamped (steps of 10) after every drop.
+          </div>
+        )}
         {doc &&
-          [...doc.rules]
-            .sort((a, b) => b.priority - a.priority)
-            .map((r) => (
-              <RuleRow
-                key={r.id}
-                rule={r}
-                onEdit={() => setEditor({ kind: "edit", rule: r })}
-                onDelete={removeRule}
-              />
-            ))}
+          (() => {
+            const sorted = [...doc.rules].sort(
+              (a, b) => b.priority - a.priority,
+            );
+            return sorted.map((r) => {
+              const isDragged = draggedId === r.id;
+              const isDropBefore =
+                dropTargetId === r.id && dropPos === "before" && !isDragged;
+              const isDropAfter =
+                dropTargetId === r.id && dropPos === "after" && !isDragged;
+              return (
+                <RuleRow
+                  key={r.id}
+                  rule={r}
+                  isDragged={isDragged}
+                  isDropBefore={isDropBefore}
+                  isDropAfter={isDropAfter}
+                  onEdit={() => setEditor({ kind: "edit", rule: r })}
+                  onDelete={removeRule}
+                  onDragStart={(e) => {
+                    setDraggedId(r.id);
+                    // Required by Firefox; the actual payload is unused.
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", r.id);
+                  }}
+                  onDragOver={(e) => {
+                    if (!draggedId || draggedId === r.id) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    const rect = (
+                      e.currentTarget as HTMLElement
+                    ).getBoundingClientRect();
+                    const mid = rect.top + rect.height / 2;
+                    setDropTargetId(r.id);
+                    setDropPos(e.clientY < mid ? "before" : "after");
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (
+                      !draggedId ||
+                      draggedId === r.id ||
+                      !dropPos ||
+                      dropTargetId !== r.id
+                    ) {
+                      clearDrag();
+                      return;
+                    }
+                    const ids = sorted.map((s) => s.id);
+                    const from = ids.indexOf(draggedId);
+                    const to = ids.indexOf(r.id);
+                    if (from < 0 || to < 0) {
+                      clearDrag();
+                      return;
+                    }
+                    const reordered = ids.filter((_, i) => i !== from);
+                    let insertAt = reordered.indexOf(r.id);
+                    if (dropPos === "after") insertAt += 1;
+                    reordered.splice(insertAt, 0, draggedId);
+                    clearDrag();
+                    commitReorder(reordered).catch((err) =>
+                      setError(String(err)),
+                    );
+                  }}
+                  onDragEnd={clearDrag}
+                />
+              );
+            });
+          })()}
       </div>
 
       {editor.kind !== "closed" && (
@@ -132,17 +228,51 @@ export function RulesPage({ configEpoch }: Props) {
   );
 }
 
-function RuleRow({
-  rule,
-  onEdit,
-  onDelete,
-}: {
+interface RuleRowProps {
   rule: Rule;
+  isDragged: boolean;
+  isDropBefore: boolean;
+  isDropAfter: boolean;
   onEdit: () => void;
   onDelete: (rule: Rule) => void;
-}) {
+  onDragStart: (e: DragEvent<HTMLDivElement>) => void;
+  onDragOver: (e: DragEvent<HTMLDivElement>) => void;
+  onDrop: (e: DragEvent<HTMLDivElement>) => void;
+  onDragEnd: (e: DragEvent<HTMLDivElement>) => void;
+}
+
+function RuleRow({
+  rule,
+  isDragged,
+  isDropBefore,
+  isDropAfter,
+  onEdit,
+  onDelete,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: RuleRowProps) {
+  const classes = ["row", "rule-row"];
+  if (isDragged) classes.push("dragging");
+  if (isDropBefore) classes.push("drop-before");
+  if (isDropAfter) classes.push("drop-after");
   return (
-    <div className="row">
+    <div
+      className={classes.join(" ")}
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
+      <span
+        className="muted drag-handle"
+        title="Drag to reorder"
+        style={{ cursor: "grab", userSelect: "none" }}
+      >
+        ⋮⋮
+      </span>
       <span className="muted" style={{ width: 50 }}>
         #{rule.priority}
       </span>

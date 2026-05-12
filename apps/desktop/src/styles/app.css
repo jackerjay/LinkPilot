@@ -257,3 +257,39 @@ button.small {
   padding: 3px 8px;
   font-size: 11px;
 }
+
+/* Rule list drag-to-reorder */
+.rule-row {
+  position: relative;
+  transition: opacity 0.15s ease;
+}
+
+.rule-row.dragging {
+  opacity: 0.35;
+}
+
+.rule-row .drag-handle {
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+  letter-spacing: -2px;
+}
+
+.rule-row.drop-before::before,
+.rule-row.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.rule-row.drop-before::before {
+  top: -1px;
+}
+
+.rule-row.drop-after::after {
+  bottom: -1px;
+}
