@@ -8,7 +8,7 @@ use linkpilot_core::config::{ConfigDocument, WriterId};
 use linkpilot_core::history::RouteRecord;
 use linkpilot_core::platform::SetDefaultOutcome;
 use linkpilot_core::protocol::DoctorReport;
-use linkpilot_core::routing::{Router, RoutingContext, RoutingDecision, Source, SourceKind};
+use linkpilot_core::routing::{Explained, Router, RoutingContext, RoutingDecision, Source, SourceKind};
 use linkpilot_core::rules::{Rule, RuleId};
 use tauri::{AppHandle, Emitter, State};
 
@@ -89,16 +89,24 @@ pub struct RouteRequest {
     pub url: String,
     #[serde(default)]
     pub from_app: Option<String>,
+    /// Simulate a route arriving from a browser extension (Test-URL panel).
+    /// Together with `from_profile` these populate `Source.browser/profile`
+    /// so rules with source-browser / source-profile matchers can be tested
+    /// without actually hooking up the extension.
+    #[serde(default)]
+    pub from_browser: Option<String>,
+    #[serde(default)]
+    pub from_profile: Option<String>,
 }
 
 #[tauri::command]
 pub fn route_evaluate(
     state: State<'_, AppState>,
     request: RouteRequest,
-) -> RoutingDecision {
+) -> Explained {
     let context = build_context(&request);
     let doc = state.config.document();
-    Router::new(&doc).evaluate(&context)
+    Router::new(&doc).evaluate_explained(&context)
 }
 
 #[tauri::command]
@@ -136,14 +144,22 @@ pub fn route_history(
 }
 
 fn build_context(req: &RouteRequest) -> RoutingContext {
+    // If the caller specifies a source browser the simulated event is
+    // browser-extension-shaped; otherwise treat it as a system URL handoff
+    // (the common case for Test-URL panel and route_open from the GUI).
+    let kind = if req.from_browser.is_some() {
+        SourceKind::BrowserExtension
+    } else {
+        SourceKind::System
+    };
     RoutingContext {
         url: req.url.clone(),
         source: Source {
-            kind: SourceKind::BrowserExtension, // GUI-initiated; refined later
+            kind,
             app_name: req.from_app.clone(),
             bundle_id: None,
-            browser: None,
-            profile: None,
+            browser: req.from_browser.clone(),
+            profile: req.from_profile.clone(),
         },
         navigation: None,
         environment: None,

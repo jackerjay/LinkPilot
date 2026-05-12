@@ -7,6 +7,7 @@ import type {
   BrowserProfile,
   ConfigDocument,
   DoctorReport,
+  Explained,
   InstalledBrowser,
   RouteRecord,
   RoutingDecision,
@@ -17,6 +18,8 @@ import type {
 export interface RouteRequest {
   url: string;
   from_app?: string | null;
+  from_browser?: string | null;
+  from_profile?: string | null;
 }
 
 export const ipc = {
@@ -32,7 +35,7 @@ export const ipc = {
     invoke<BrowserProfile[]>("list_profiles", { browser }),
 
   routeEvaluate: (request: RouteRequest) =>
-    invoke<RoutingDecision>("route_evaluate", { request }),
+    invoke<Explained>("route_evaluate", { request }),
   routeOpen: (request: RouteRequest) =>
     invoke<RoutingDecision>("route_open", { request }),
   routeHistory: (limit = 100) =>

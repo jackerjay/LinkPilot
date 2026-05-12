@@ -74,7 +74,9 @@ pub enum RoutingDecision {
 /// Pair of (decision, explanation). [`Router::evaluate_explained`] returns
 /// this so [`history::RouteRecord`] can attach a per-node "did this match?"
 /// trace to every routed URL — driving the Inspector "explain why" UI.
-#[derive(Debug, Clone)]
+/// Serializes for the Tauri `route_evaluate` command so the GUI Test-URL
+/// panel can show the same trace without launching a browser.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Explained {
     pub decision: RoutingDecision,
     /// `Some` when a user-authored rule won. `None` when the default target

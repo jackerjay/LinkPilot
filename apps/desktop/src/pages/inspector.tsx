@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { ExplanationView } from "../components/Explanation";
 import { ipc, onRouteLogged } from "../lib/ipc";
 import { DecisionLine } from "./menu-bar";
-import type {
-  ConfigDocument,
-  MatcherEval,
-  RouteRecord,
-  Rule,
-} from "../lib/types";
+import type { ConfigDocument, RouteRecord, Rule } from "../lib/types";
 
 export function InspectorPage() {
   const [records, setRecords] = useState<RouteRecord[]>([]);
@@ -89,7 +85,10 @@ export function InspectorPage() {
 
           <div className="rule-editor-section">
             <div className="muted">Why this decision</div>
-            <ExplanationView record={selected} />
+            <ExplanationView
+              explanation={selected.explanation}
+              emptyMessage="No rule fired. The route fell back to the configured default_target."
+            />
           </div>
 
           <div className="row">
@@ -172,77 +171,3 @@ function RouteSummary({
   );
 }
 
-function ExplanationView({ record }: { record: RouteRecord }) {
-  if (!record.explanation) {
-    return (
-      <div className="empty" style={{ padding: 16 }}>
-        No rule fired. The route fell back to the configured{" "}
-        <span className="mono">default_target</span>.
-      </div>
-    );
-  }
-  return <EvalNode node={record.explanation} depth={0} />;
-}
-
-function EvalNode({ node, depth }: { node: MatcherEval; depth: number }) {
-  const matched = node.matched;
-  return (
-    <div className="matcher" style={{ marginLeft: depth * 12 }}>
-      <div className="row">
-        <span
-          className={`tag ${matched ? "ok" : "danger"}`}
-          title={matched ? "matched" : "did not match"}
-        >
-          {matched ? "✓" : "✗"}
-        </span>
-        <span className="grow mono">{describeEvalNode(node)}</span>
-      </div>
-      {hasChildren(node) ? (
-        <div className="matcher-children">
-          {childList(node).map((c, i) => (
-            <EvalNode key={i} node={c} depth={depth + 1} />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function hasChildren(n: MatcherEval): boolean {
-  return n.op === "all" || n.op === "any" || n.op === "not";
-}
-
-function childList(n: MatcherEval): MatcherEval[] {
-  switch (n.op) {
-    case "all":
-    case "any":
-      return n.of;
-    case "not":
-      return [n.of];
-    default:
-      return [];
-  }
-}
-
-function describeEvalNode(n: MatcherEval): string {
-  switch (n.op) {
-    case "always":
-      return "always";
-    case "all":
-      return `AND (${n.of.length})`;
-    case "any":
-      return `OR (${n.of.length})`;
-    case "not":
-      return "NOT";
-    case "url-host":
-      return `host ${n.pattern}`;
-    case "url-path":
-      return `path ${n.pattern}`;
-    case "source-app":
-      return `from app ${n.name}`;
-    case "source-browser":
-      return `from browser ${n.browser}`;
-    case "source-profile":
-      return `from profile ${n.profile}`;
-  }
-}

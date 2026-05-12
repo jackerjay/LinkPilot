@@ -2,15 +2,23 @@ import { useEffect, useState } from "react";
 import { MenuBarPage } from "./pages/menu-bar";
 import { RulesPage } from "./pages/rules";
 import { InspectorPage } from "./pages/inspector";
+import { TestUrlPage } from "./pages/test-url";
 import { BrowsersPage } from "./pages/browsers";
 import { SettingsPage } from "./pages/settings";
 import { onConfigChanged } from "./lib/ipc";
 
-type TabId = "menu-bar" | "rules" | "inspector" | "browsers" | "settings";
+type TabId =
+  | "menu-bar"
+  | "rules"
+  | "test-url"
+  | "inspector"
+  | "browsers"
+  | "settings";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "menu-bar", label: "Overview" },
   { id: "rules", label: "Rules" },
+  { id: "test-url", label: "Test URL" },
   { id: "inspector", label: "Inspector" },
   { id: "browsers", label: "Browsers" },
   { id: "settings", label: "Settings" },
@@ -47,6 +55,7 @@ export default function App() {
       <main className="content">
         {tab === "menu-bar" && <MenuBarPage configEpoch={configEpoch} />}
         {tab === "rules" && <RulesPage configEpoch={configEpoch} />}
+        {tab === "test-url" && <TestUrlPage configEpoch={configEpoch} />}
         {tab === "inspector" && <InspectorPage />}
         {tab === "browsers" && <BrowsersPage />}
         {tab === "settings" && <SettingsPage configEpoch={configEpoch} />}
