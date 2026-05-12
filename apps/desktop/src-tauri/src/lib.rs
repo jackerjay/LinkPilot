@@ -5,6 +5,7 @@
 //! macOS URL events arrive through `tauri-plugin-deep-link`.
 
 mod commands;
+mod ipc_host;
 mod nmh_supervisor;
 mod state;
 mod tray;
@@ -21,12 +22,12 @@ use tauri_plugin_deep_link::DeepLinkExt;
 pub use state::AppState;
 
 #[cfg(target_os = "macos")]
-fn make_platform() -> Arc<dyn PlatformProvider> {
-    Arc::new(linkpilot_platform_mac::MacProvider::new())
+fn make_platform(bundle_id: String) -> Arc<dyn PlatformProvider> {
+    Arc::new(linkpilot_platform_mac::MacProvider::new(bundle_id))
 }
 
 #[cfg(not(target_os = "macos"))]
-fn make_platform() -> Arc<dyn PlatformProvider> {
+fn make_platform(_bundle_id: String) -> Arc<dyn PlatformProvider> {
     Arc::new(linkpilot_core::platform::StubProvider)
 }
 
@@ -52,7 +53,8 @@ pub fn run() {
             }
 
             let history = Arc::new(RouteHistory::new());
-            let platform = make_platform();
+            let bundle_id = app.config().identifier.clone();
+            let platform = make_platform(bundle_id);
 
             let state = AppState::new(config_store.clone(), Arc::clone(&history), platform);
 
@@ -76,6 +78,16 @@ pub fn run() {
                     url_handler::dispatch_system_url(&url_state, &url_handle, url.to_string());
                 }
             });
+
+            // IPC server: `lp` and (future) Native Host attach here.
+            let handler = std::sync::Arc::new(ipc_host::DaemonHandler::new(
+                state.clone(),
+                app.handle().clone(),
+            ));
+            match linkpilot_ipc::server::serve(linkpilot_ipc::path::default_endpoint(), handler) {
+                Ok(ipc) => state.attach_ipc(ipc),
+                Err(err) => tracing::warn!(?err, "ipc server failed to start; GUI still works"),
+            }
 
             tray::install(&app.handle())?;
             app.manage(state);

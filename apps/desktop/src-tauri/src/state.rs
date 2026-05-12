@@ -6,6 +6,7 @@ use linkpilot_core::config::store::RecommendedWatcherHandle;
 use linkpilot_core::config::ConfigStore;
 use linkpilot_core::history::RouteHistory;
 use linkpilot_core::platform::PlatformProvider;
+use linkpilot_ipc::server::ServerHandle;
 
 /// State stored in `tauri::State`. Cheap to clone — every field is either an
 /// `Arc` or itself clone-shareable.
@@ -14,7 +15,14 @@ pub struct AppState {
     pub config: ConfigStore,
     pub history: Arc<RouteHistory>,
     pub platform: Arc<dyn PlatformProvider>,
-    watcher: Arc<Mutex<Option<RecommendedWatcherHandle>>>,
+    /// Long-lived background handles parked here so they outlive setup.
+    handles: Arc<Mutex<Handles>>,
+}
+
+#[derive(Default)]
+struct Handles {
+    watcher: Option<RecommendedWatcherHandle>,
+    ipc: Option<ServerHandle>,
 }
 
 impl AppState {
@@ -27,13 +35,19 @@ impl AppState {
             config,
             history,
             platform,
-            watcher: Arc::new(Mutex::new(None)),
+            handles: Arc::new(Mutex::new(Handles::default())),
         }
     }
 
-    /// Park the watcher inside the state so it lives as long as the daemon.
+    /// Park the fsnotify watcher so it lives as long as the daemon.
     pub fn attach_watcher(&self, handle: RecommendedWatcherHandle) {
-        let mut guard = self.watcher.lock().expect("watcher mutex poisoned");
-        *guard = Some(handle);
+        let mut guard = self.handles.lock().expect("handles mutex poisoned");
+        guard.watcher = Some(handle);
+    }
+
+    /// Park the IPC server handle.
+    pub fn attach_ipc(&self, handle: ServerHandle) {
+        let mut guard = self.handles.lock().expect("handles mutex poisoned");
+        guard.ipc = Some(handle);
     }
 }

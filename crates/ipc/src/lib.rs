@@ -1,12 +1,13 @@
 //! IPC transport for LinkPilot.
 //!
-//! Wire format: length-prefixed JSON, identical on all platforms. The carrier
-//! differs — Unix Domain Socket on macOS/Linux, Named Pipe on Windows.
-//!
-//! v0.1 step 1 ships only the protocol surface and the socket-path resolver;
-//! the actual `tokio` server/client land in step 4.
+//! Wire format: length-prefixed JSON (`u32` BE length + UTF-8 JSON payload).
+//! Carrier:
+//! - macOS / Linux: Unix Domain Socket
+//! - Windows:       Named Pipe (NYI in v0.1; daemon falls back to "no IPC")
 
+pub mod client;
 pub mod path;
+pub mod server;
 pub mod transport;
 
 pub use linkpilot_core::protocol::{Event, Request, Response, PROTOCOL_VERSION};
