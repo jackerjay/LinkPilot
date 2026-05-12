@@ -2,6 +2,7 @@
 //! plugin) and dispatch them through the LinkPilot router.
 
 use linkpilot_core::history::RouteRecord;
+use linkpilot_core::platform::OpenEventHint;
 use linkpilot_core::routing::{Router, RoutingContext, RoutingDecision, Source, SourceKind};
 use tauri::{AppHandle, Emitter};
 
@@ -11,12 +12,20 @@ use crate::state::AppState;
 /// the resulting decision. Any errors are logged and a `route-failed` event
 /// is emitted so the GUI can surface them.
 pub fn dispatch_system_url(state: &AppState, app: &AppHandle, url: String) {
+    // The Apple Event delivered by tauri-plugin-deep-link doesn't carry the
+    // sender, so we ask the platform crate's opener detector — on macOS that
+    // returns the most-recently-active app other than LinkPilot itself.
+    let opener = state.platform.opener_detector().detect(&OpenEventHint::default());
+    if let Some(o) = &opener {
+        tracing::debug!(name = %o.name, bundle = ?o.bundle_id, "detected opener");
+    }
+
     let context = RoutingContext {
         url: url.clone(),
         source: Source {
             kind: SourceKind::System,
-            app_name: None,
-            bundle_id: None,
+            app_name: opener.as_ref().map(|o| o.name.clone()),
+            bundle_id: opener.as_ref().and_then(|o| o.bundle_id.clone()),
             browser: None,
             profile: None,
         },

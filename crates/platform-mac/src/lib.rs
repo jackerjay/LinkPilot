@@ -36,9 +36,9 @@ impl MacProvider {
             default_browser: default_browser::MacDefaultBrowser::new(bundle_id.clone()),
             inventory: inventory::MacInventory,
             launcher: launcher::MacUrlLauncher,
-            autostart: autostart::MacAutostart::new(bundle_id),
+            autostart: autostart::MacAutostart::new(bundle_id.clone()),
             notifier: notifier::MacNotifier,
-            opener: opener::MacOpenerDetector,
+            opener: opener::MacOpenerDetector::start(bundle_id),
         }
     }
 }
