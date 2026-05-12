@@ -213,3 +213,47 @@ textarea {
   text-align: center;
   color: var(--fg-muted);
 }
+
+.rule-editor {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.rule-editor-section {
+  margin: 12px 0;
+}
+
+.rule-editor select,
+.rule-editor input[type="text"],
+.rule-editor input[type="number"] {
+  width: auto;
+  min-width: 140px;
+  flex: 1;
+}
+
+.matcher .row {
+  padding: 6px 0;
+  border-bottom: none;
+}
+
+.matcher-children {
+  margin-left: 16px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  margin-top: 4px;
+}
+
+.matcher-child {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.matcher-child > :first-child {
+  flex: 1;
+}
+
+button.small {
+  padding: 3px 8px;
+  font-size: 11px;
+}
