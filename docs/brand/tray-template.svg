@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- LinkPilot menu-bar tray template.
+     macOS templateImage: paint only black on transparent. The system
+     applies appearance-aware tinting (light/dark, active/inactive). Keep
+     strokes thick at 22pt so the icon stays legible in the menu bar. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
+  <!-- Stylized "P": vertical stem + rounded counter, evoking the brand mark
+       without the full compass+arrow detail (too noisy at 22pt). -->
+  <g fill="#000" fill-rule="evenodd">
+    <!-- Vertical stem -->
+    <rect x="5" y="3" width="3.2" height="16" rx="0.8"/>
+    <!-- Bowl of the P (rounded D-shape on the right side) -->
+    <path d="M 8.2 3
+             h 4.3
+             a 4.2 4.2 0 0 1 0 8.4
+             h -4.3
+             v -2.4
+             h 4.3
+             a 1.8 1.8 0 0 0 0 -3.6
+             h -4.3
+             z"/>
+    <!-- Tiny arrow notch — echoes the brand paper-plane without being literal -->
+    <path d="M 14.6 14.4
+             l 4.0 -1.6
+             l -2.0 4.0
+             l -0.9 -1.4
+             l -2.5 2.5
+             l -1.0 -1.0
+             l 2.5 -2.5
+             z"/>
+  </g>
+</svg>

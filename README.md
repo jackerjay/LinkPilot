@@ -8,16 +8,16 @@ each link to the browser + profile that matches your rules.
 
 ## Status
 
-**v0.1 — feature-complete scaffold.** Workspace, Tauri shell with menu-bar
-tray, fsnotify-backed config store, route history, all five GUI pages, and an
-end-to-end macOS `lp open` flow. See `docs/linkpilot-design-v0.1.md` (PRD)
-and the implementation plan saved to your Claude session.
+**v0.1 — feature-complete.** Workspace, Tauri shell with menu-bar tray,
+fsnotify-backed config store, route history, all five GUI pages, and an
+end-to-end macOS `lp open` flow. Real brand artwork shipped (full icon
+matrix from `docs/brand/icon.png` + a single-color menu-bar template from
+`docs/brand/tray-template.svg`); structured rule editor replaces the
+JSON-textarea fallback (still available under “Advanced: raw JSON”).
+`Set as Default Browser` (LaunchServices), `Launch at Login` (LaunchAgent
+plist), and the daemon's Unix-socket IPC server are all wired.
 
-Outstanding for v0.1 polish: real artwork (see
-`apps/desktop/src-tauri/icons/`) and replacing the JSON-textarea rule editor
-with a structured form. `Set as Default Browser` (LaunchServices),
-`Launch at Login` (LaunchAgent plist), and the daemon's Unix-socket IPC
-server are all wired.
+See `docs/linkpilot-design-v0.1.md` (PRD) for the design.
 
 ## Quick start (macOS)
 
