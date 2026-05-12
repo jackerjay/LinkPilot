@@ -25,9 +25,10 @@ pub fn dispatch_system_url(state: &AppState, app: &AppHandle, url: String) {
     };
 
     let doc = state.config.document();
-    let router = Router::new(&doc);
-    let decision = router.evaluate(&context);
-    let record = RouteRecord::new(context.clone(), decision.clone());
+    let explained = Router::new(&doc).evaluate_explained(&context);
+    let decision = explained.decision.clone();
+    let record =
+        RouteRecord::with_explanation(context.clone(), decision.clone(), explained.explanation);
     state.history.log(record.clone());
     let _ = app.emit("route-logged", &record);
 
