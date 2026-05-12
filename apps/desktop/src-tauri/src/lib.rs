@@ -16,7 +16,7 @@ use std::sync::Arc;
 use linkpilot_core::config::{default_config_path, ConfigStore};
 use linkpilot_core::history::RouteHistory;
 use linkpilot_core::platform::PlatformProvider;
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 pub use state::AppState;
@@ -91,7 +91,24 @@ pub fn run() {
 
             tray::install(&app.handle())?;
             app.manage(state);
+
+            // Show the main window once on launch so the first-time user can
+            // see the GUI without having to find the menu-bar icon. The tray
+            // / Dock reopen handlers below keep it accessible after the user
+            // closes it.
+            tray::show_main_window(&app.handle());
+
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Closing the main window must hide it, not destroy it — the
+            // tray + Dock reopen handlers need a live window to show.
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::config_get,
@@ -109,6 +126,16 @@ pub fn run() {
             commands::import_config,
             commands::export_config,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running LinkPilot");
+        .build(tauri::generate_context!())
+        .expect("error while building LinkPilot")
+        .run(|app, event| {
+            // macOS: clicking the Dock icon after the window is hidden fires
+            // Reopen — bring the main window back instead of being silent.
+            #[cfg(target_os = "macos")]
+            if let RunEvent::Reopen { .. } = event {
+                tray::show_main_window(app);
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
