@@ -51,6 +51,21 @@ export type Action =
   | { kind: "ask" }
   | { kind: "block" };
 
+// Per-node match trace for the matched rule. Mirrors `routing::MatcherEval`
+// on the Rust side. Same shape as `MatcherTree` but every node carries a
+// `matched: boolean` flag — used by the Inspector to highlight which
+// sub-matcher made the rule fire.
+export type MatcherEval =
+  | { op: "always"; matched: boolean }
+  | { op: "all"; matched: boolean; of: MatcherEval[] }
+  | { op: "any"; matched: boolean; of: MatcherEval[] }
+  | { op: "not"; matched: boolean; of: MatcherEval }
+  | { op: "url-host"; matched: boolean; pattern: string }
+  | { op: "url-path"; matched: boolean; pattern: string }
+  | { op: "source-app"; matched: boolean; name: string }
+  | { op: "source-browser"; matched: boolean; browser: string }
+  | { op: "source-profile"; matched: boolean; profile: string };
+
 export interface Rule {
   id: string;
   priority: number;
@@ -112,6 +127,9 @@ export interface RouteRecord {
   context: RoutingContext;
   decision: RoutingDecision;
   matched_rule?: string | null;
+  // `null` when no user rule fired (default-target fallback) or when the
+  // record predates the explanation feature.
+  explanation?: MatcherEval | null;
 }
 
 export interface DoctorReport {

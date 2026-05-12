@@ -41,8 +41,13 @@ impl RequestHandler for DaemonHandler {
 
             Request::RouteOpen { request_id, context } => {
                 let doc = self.state.config.document();
-                let decision = Router::new(&doc).evaluate(&context);
-                let record = RouteRecord::new(context.clone(), decision.clone());
+                let explained = Router::new(&doc).evaluate_explained(&context);
+                let decision = explained.decision.clone();
+                let record = RouteRecord::with_explanation(
+                    context.clone(),
+                    decision.clone(),
+                    explained.explanation,
+                );
                 self.state.history.log(record.clone());
                 let _ = self.app.emit("route-logged", &record);
 

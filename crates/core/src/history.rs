@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use crate::routing::{RoutingContext, RoutingDecision};
+use crate::routing::{MatcherEval, RoutingContext, RoutingDecision};
 use crate::rules::RuleId;
 
 pub const DEFAULT_CAPACITY: usize = 1000;
@@ -17,10 +17,23 @@ pub struct RouteRecord {
     pub context: RoutingContext,
     pub decision: RoutingDecision,
     pub matched_rule: Option<RuleId>,
+    /// Per-node match trace for the rule that won. `None` when no user rule
+    /// fired (default-target fallback) or when the decision was constructed
+    /// from a context that did not run through [`Router::evaluate_explained`].
+    #[serde(default)]
+    pub explanation: Option<MatcherEval>,
 }
 
 impl RouteRecord {
     pub fn new(context: RoutingContext, decision: RoutingDecision) -> Self {
+        Self::with_explanation(context, decision, None)
+    }
+
+    pub fn with_explanation(
+        context: RoutingContext,
+        decision: RoutingDecision,
+        explanation: Option<MatcherEval>,
+    ) -> Self {
         let matched_rule = match &decision {
             RoutingDecision::Open { matched_rule, .. } => matched_rule.clone(),
             _ => None,
@@ -30,6 +43,7 @@ impl RouteRecord {
             context,
             decision,
             matched_rule,
+            explanation,
         }
     }
 }

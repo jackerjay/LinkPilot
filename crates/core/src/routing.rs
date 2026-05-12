@@ -71,6 +71,17 @@ pub enum RoutingDecision {
     },
 }
 
+/// Pair of (decision, explanation). [`Router::evaluate_explained`] returns
+/// this so [`history::RouteRecord`] can attach a per-node "did this match?"
+/// trace to every routed URL — driving the Inspector "explain why" UI.
+#[derive(Debug, Clone)]
+pub struct Explained {
+    pub decision: RoutingDecision,
+    /// `Some` when a user-authored rule won. `None` when the default target
+    /// fired (no rules matched) — there is no matcher tree to annotate.
+    pub explanation: Option<MatcherEval>,
+}
+
 /// Stateless evaluator over a [`ConfigDocument`].
 pub struct Router<'a> {
     config: &'a ConfigDocument,
@@ -81,24 +92,43 @@ impl<'a> Router<'a> {
         Self { config }
     }
 
+    /// Convenience: just the decision. Keeps existing IPC / CLI callsites
+    /// unchanged when they don't need an explanation.
     pub fn evaluate(&self, ctx: &RoutingContext) -> RoutingDecision {
-        let mut candidates: Vec<&Rule> = self
-            .config
-            .rules
-            .iter()
-            .filter(|r| r.enabled && match_tree(&r.when, ctx))
-            .collect();
+        self.evaluate_explained(ctx).decision
+    }
 
-        candidates.sort_by(|a, b| b.priority.cmp(&a.priority));
+    pub fn evaluate_explained(&self, ctx: &RoutingContext) -> Explained {
+        // Walk rules in declared order, collecting (priority, rule, eval)
+        // for those that match. We have to eval every enabled rule's tree
+        // anyway to know whether it matched, so we get the explanation for
+        // free.
+        let mut hits: Vec<(&Rule, MatcherEval)> = Vec::new();
+        for rule in &self.config.rules {
+            if !rule.enabled {
+                continue;
+            }
+            let eval = eval_tree(&rule.when, ctx);
+            if eval.matched() {
+                hits.push((rule, eval));
+            }
+        }
+        hits.sort_by(|a, b| b.0.priority.cmp(&a.0.priority));
 
-        if let Some(rule) = candidates.first() {
-            return decide_from_action(&rule.then, Some(rule.id.clone()), &rule.note);
+        if let Some((rule, eval)) = hits.into_iter().next() {
+            return Explained {
+                decision: decide_from_action(&rule.then, Some(rule.id.clone()), &rule.note),
+                explanation: Some(eval),
+            };
         }
 
-        RoutingDecision::Open {
-            target: self.config.default_target.clone(),
-            matched_rule: None,
-            reason: "default target (no rule matched)".to_string(),
+        Explained {
+            decision: RoutingDecision::Open {
+                target: self.config.default_target.clone(),
+                matched_rule: None,
+                reason: "default target (no rule matched)".to_string(),
+            },
+            explanation: None,
         }
     }
 }
@@ -124,32 +154,92 @@ fn decide_from_action(
     }
 }
 
-fn match_tree(tree: &MatcherTree, ctx: &RoutingContext) -> bool {
+/// Per-node match trace. Same shape as [`MatcherTree`], plus a `matched`
+/// flag at every node — the frontend renders this as a highlighted
+/// boolean tree in the Inspector.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "op", rename_all = "kebab-case")]
+pub enum MatcherEval {
+    Always { matched: bool },
+    All { matched: bool, of: Vec<MatcherEval> },
+    Any { matched: bool, of: Vec<MatcherEval> },
+    Not { matched: bool, of: Box<MatcherEval> },
+    UrlHost { matched: bool, pattern: String },
+    UrlPath { matched: bool, pattern: String },
+    SourceApp { matched: bool, name: String },
+    SourceBrowser { matched: bool, browser: String },
+    SourceProfile { matched: bool, profile: String },
+}
+
+impl MatcherEval {
+    pub fn matched(&self) -> bool {
+        match self {
+            Self::Always { matched }
+            | Self::All { matched, .. }
+            | Self::Any { matched, .. }
+            | Self::Not { matched, .. }
+            | Self::UrlHost { matched, .. }
+            | Self::UrlPath { matched, .. }
+            | Self::SourceApp { matched, .. }
+            | Self::SourceBrowser { matched, .. }
+            | Self::SourceProfile { matched, .. } => *matched,
+        }
+    }
+}
+
+fn eval_tree(tree: &MatcherTree, ctx: &RoutingContext) -> MatcherEval {
     match tree {
-        MatcherTree::Always => true,
-        MatcherTree::All { of } => of.iter().all(|m| match_tree(m, ctx)),
-        MatcherTree::Any { of } => of.iter().any(|m| match_tree(m, ctx)),
-        MatcherTree::Not { of } => !match_tree(of, ctx),
-        MatcherTree::UrlHost { pattern } => match_host(pattern, &ctx.url),
-        MatcherTree::UrlPath { pattern } => match_path(pattern, &ctx.url),
-        MatcherTree::SourceApp { name } => ctx
-            .source
-            .app_name
-            .as_deref()
-            .map(|n| n.eq_ignore_ascii_case(name))
-            .unwrap_or(false),
-        MatcherTree::SourceBrowser { browser } => ctx
-            .source
-            .browser
-            .as_deref()
-            .map(|b| b.eq_ignore_ascii_case(browser))
-            .unwrap_or(false),
-        MatcherTree::SourceProfile { profile } => ctx
-            .source
-            .profile
-            .as_deref()
-            .map(|p| p == profile)
-            .unwrap_or(false),
+        MatcherTree::Always => MatcherEval::Always { matched: true },
+        MatcherTree::All { of } => {
+            let children: Vec<MatcherEval> = of.iter().map(|m| eval_tree(m, ctx)).collect();
+            let matched = !children.is_empty() && children.iter().all(|c| c.matched());
+            MatcherEval::All { matched, of: children }
+        }
+        MatcherTree::Any { of } => {
+            let children: Vec<MatcherEval> = of.iter().map(|m| eval_tree(m, ctx)).collect();
+            let matched = children.iter().any(|c| c.matched());
+            MatcherEval::Any { matched, of: children }
+        }
+        MatcherTree::Not { of } => {
+            let child = eval_tree(of, ctx);
+            let matched = !child.matched();
+            MatcherEval::Not { matched, of: Box::new(child) }
+        }
+        MatcherTree::UrlHost { pattern } => MatcherEval::UrlHost {
+            matched: match_host(pattern, &ctx.url),
+            pattern: pattern.clone(),
+        },
+        MatcherTree::UrlPath { pattern } => MatcherEval::UrlPath {
+            matched: match_path(pattern, &ctx.url),
+            pattern: pattern.clone(),
+        },
+        MatcherTree::SourceApp { name } => MatcherEval::SourceApp {
+            matched: ctx
+                .source
+                .app_name
+                .as_deref()
+                .map(|n| n.eq_ignore_ascii_case(name))
+                .unwrap_or(false),
+            name: name.clone(),
+        },
+        MatcherTree::SourceBrowser { browser } => MatcherEval::SourceBrowser {
+            matched: ctx
+                .source
+                .browser
+                .as_deref()
+                .map(|b| b.eq_ignore_ascii_case(browser))
+                .unwrap_or(false),
+            browser: browser.clone(),
+        },
+        MatcherTree::SourceProfile { profile } => MatcherEval::SourceProfile {
+            matched: ctx
+                .source
+                .profile
+                .as_deref()
+                .map(|p| p == profile)
+                .unwrap_or(false),
+            profile: profile.clone(),
+        },
     }
 }
 
@@ -246,5 +336,85 @@ mod tests {
     fn glob_matches_subdomain() {
         assert!(glob_match("*.corp.example.com", "wiki.corp.example.com"));
         assert!(!glob_match("*.corp.example.com", "example.com"));
+    }
+
+    #[test]
+    fn explanation_annotates_each_node() {
+        // AND(host=github.com, source-app=Slack)
+        // Context: github URL from Slack → both leaves match, root matches.
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
+        config.rules.push(Rule {
+            id: RuleId::default(),
+            priority: 10,
+            enabled: true,
+            when: MatcherTree::All {
+                of: vec![
+                    MatcherTree::UrlHost {
+                        pattern: "github.com".into(),
+                    },
+                    MatcherTree::SourceApp {
+                        name: "Slack".into(),
+                    },
+                ],
+            },
+            then: Action::Open {
+                target: BrowserTarget::new(BrowserId::new("chrome")),
+            },
+            source: RuleSource::Gui,
+            note: None,
+        });
+        let mut c = ctx("https://github.com/x/y");
+        c.source.app_name = Some("Slack".into());
+        let explained = Router::new(&config).evaluate_explained(&c);
+
+        let eval = explained.explanation.expect("rule should fire");
+        assert!(eval.matched());
+        match eval {
+            MatcherEval::All { matched, of } => {
+                assert!(matched);
+                assert_eq!(of.len(), 2);
+                assert!(of[0].matched());
+                assert!(of[1].matched());
+            }
+            other => panic!("expected All, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn explanation_marks_failing_child_in_and() {
+        // AND(host=github.com, source-app=Slack)
+        // Context: github URL but NO source app → host matches, source fails,
+        // root fails → no rule fires, explanation is None.
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
+        config.rules.push(Rule {
+            id: RuleId::default(),
+            priority: 10,
+            enabled: true,
+            when: MatcherTree::All {
+                of: vec![
+                    MatcherTree::UrlHost {
+                        pattern: "github.com".into(),
+                    },
+                    MatcherTree::SourceApp {
+                        name: "Slack".into(),
+                    },
+                ],
+            },
+            then: Action::Open {
+                target: BrowserTarget::new(BrowserId::new("chrome")),
+            },
+            source: RuleSource::Gui,
+            note: None,
+        });
+        let explained = Router::new(&config).evaluate_explained(&ctx("https://github.com/x/y"));
+        assert!(explained.explanation.is_none(), "no rule should have fired");
+        // And the decision should be the default target (arc), not chrome.
+        match explained.decision {
+            RoutingDecision::Open { target, matched_rule, .. } => {
+                assert_eq!(target.browser.0, "arc");
+                assert!(matched_rule.is_none());
+            }
+            other => panic!("expected Open default, got {other:?}"),
+        }
     }
 }
