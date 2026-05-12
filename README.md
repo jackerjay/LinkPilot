@@ -46,10 +46,13 @@ github / notion → Chrome Default, figma / youtube → Arc). Edit and re-run.
 ```sh
 # from repo root
 cd apps/desktop
-npm install
-npm install -g @tauri-apps/cli       # if you don't already have it
-cargo tauri dev                      # starts Vite + Tauri together
+npm install                          # installs @tauri-apps/cli locally
+npx tauri dev                        # starts Vite + Tauri together
 ```
+
+> **Note:** use `npx tauri …` (or `npm run tauri -- …`). The Tauri CLI is
+> a npm devDependency — `cargo tauri …` only works if you also
+> `cargo install tauri-cli`, which this repo does **not** require.
 
 What to try:
 
@@ -65,12 +68,14 @@ What to try:
 
 ```sh
 cd apps/desktop
-cargo tauri build
+npx tauri build
 open src-tauri/target/release/bundle/macos/LinkPilot.app
 ```
 
-`cargo tauri icon ~/Downloads/icon.png` regenerates the full icon matrix
-before bundling (the repo ships 1×1 placeholders).
+Real brand artwork is already shipped in `apps/desktop/src-tauri/icons/`
+(generated from `docs/brand/icon.png` + `docs/brand/tray-template.svg`).
+To re-generate after editing source art, see
+`apps/desktop/src-tauri/icons/README.md`.
 
 ## Layout
 
