@@ -107,13 +107,20 @@ export default function App() {
             );
           })}
         </aside>
-        <main className="overflow-y-auto overflow-x-hidden overscroll-contain px-10 pb-8 pt-12">
-          {tab === "menu-bar" && <MenuBarPage configEpoch={configEpoch} />}
-          {tab === "rules" && <RulesPage configEpoch={configEpoch} />}
-          {tab === "test-url" && <TestUrlPage configEpoch={configEpoch} />}
-          {tab === "inspector" && <InspectorPage />}
-          {tab === "browsers" && <BrowsersPage />}
-          {tab === "settings" && <SettingsPage configEpoch={configEpoch} />}
+        <main className="pt-12 pb-4 overflow-hidden">
+          {/* The scrollable region is the INNER container, not <main>.
+              That confines the scrollbar to the vertical space between
+              <main>'s top/bottom padding instead of running edge-to-edge
+              under the title-bar drag strip. Custom thin-scrollbar
+              styling lives in styles/app.css (.scroll-shy). */}
+          <div className="scroll-shy h-full overflow-y-auto overflow-x-hidden overscroll-contain px-10 pb-4">
+            {tab === "menu-bar" && <MenuBarPage configEpoch={configEpoch} />}
+            {tab === "rules" && <RulesPage configEpoch={configEpoch} />}
+            {tab === "test-url" && <TestUrlPage configEpoch={configEpoch} />}
+            {tab === "inspector" && <InspectorPage />}
+            {tab === "browsers" && <BrowsersPage />}
+            {tab === "settings" && <SettingsPage configEpoch={configEpoch} />}
+          </div>
         </main>
       </div>
     </TooltipProvider>
