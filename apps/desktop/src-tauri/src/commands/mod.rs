@@ -9,6 +9,8 @@ use linkpilot_core::history::RouteRecord;
 use linkpilot_core::platform::SetDefaultOutcome;
 use linkpilot_core::protocol::DoctorReport;
 use linkpilot_core::routing::{Explained, Router, RoutingContext, RoutingDecision, Source, SourceKind};
+
+use crate::dispatch::{self, LaunchOutcome};
 use linkpilot_core::rules::{Rule, RuleId};
 use tauri::{AppHandle, Emitter, State};
 
@@ -124,13 +126,11 @@ pub fn route_open(
     state.history.log(record.clone());
     let _ = app.emit("route-logged", &record);
 
-    if let RoutingDecision::Open { target, .. } = &decision {
-        let parsed = url::Url::parse(&request.url).map_err(|e| e.to_string())?;
-        state
-            .platform
-            .url_launcher()
-            .open(target, &parsed)
-            .map_err(|e| e.to_string())?;
+    match dispatch::execute(state.inner(), &decision, &request.url) {
+        LaunchOutcome::Launched(_)
+        | LaunchOutcome::Skipped
+        | LaunchOutcome::Cancelled => {}
+        LaunchOutcome::Failed(err) => return Err(err),
     }
     Ok(decision)
 }

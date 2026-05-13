@@ -3,9 +3,10 @@
 
 use linkpilot_core::history::RouteRecord;
 use linkpilot_core::platform::OpenEventHint;
-use linkpilot_core::routing::{Router, RoutingContext, RoutingDecision, Source, SourceKind};
+use linkpilot_core::routing::{Router, RoutingContext, Source, SourceKind};
 use tauri::{AppHandle, Emitter};
 
+use crate::dispatch::{self, LaunchOutcome};
 use crate::state::AppState;
 
 /// Build a [`RoutingContext`] from an incoming system URL event and execute
@@ -41,20 +42,11 @@ pub fn dispatch_system_url(state: &AppState, app: &AppHandle, url: String) {
     state.history.log(record.clone());
     let _ = app.emit("route-logged", &record);
 
-    if let RoutingDecision::Open { target, .. } = &decision {
-        match url::Url::parse(&url) {
-            Ok(parsed) => {
-                if let Err(err) = state.platform.url_launcher().open(target, &parsed) {
-                    tracing::error!(?err, %url, "url_handler: launch failed");
-                    let _ = app.emit(
-                        "route-failed",
-                        format!("launch failed for {url}: {err}"),
-                    );
-                }
-            }
-            Err(err) => {
-                tracing::warn!(?err, %url, "url_handler: malformed URL");
-            }
+    match dispatch::execute(state, &decision, &url) {
+        LaunchOutcome::Launched(_) | LaunchOutcome::Skipped | LaunchOutcome::Cancelled => {}
+        LaunchOutcome::Failed(err) => {
+            tracing::error!(%err, %url, "url_handler: launch failed");
+            let _ = app.emit("route-failed", format!("launch failed for {url}: {err}"));
         }
     }
 }
