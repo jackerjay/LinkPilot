@@ -31,28 +31,30 @@ fn cache_dir() -> Result<PathBuf> {
     Ok(dir)
 }
 
-/// Extract a 64pt PNG for the app identified by `bundle_id` OR an
-/// explicit `app_path` (e.g. `/Applications/Google Chrome.app`). Returns
-/// the on-disk path to the cached PNG. Callers should serve the bytes
-/// from there.
+/// Extract a 64pt PNG for the app identified by `bundle_id`, an explicit
+/// `app_path` (e.g. `/Applications/Google Chrome.app`), or — as a last
+/// resort — a Spotlight-resolvable display / bundle name (e.g. "Slack").
+/// Returns the on-disk path to the cached PNG.
 pub fn ensure_png(
     bundle_id: Option<&str>,
     app_path: Option<&Path>,
+    name: Option<&str>,
     size: u32,
 ) -> Result<PathBuf> {
-    let key = cache_key(bundle_id, app_path);
+    let key = cache_key(bundle_id, app_path, name);
     let out = cache_dir()?.join(format!("{key}-{size}.png"));
     if out.exists() {
         return Ok(out);
     }
 
-    let resolved = match app_path {
-        Some(p) => p.to_path_buf(),
-        None => {
-            let bid = bundle_id.ok_or_else(|| {
-                PlatformError::Other("ensure_png: need bundle_id or app_path".into())
-            })?;
-            resolve_app_path(bid)?
+    let resolved = match (bundle_id, app_path, name) {
+        (_, Some(p), _) => p.to_path_buf(),
+        (Some(bid), None, _) => resolve_app_path(bid)?,
+        (None, None, Some(n)) => resolve_app_path_by_name(n)?,
+        _ => {
+            return Err(PlatformError::Other(
+                "ensure_png: need bundle_id, app_path, or name".into(),
+            ))
         }
     };
     let icns = locate_icns(&resolved)?;
@@ -60,11 +62,17 @@ pub fn ensure_png(
     Ok(out)
 }
 
-fn cache_key(bundle_id: Option<&str>, app_path: Option<&Path>) -> String {
+fn cache_key(
+    bundle_id: Option<&str>,
+    app_path: Option<&Path>,
+    name: Option<&str>,
+) -> String {
     if let Some(b) = bundle_id {
         sanitize(b)
     } else if let Some(p) = app_path {
         sanitize(&p.to_string_lossy())
+    } else if let Some(n) = name {
+        format!("name-{}", sanitize(n))
     } else {
         "unknown".into()
     }
@@ -98,6 +106,39 @@ fn resolve_app_path(bundle_id: &str) -> Result<PathBuf> {
         PlatformError::Other(format!("no app found for bundle id {bundle_id}"))
     })?;
     Ok(PathBuf::from(first))
+}
+
+/// Resolve a .app by its localized display name (or CFBundleName).
+/// Used by the Rules list when a `source-app` matcher only carries a
+/// human-readable name (e.g. "Slack") and we want its real icon.
+fn resolve_app_path_by_name(name: &str) -> Result<PathBuf> {
+    // Spotlight: match application bundles whose display name OR
+    // CFBundleName equals the input. Quote the name to allow spaces.
+    let safe = name.replace('"', "");
+    let query = format!(
+        "(kMDItemContentType == 'com.apple.application-bundle') && \
+         ((kMDItemDisplayName == \"{safe}\") || (kMDItemCFBundleName == \"{safe}\"))"
+    );
+    let out = Command::new("/usr/bin/mdfind")
+        .arg(&query)
+        .output()
+        .map_err(PlatformError::Io)?;
+    if !out.status.success() {
+        return Err(PlatformError::Other(format!(
+            "mdfind exited {}: {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr).trim()
+        )));
+    }
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    // Prefer /Applications over user / system locations when multiple
+    // hits — the user-installed copy is almost always the one we want.
+    let pick = stdout
+        .lines()
+        .find(|l| l.starts_with("/Applications/"))
+        .or_else(|| stdout.lines().next())
+        .ok_or_else(|| PlatformError::Other(format!("no app found for name {name}")))?;
+    Ok(PathBuf::from(pick))
 }
 
 /// Read `<app>/Contents/Info.plist` to find the icon file name, then
