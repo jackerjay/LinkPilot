@@ -148,3 +148,26 @@
     overscroll-behavior: none;
   }
 }
+
+/* Slim, macOS-flavoured scrollbar. Sits inside containers that opt in
+   via the .scroll-shy class — keeps the bar inside the content area
+   instead of stretching window-edge to window-edge under the title
+   strip. Transparent thumb that fades in only when the container is
+   hovered, mimicking the system overlay scrollbar. */
+.scroll-shy::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-shy::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-shy::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background-color 120ms ease;
+}
+.scroll-shy:hover::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+}
+.scroll-shy::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
