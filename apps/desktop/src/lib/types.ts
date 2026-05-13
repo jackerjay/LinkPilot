@@ -41,7 +41,7 @@ export type MatcherTree =
   | { op: "not"; of: MatcherTree }
   | { op: "url-host"; pattern: string }
   | { op: "url-path"; pattern: string }
-  | { op: "source-app"; name: string }
+  | { op: "source-app"; name: string; bundle_id?: string | null }
   | { op: "source-browser"; browser: string }
   | { op: "source-profile"; profile: string };
 
