@@ -1,0 +1,14 @@
+[package]
+name = "linkpilot-icon-padder"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "One-shot helper that re-pads the brand PNG to Apple's icon grid (artwork inside ~80% of the canvas) so Dock / Launchpad don't crop it weirdly."
+
+[[bin]]
+name = "linkpilot-icon-padder"
+path = "src/main.rs"
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }

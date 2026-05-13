@@ -10,6 +10,7 @@ members = [
     "crates/cli",
     "crates/headless-daemon",
     "apps/desktop/src-tauri",
+    "tools/icon-padder",
 ]
 
 [workspace.package]
