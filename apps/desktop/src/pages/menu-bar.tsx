@@ -122,7 +122,7 @@ function RouteRow({ record }: { record: RouteRecord }) {
       <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">
         {new Date(record.timestamp_ms).toLocaleTimeString()}
       </span>
-      <span className="flex-1 truncate select-text font-mono text-xs">
+      <span className="min-w-0 flex-1 truncate select-text font-mono text-xs">
         {record.context.url}
       </span>
       <DecisionLine decision={record.decision} />

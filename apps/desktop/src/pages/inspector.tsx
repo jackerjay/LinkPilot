@@ -78,7 +78,7 @@ export function InspectorPage() {
                   <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">
                     {new Date(r.timestamp_ms).toLocaleTimeString()}
                   </span>
-                  <span className="flex-1 truncate select-text font-mono text-xs">
+                  <span className="min-w-0 flex-1 truncate select-text font-mono text-xs">
                     {r.context.url}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -106,7 +106,7 @@ export function InspectorPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <SummaryRow label="URL">
-              <span className="select-text font-mono text-xs">
+              <span className="block select-text break-all font-mono text-xs">
                 {selected.context.url}
               </span>
             </SummaryRow>
@@ -195,11 +195,15 @@ function SummaryRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-20 shrink-0 text-xs text-muted-foreground">
+    <div className="flex items-start gap-3">
+      <span className="w-20 shrink-0 pt-0.5 text-xs text-muted-foreground">
         {label}
       </span>
-      <span className="flex-1">{children}</span>
+      {/* min-w-0 lets flex-1 actually shrink — without it the child's
+          min-width defaults to its content width, so long URLs push the
+          row out past the card. Combined with `break-all` on the URL
+          span, multi-line URLs now wrap cleanly inside the card. */}
+      <span className="flex-1 min-w-0">{children}</span>
     </div>
   );
 }
