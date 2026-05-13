@@ -1,14 +1,14 @@
 //! Decision → action helper shared by every URL-launch entry point
 //! (system URL handler, `route_open` Tauri command, IPC RouteOpen).
-//!
-//! Previously each callsite had its own `if let Open { target } = decision`
-//! branch and silently ignored Ask / Allow / Block. With the Ask branch
-//! now needing real UI (native chooser), the logic belongs in one place.
+
+use std::collections::HashMap;
 
 use linkpilot_core::browser::BrowserTarget;
 use linkpilot_core::routing::RoutingDecision;
+use tauri::AppHandle;
 use url::Url;
 
+use crate::picker::{self, PickerChoice};
 use crate::state::AppState;
 
 #[derive(Debug)]
@@ -28,7 +28,12 @@ pub enum LaunchOutcome {
 
 /// Carry out the launch side of a routing decision. Pure plumbing — the
 /// decision is assumed already logged to history by the caller.
-pub fn execute(state: &AppState, decision: &RoutingDecision, raw_url: &str) -> LaunchOutcome {
+pub fn execute(
+    app: &AppHandle,
+    state: &AppState,
+    decision: &RoutingDecision,
+    raw_url: &str,
+) -> LaunchOutcome {
     tracing::debug!(?decision, %raw_url, "dispatch::execute");
     let parsed = match Url::parse(raw_url) {
         Ok(u) => u,
@@ -49,12 +54,12 @@ pub fn execute(state: &AppState, decision: &RoutingDecision, raw_url: &str) -> L
             tracing::info!(
                 candidate_count = candidates.len(),
                 %raw_url,
-                "dispatch: ask — showing chooser"
+                "dispatch: ask — showing picker window"
             );
-            let target = match resolve_ask(state, candidates, raw_url) {
+            let target = match resolve_ask(app, state, candidates, raw_url) {
                 Some(t) => t,
                 None => {
-                    tracing::info!("dispatch: ask cancelled or no candidates");
+                    tracing::info!("dispatch: ask cancelled");
                     return LaunchOutcome::Cancelled;
                 }
             };
@@ -71,13 +76,14 @@ pub fn execute(state: &AppState, decision: &RoutingDecision, raw_url: &str) -> L
     }
 }
 
-/// Show the macOS chooser (osascript on macOS, stub elsewhere). When
-/// the rule's candidates list is empty we fall back to every installed
-/// browser the inventory knows about.
+/// Build the picker choices, show the Tauri picker window, map the
+/// returned id back to a BrowserTarget. When the rule's candidates list
+/// is empty we fall back to every installed browser.
 fn resolve_ask(
+    app: &AppHandle,
     state: &AppState,
     candidates: &[BrowserTarget],
-    _url: &str,
+    url: &str,
 ) -> Option<BrowserTarget> {
     let installed = state
         .platform
@@ -85,50 +91,50 @@ fn resolve_ask(
         .installed_browsers()
         .ok()?;
 
-    // Build (label → target) pairs in display order. Labels are the
-    // installed browser's display_name when known; the rule may have
-    // supplied targets that point at uninstalled browsers, in which
-    // case we surface the id verbatim.
-    let mut choices: Vec<(String, BrowserTarget)> = if candidates.is_empty() {
+    let source: Vec<BrowserTarget> = if candidates.is_empty() {
         installed
             .iter()
-            .map(|b| {
-                (
-                    b.display_name.clone(),
-                    BrowserTarget::new(b.id.clone()),
-                )
-            })
+            .map(|b| BrowserTarget::new(b.id.clone()))
             .collect()
     } else {
-        candidates
-            .iter()
-            .map(|t| {
-                let label = installed
-                    .iter()
-                    .find(|b| b.id == t.browser)
-                    .map(|b| b.display_name.clone())
-                    .unwrap_or_else(|| t.browser.0.clone());
-                (label, t.clone())
-            })
-            .collect()
+        candidates.to_vec()
     };
 
-    if choices.is_empty() {
+    if source.is_empty() {
         return None;
     }
 
-    #[cfg(target_os = "macos")]
-    {
-        let labels: Vec<String> = choices.iter().map(|(n, _)| n.clone()).collect();
-        let picked = linkpilot_platform_mac::prompt::pick_browser(_url, &labels)?;
-        // Linear search is fine for ≤ 10 entries.
-        let idx = choices.iter().position(|(n, _)| n == &picked)?;
-        return Some(choices.swap_remove(idx).1);
+    // Parallel: choices for the picker UI + lookup back to the full
+    // BrowserTarget (so we preserve any profile / new-window / incognito
+    // hints the original rule specified).
+    let mut target_by_id: HashMap<String, BrowserTarget> = HashMap::new();
+    let mut choices: Vec<PickerChoice> = Vec::with_capacity(source.len());
+    for target in source {
+        let info = installed.iter().find(|b| b.id == target.browser);
+        let name = info
+            .map(|b| b.display_name.clone())
+            .unwrap_or_else(|| target.browser.0.clone());
+        let bundle_id = info.and_then(|b| b.platform_app_id.clone());
+        let app_path = info.map(|b| app_path_from_executable(&b.executable));
+        let id = target.browser.0.clone();
+        target_by_id.insert(id.clone(), target);
+        choices.push(PickerChoice {
+            id,
+            name,
+            bundle_id,
+            app_path,
+        });
     }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = &mut choices;
-        None
-    }
+
+    let picked_id = picker::show_picker(app, url, choices)?;
+    target_by_id.remove(&picked_id)
 }
 
+/// `/Applications/Foo.app/Contents/MacOS/Foo` → `/Applications/Foo.app`.
+fn app_path_from_executable(exe: &std::path::Path) -> String {
+    let s = exe.to_string_lossy();
+    match s.rfind(".app/") {
+        Some(idx) => s[..idx + 4].to_string(),
+        None => s.into_owned(),
+    }
+}

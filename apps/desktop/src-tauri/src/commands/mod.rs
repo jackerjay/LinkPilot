@@ -126,7 +126,7 @@ pub fn route_open(
     state.history.log(record.clone());
     let _ = app.emit("route-logged", &record);
 
-    match dispatch::execute(state.inner(), &decision, &request.url) {
+    match dispatch::execute(&app, state.inner(), &decision, &request.url) {
         LaunchOutcome::Launched(_)
         | LaunchOutcome::Skipped
         | LaunchOutcome::Cancelled => {}

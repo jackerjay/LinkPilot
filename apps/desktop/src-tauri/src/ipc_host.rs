@@ -52,7 +52,7 @@ impl RequestHandler for DaemonHandler {
                 self.state.history.log(record.clone());
                 let _ = self.app.emit("route-logged", &record);
 
-                match dispatch::execute(&self.state, &decision, &context.url) {
+                match dispatch::execute(&self.app, &self.state, &decision, &context.url) {
                     LaunchOutcome::Launched(_)
                     | LaunchOutcome::Skipped
                     | LaunchOutcome::Cancelled => {}

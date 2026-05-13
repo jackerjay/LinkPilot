@@ -8,6 +8,7 @@ mod commands;
 mod dispatch;
 mod ipc_host;
 mod nmh_supervisor;
+mod picker;
 mod state;
 mod tray;
 mod url_handler;
@@ -92,6 +93,8 @@ pub fn run() {
 
             tray::install(&app.handle())?;
             app.manage(state);
+            // Browser-picker state for the Ask UI (see picker.rs).
+            app.manage(picker::PickerState::default());
 
             // Show the main window once on launch so the first-time user can
             // see the GUI without having to find the menu-bar icon. The tray
@@ -102,13 +105,22 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Closing the main window must hide it, not destroy it — the
-            // tray + Dock reopen handlers need a live window to show.
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
+            match event {
+                // Main window: hide instead of destroy so the tray /
+                // Dock reopen handlers can show it again.
+                WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
                     api.prevent_close();
                     let _ = window.hide();
                 }
+                // Picker window dismissed via the close button (rare —
+                // it has no chrome). Resolve the in-flight ask as
+                // cancelled so the dispatch thread doesn't time out.
+                WindowEvent::CloseRequested { .. } if window.label() == "picker" => {
+                    let state: tauri::State<picker::PickerState> =
+                        window.app_handle().state();
+                    picker::picker_resolve(state, None);
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -128,6 +140,8 @@ pub fn run() {
             commands::export_config,
             commands::app_icon,
             commands::pick_app,
+            picker::picker_session,
+            picker::picker_resolve,
         ])
         .build(tauri::generate_context!())
         .expect("error while building LinkPilot")

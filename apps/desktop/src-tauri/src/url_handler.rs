@@ -42,7 +42,7 @@ pub fn dispatch_system_url(state: &AppState, app: &AppHandle, url: String) {
     state.history.log(record.clone());
     let _ = app.emit("route-logged", &record);
 
-    match dispatch::execute(state, &decision, &url) {
+    match dispatch::execute(app, state, &decision, &url) {
         LaunchOutcome::Launched(_) | LaunchOutcome::Skipped | LaunchOutcome::Cancelled => {}
         LaunchOutcome::Failed(err) => {
             tracing::error!(%err, %url, "url_handler: launch failed");
