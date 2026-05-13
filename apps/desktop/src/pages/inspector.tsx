@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { ExplanationView } from "../components/Explanation";
-import { ipc, onRouteLogged } from "../lib/ipc";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { ExplanationView } from "@/components/Explanation";
+import { ipc, onRouteLogged } from "@/lib/ipc";
+import { cn } from "@/lib/utils";
 import { DecisionLine } from "./menu-bar";
-import type { ConfigDocument, RouteRecord, Rule } from "../lib/types";
+import type { ConfigDocument, RouteRecord } from "@/lib/types";
 
 export function InspectorPage() {
   const [records, setRecords] = useState<RouteRecord[]>([]);
@@ -41,133 +45,147 @@ export function InspectorPage() {
       : null;
 
   return (
-    <>
-      <h2>Route Inspector</h2>
-      <p className="subtitle">
-        Every decision LinkPilot makes, newest first. Click a row to see why
-        the rule matched.
-      </p>
+    <div className="space-y-4">
+      <header>
+        <h2 className="text-xl font-semibold tracking-tight">Route Inspector</h2>
+        <p className="text-sm text-muted-foreground">
+          Every decision LinkPilot makes, newest first. Click a row to see why
+          the rule matched.
+        </p>
+      </header>
 
-      <div className="card scroll">
-        {records.length === 0 ? (
-          <div className="empty">
-            No routes logged yet. Click some links or run{" "}
-            <span className="mono">lp open …</span> while the daemon is up.
-          </div>
-        ) : (
-          records.map((r, i) => (
-            <div
-              key={i}
-              className="row"
-              style={{
-                cursor: "pointer",
-                background: selected === r ? "var(--accent-soft)" : undefined,
-              }}
-              onClick={() => setSelected(r)}
-            >
-              <span className="muted" style={{ width: 80 }}>
-                {new Date(r.timestamp_ms).toLocaleTimeString()}
-              </span>
-              <span className="grow mono">{r.context.url}</span>
-              <span className="muted">
-                {r.context.source.app_name ?? r.context.source.type}
-              </span>
-              <DecisionLine decision={r.decision} />
+      <Card className="max-h-[480px] overflow-y-auto">
+        <CardContent className="p-0">
+          {records.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No routes logged yet. Click some links or run{" "}
+              <span className="font-mono">lp open …</span> while the daemon is
+              up.
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {records.map((r, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSelected(r)}
+                  className={cn(
+                    "flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-accent",
+                    selected === r && "bg-accent",
+                  )}
+                >
+                  <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">
+                    {new Date(r.timestamp_ms).toLocaleTimeString()}
+                  </span>
+                  <span className="flex-1 truncate font-mono text-xs">
+                    {r.context.url}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {r.context.source.app_name ?? r.context.source.type}
+                  </span>
+                  <DecisionLine decision={r.decision} />
+                </button>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {selected && (
-        <div className="card">
-          <h3>Selected route</h3>
-          <RouteSummary record={selected} matchedRule={matchedRule} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Selected route</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <SummaryRow label="URL">
+              <span className="font-mono text-xs">{selected.context.url}</span>
+            </SummaryRow>
+            <SummaryRow label="Source">
+              {selected.context.source.app_name ? (
+                <>
+                  <span className="font-mono text-xs">
+                    {selected.context.source.app_name}
+                  </span>{" "}
+                  <span className="text-xs text-muted-foreground">
+                    ({selected.context.source.type})
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {selected.context.source.type}
+                </span>
+              )}
+            </SummaryRow>
+            <SummaryRow label="Decision">
+              <DecisionLine decision={selected.decision} />
+            </SummaryRow>
+            <SummaryRow label="Rule">
+              {matchedRule ? (
+                <>
+                  <span className="font-mono text-xs">
+                    #{matchedRule.priority}
+                  </span>{" "}
+                  {matchedRule.note ? (
+                    <span className="text-sm">{matchedRule.note}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      (no note)
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  — default target (no rule matched)
+                </span>
+              )}
+            </SummaryRow>
 
-          <div className="rule-editor-section">
-            <div className="muted">Why this decision</div>
-            <ExplanationView
-              explanation={selected.explanation}
-              emptyMessage="No rule fired. The route fell back to the configured default_target."
-            />
-          </div>
+            <div className="space-y-2">
+              <Label>Why this decision</Label>
+              <ExplanationView
+                explanation={selected.explanation}
+                emptyMessage="No rule fired. The route fell back to the configured default_target."
+              />
+            </div>
 
-          <div className="row">
-            <span className="grow muted">
-              Raw record (for debugging / bug reports)
-            </span>
-            <button onClick={() => setShowRaw((v) => !v)}>
-              {showRaw ? "Hide" : "Show"}
-            </button>
-          </div>
-          {showRaw && (
-            <pre className="mono" style={{ whiteSpace: "pre-wrap", margin: 0 }}>
-              {JSON.stringify(selected, null, 2)}
-            </pre>
-          )}
-        </div>
+            <div className="flex items-center justify-between border-t border-border pt-3">
+              <span className="text-xs text-muted-foreground">
+                Raw record (for debugging / bug reports)
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRaw((v) => !v)}
+              >
+                {showRaw ? "Hide" : "Show"}
+              </Button>
+            </div>
+            {showRaw && (
+              <pre className="whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 font-mono text-xs">
+                {JSON.stringify(selected, null, 2)}
+              </pre>
+            )}
+          </CardContent>
+        </Card>
       )}
-    </>
+    </div>
   );
 }
 
-function RouteSummary({
-  record,
-  matchedRule,
+function SummaryRow({
+  label,
+  children,
 }: {
-  record: RouteRecord;
-  matchedRule: Rule | null;
+  label: string;
+  children: React.ReactNode;
 }) {
   return (
-    <>
-      <div className="row">
-        <span className="muted" style={{ width: 80 }}>
-          URL
-        </span>
-        <span className="grow mono">{record.context.url}</span>
-      </div>
-      <div className="row">
-        <span className="muted" style={{ width: 80 }}>
-          Source
-        </span>
-        <span className="grow">
-          {record.context.source.app_name ? (
-            <>
-              <span className="mono">{record.context.source.app_name}</span>{" "}
-              <span className="muted">({record.context.source.type})</span>
-            </>
-          ) : (
-            <span className="muted">{record.context.source.type}</span>
-          )}
-        </span>
-      </div>
-      <div className="row">
-        <span className="muted" style={{ width: 80 }}>
-          Decision
-        </span>
-        <span className="grow">
-          <DecisionLine decision={record.decision} />
-        </span>
-      </div>
-      <div className="row">
-        <span className="muted" style={{ width: 80 }}>
-          Rule
-        </span>
-        <span className="grow">
-          {matchedRule ? (
-            <>
-              <span className="mono">#{matchedRule.priority}</span>{" "}
-              {matchedRule.note ? (
-                <span>{matchedRule.note}</span>
-              ) : (
-                <span className="muted">(no note)</span>
-              )}
-            </>
-          ) : (
-            <span className="muted">— default target (no rule matched)</span>
-          )}
-        </span>
-      </div>
-    </>
+    <div className="flex items-center gap-3">
+      <span className="w-20 shrink-0 text-xs text-muted-foreground">
+        {label}
+      </span>
+      <span className="flex-1">{children}</span>
+    </div>
   );
 }
 

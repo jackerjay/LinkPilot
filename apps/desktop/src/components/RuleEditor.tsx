@@ -1,21 +1,30 @@
 // Structured editor for a single Rule. Replaces the JSON-textarea editor.
-//
-// Renders an inline form: priority + enabled + recursive MatcherTree builder +
-// Action picker (with cascading browser/profile dropdowns) + optional note.
-// Emits a validated Rule to onSave, or a list of human-readable errors via
-// onError-less return: validation runs inline and disables Save when invalid.
 
 import { useState } from "react";
-import { TargetEditor } from "./TargetEditor";
+import { Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TargetEditor } from "@/components/TargetEditor";
 import type {
   Action,
   InstalledBrowser,
   MatcherTree,
   Rule,
-} from "../lib/types";
+} from "@/lib/types";
 
 interface Props {
-  initial: Rule | null; // null = create new
+  initial: Rule | null;
   browsers: InstalledBrowser[];
   onSave: (rule: Rule) => Promise<void>;
   onCancel: () => void;
@@ -56,83 +65,91 @@ export function RuleEditor({ initial, browsers, onSave, onCancel }: Props) {
   };
 
   return (
-    <div className="card rule-editor">
-      <h3>{initial ? "Edit rule" : "New rule"}</h3>
+    <Card className="border-primary/40 ring-1 ring-primary/20">
+      <CardHeader>
+        <CardTitle>{initial ? "Edit rule" : "New rule"}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="rule-priority">Priority</Label>
+            <Input
+              id="rule-priority"
+              type="number"
+              value={draft.priority}
+              onChange={(e) =>
+                setDraft({ ...draft, priority: Number(e.target.value) || 0 })
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Enabled</Label>
+            <div className="flex h-8 items-center">
+              <Checkbox
+                checked={draft.enabled}
+                onCheckedChange={(v) =>
+                  setDraft({ ...draft, enabled: v === true })
+                }
+              />
+            </div>
+          </div>
+        </div>
 
-      <div className="row">
-        <label className="grow">
-          <div className="muted">Priority</div>
-          <input
-            type="number"
-            value={draft.priority}
+        <div className="space-y-2">
+          <Label>When</Label>
+          <MatcherEditor
+            value={draft.when}
+            browsers={browsers}
+            onChange={(when) => setDraft({ ...draft, when })}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Then</Label>
+          <ActionEditor
+            value={draft.then}
+            browsers={browsers}
+            onChange={(then) => setDraft({ ...draft, then })}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="rule-note">Note (optional, shown in Inspector)</Label>
+          <Input
+            id="rule-note"
+            value={draft.note ?? ""}
             onChange={(e) =>
-              setDraft({ ...draft, priority: Number(e.target.value) || 0 })
+              setDraft({ ...draft, note: e.target.value || null })
             }
+            placeholder="Why this rule exists…"
           />
-        </label>
-        <label className="grow">
-          <div className="muted">Enabled</div>
-          <input
-            type="checkbox"
-            checked={draft.enabled}
-            onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
-          />
-        </label>
-      </div>
-
-      <div className="rule-editor-section">
-        <div className="muted">When</div>
-        <MatcherEditor
-          value={draft.when}
-          browsers={browsers}
-          onChange={(when) => setDraft({ ...draft, when })}
-        />
-      </div>
-
-      <div className="rule-editor-section">
-        <div className="muted">Then</div>
-        <ActionEditor
-          value={draft.then}
-          browsers={browsers}
-          onChange={(then) => setDraft({ ...draft, then })}
-        />
-      </div>
-
-      <label>
-        <div className="muted">Note (optional, shown in Inspector)</div>
-        <input
-          type="text"
-          value={draft.note ?? ""}
-          onChange={(e) =>
-            setDraft({ ...draft, note: e.target.value || null })
-          }
-          placeholder="Why this rule exists…"
-        />
-      </label>
-
-      {issues.length > 0 && (
-        <div className="row">
-          <span className="tag danger">invalid</span>
-          <span className="muted grow">{issues.join(" · ")}</span>
         </div>
-      )}
-      {error && (
-        <div className="row">
-          <span className="tag danger">error</span>
-          <span className="muted grow">{error}</span>
-        </div>
-      )}
 
-      <div className="row">
-        <span className="grow" />
-        <button onClick={onCancel} disabled={busy}>
-          Cancel
-        </button>
-        <button className="primary" onClick={save} disabled={!canSave}>
-          {busy ? "Saving…" : "Save"}
-        </button>
-      </div>
-    </div>
+        {issues.length > 0 && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+            <Badge variant="destructive" className="shrink-0">invalid</Badge>
+            <span className="text-xs text-muted-foreground">
+              {issues.join(" · ")}
+            </span>
+          </div>
+        )}
+        {error && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
+            <Badge variant="destructive" className="shrink-0">error</Badge>
+            <span className="text-xs text-muted-foreground">{error}</span>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={!canSave}>
+            {busy ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -162,19 +179,20 @@ function MatcherEditor({ value, browsers, onChange, depth = 0 }: MatcherProps) {
   const setOp = (op: MatcherTree["op"]) => onChange(matcherFromOp(op));
 
   return (
-    <div className="matcher" style={{ marginLeft: depth * 12 }}>
-      <div className="row">
-        <select
-          value={value.op}
-          onChange={(e) => setOp(e.target.value as MatcherTree["op"])}
-          style={{ width: 160 }}
-        >
-          {MATCHER_OPS.map((op) => (
-            <option key={op} value={op}>
-              {op}
-            </option>
-          ))}
-        </select>
+    <div className={depth > 0 ? "ml-3 border-l-2 border-border pl-3" : ""}>
+      <div className="flex items-center gap-2">
+        <Select value={value.op} onValueChange={(v) => setOp(v as MatcherTree["op"])}>
+          <SelectTrigger className="w-[160px] shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MATCHER_OPS.map((op) => (
+              <SelectItem key={op} value={op}>
+                {op}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <MatcherLeafFields
           value={value}
           browsers={browsers}
@@ -182,43 +200,53 @@ function MatcherEditor({ value, browsers, onChange, depth = 0 }: MatcherProps) {
         />
       </div>
 
-      {value.op === "all" || value.op === "any" ? (
-        <div className="matcher-children">
+      {(value.op === "all" || value.op === "any") && (
+        <div className="mt-2 space-y-2">
           {value.of.map((child, idx) => (
-            <div key={idx} className="matcher-child">
-              <MatcherEditor
-                value={child}
-                browsers={browsers}
-                depth={depth + 1}
-                onChange={(next) => {
-                  const of = [...value.of];
-                  of[idx] = next;
-                  onChange({ ...value, of });
-                }}
-              />
-              <button
-                className="danger small"
+            <div key={idx} className="flex items-start gap-2">
+              <div className="flex-1">
+                <MatcherEditor
+                  value={child}
+                  browsers={browsers}
+                  depth={depth + 1}
+                  onChange={(next) => {
+                    const of = [...value.of];
+                    of[idx] = next;
+                    onChange({ ...value, of });
+                  }}
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() =>
                   onChange({
                     ...value,
                     of: value.of.filter((_, i) => i !== idx),
                   })
                 }
+                className="text-muted-foreground hover:text-destructive"
+                title="Remove"
               >
-                Remove
-              </button>
+                <X />
+              </Button>
             </div>
           ))}
-          <button
-            onClick={() => onChange({ ...value, of: [...value.of, EMPTY_MATCHER] })}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              onChange({ ...value, of: [...value.of, EMPTY_MATCHER] })
+            }
           >
-            + Add child
-          </button>
+            <Plus />
+            Add child
+          </Button>
         </div>
-      ) : null}
+      )}
 
-      {value.op === "not" ? (
-        <div className="matcher-children">
+      {value.op === "not" && (
+        <div className="mt-2">
           <MatcherEditor
             value={value.of}
             browsers={browsers}
@@ -226,7 +254,7 @@ function MatcherEditor({ value, browsers, onChange, depth = 0 }: MatcherProps) {
             onChange={(next) => onChange({ op: "not", of: next })}
           />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -245,11 +273,15 @@ function MatcherLeafFields({
     case "all":
     case "any":
     case "not":
-      return <span className="muted">{describeOp(value.op)}</span>;
+      return (
+        <span className="text-xs text-muted-foreground">
+          {describeOp(value.op)}
+        </span>
+      );
 
     case "url-host":
       return (
-        <input
+        <Input
           placeholder="github.com or *.corp.example.com"
           value={value.pattern}
           onChange={(e) => onChange({ ...value, pattern: e.target.value })}
@@ -258,7 +290,7 @@ function MatcherLeafFields({
 
     case "url-path":
       return (
-        <input
+        <Input
           placeholder="/login or /oauth/callback"
           value={value.pattern}
           onChange={(e) => onChange({ ...value, pattern: e.target.value })}
@@ -267,7 +299,7 @@ function MatcherLeafFields({
 
     case "source-app":
       return (
-        <input
+        <Input
           placeholder="Slack, VSCode, Terminal…"
           value={value.name}
           onChange={(e) => onChange({ ...value, name: e.target.value })}
@@ -276,22 +308,26 @@ function MatcherLeafFields({
 
     case "source-browser":
       return (
-        <select
-          value={value.browser}
-          onChange={(e) => onChange({ ...value, browser: e.target.value })}
+        <Select
+          value={value.browser || undefined}
+          onValueChange={(v) => onChange({ ...value, browser: v })}
         >
-          <option value="">— pick a browser —</option>
-          {browsers.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.display_name} ({b.id})
-            </option>
-          ))}
-        </select>
+          <SelectTrigger>
+            <SelectValue placeholder="— pick a browser —" />
+          </SelectTrigger>
+          <SelectContent>
+            {browsers.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.display_name} ({b.id})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       );
 
     case "source-profile":
       return (
-        <input
+        <Input
           placeholder="Work / Personal / Default"
           value={value.profile}
           onChange={(e) => onChange({ ...value, profile: e.target.value })}
@@ -371,29 +407,33 @@ function ActionEditor({ value, browsers, onChange }: ActionProps) {
   };
 
   return (
-    <div className="matcher">
-      <div className="row">
-        <select
-          value={value.kind}
-          onChange={(e) => setKind(e.target.value as Action["kind"])}
-          style={{ width: 160 }}
-        >
+    <div className="flex items-center gap-2">
+      <Select
+        value={value.kind}
+        onValueChange={(v) => setKind(v as Action["kind"])}
+      >
+        <SelectTrigger className="w-[160px] shrink-0">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
           {ACTION_KINDS.map((k) => (
-            <option key={k} value={k}>
+            <SelectItem key={k} value={k}>
               {k}
-            </option>
+            </SelectItem>
           ))}
-        </select>
-        {value.kind === "open" ? (
-          <TargetEditor
-            value={value.target}
-            browsers={browsers}
-            onChange={(target) => onChange({ kind: "open", target })}
-          />
-        ) : (
-          <span className="muted">{describeActionKind(value.kind)}</span>
-        )}
-      </div>
+        </SelectContent>
+      </Select>
+      {value.kind === "open" ? (
+        <TargetEditor
+          value={value.target}
+          browsers={browsers}
+          onChange={(target) => onChange({ kind: "open", target })}
+        />
+      ) : (
+        <span className="text-xs text-muted-foreground">
+          {describeActionKind(value.kind)}
+        </span>
+      )}
     </div>
   );
 }

@@ -1,349 +1,150 @@
-/* Theme variables. The active palette is selected by [data-theme] on
-   <html>, set by lib/theme.ts. We keep light values on :root so any
-   browser without the attribute still gets a sane default. */
-:root,
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg: #f5f5f7;
-  --bg-card: #ffffff;
-  --bg-elevated: #fafafa;
-  --fg: #1d1d1f;
-  --fg-muted: #6e6e73;
-  --border: #d2d2d7;
-  --accent: #007aff;
-  --accent-soft: rgba(0, 122, 255, 0.12);
-  --danger: #ff3b30;
-  --ok: #34c759;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+/* Light = default; dark = .dark class on <html> (set by lib/theme.ts).
+   `data-theme` is kept in sync for legacy CSS still on the page. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* shadcn/ui design tokens. macOS-flavored palette: pure-grey base for
+   light, slate-zinc-mix for dark, system blue as the brand accent. */
+:root {
+  --radius: 0.5rem;
+
+  --background: 0 0% 96.5%;
+  --foreground: 240 6% 10%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 240 6% 10%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 6% 10%;
+
+  --primary: 211 100% 50%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 240 6% 10%;
+
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 46%;
+
+  --accent: 211 100% 96%;
+  --accent-foreground: 211 100% 30%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+
+  --border: 240 6% 84%;
+  --input: 240 6% 84%;
+  --ring: 211 100% 50%;
+
+  --sidebar: 240 7% 98%;
+  --sidebar-foreground: 240 6% 30%;
+  --sidebar-accent: 211 100% 50%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 240 6% 88%;
 }
 
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #1c1c1e;
-  --bg-card: #2c2c2e;
-  --bg-elevated: #242426;
-  --fg: #f5f5f7;
-  --fg-muted: #98989d;
-  --border: #38383a;
-  --accent: #0a84ff;
-  --accent-soft: rgba(10, 132, 255, 0.18);
-  --danger: #ff5450;
-  --ok: #34c759;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+.dark {
+  --background: 240 5% 11%;
+  --foreground: 0 0% 96%;
+
+  --card: 240 4% 17%;
+  --card-foreground: 0 0% 96%;
+
+  --popover: 240 4% 17%;
+  --popover-foreground: 0 0% 96%;
+
+  --primary: 211 100% 56%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 240 4% 22%;
+  --secondary-foreground: 0 0% 96%;
+
+  --muted: 240 4% 22%;
+  --muted-foreground: 240 5% 65%;
+
+  --accent: 211 100% 18%;
+  --accent-foreground: 211 100% 80%;
+
+  --destructive: 0 70% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 142 71% 50%;
+  --success-foreground: 0 0% 100%;
+
+  --border: 240 4% 25%;
+  --input: 240 4% 25%;
+  --ring: 211 100% 56%;
+
+  --sidebar: 240 5% 14%;
+  --sidebar-foreground: 240 5% 75%;
+  --sidebar-accent: 211 100% 56%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 240 4% 22%;
 }
 
-* {
-  box-sizing: border-box;
+/* Make the tokens visible to Tailwind's utility generation. With v4 the
+   @theme block extends the design system; the hsl() wrapper keeps
+   shadcn's hsla() utility consumption working. */
+@theme inline {
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
 
-body,
-html,
-#root {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 13px;
-  -webkit-font-smoothing: antialiased;
-  /* Kill the horizontal rubber-band scroll in WKWebView. The window is a
-     fixed two-column layout — there's no horizontal scroll story. */
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
-button {
-  font: inherit;
-  color: inherit;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: background 0.1s ease;
-}
-
-button:hover {
-  background: var(--accent-soft);
-}
-
-button.primary {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
-}
-
-button.primary:hover {
-  filter: brightness(0.95);
-}
-
-button.danger {
-  color: var(--danger);
-  border-color: var(--danger);
-}
-
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 10px;
-  width: 100%;
-}
-
-textarea {
-  font-family: var(--mono);
-  font-size: 12px;
-  min-height: 180px;
-  resize: vertical;
-}
-
-.app {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  height: 100vh;
-}
-
-.sidebar {
-  background: var(--bg-elevated);
-  border-right: 1px solid var(--border);
-  /* top: 56px clears the macOS traffic lights (positioned at y=18) plus
-     a comfortable gap. bottom: enough breathing room before nav items. */
-  padding: 56px 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  /* Whole sidebar is a drag region — the empty space around the brand
-     mark acts like a native title-bar handle for moving the window. */
-  -webkit-app-region: drag;
-}
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 8px 16px;
-  -webkit-app-region: drag;
-}
-
-.sidebar-brand img {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  flex-shrink: 0;
-}
-
-.sidebar-brand h1 {
-  font-size: 14px;
-  margin: 0;
-  letter-spacing: -0.01em;
-  font-weight: 600;
-}
-
-.sidebar button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: left;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 7px 10px;
-  border-radius: 6px;
-  color: var(--fg-muted);
-  /* Buttons opt out of the drag region so clicks register normally. */
-  -webkit-app-region: no-drag;
-}
-
-.sidebar button:hover {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.sidebar button.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 500;
-}
-
-.sidebar button svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.content {
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  padding: 48px 40px 32px;
-}
-
-.content h2 {
-  margin: 0 0 8px;
-  font-size: 22px;
-  letter-spacing: -0.01em;
-}
-
-.content p.subtitle {
-  margin: 0 0 24px;
-  color: var(--fg-muted);
-}
-
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 18px;
-  margin-bottom: 16px;
-}
-
-.card h3 {
-  margin: 0 0 12px;
-  font-size: 14px;
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.row:last-child {
-  border-bottom: none;
-}
-
-.row .grow {
-  flex: 1;
-  min-width: 0;
-}
-
-.muted {
-  color: var(--fg-muted);
-}
-
-.tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.tag.ok {
-  background: rgba(52, 199, 89, 0.16);
-  color: var(--ok);
-}
-
-.tag.danger {
-  background: rgba(255, 59, 48, 0.16);
-  color: var(--danger);
-}
-
-.mono {
-  font-family: var(--mono);
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.scroll {
-  max-height: 480px;
-  overflow-y: auto;
-}
-
-.empty {
-  padding: 32px;
-  text-align: center;
-  color: var(--fg-muted);
-}
-
-.rule-editor {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.rule-editor-section {
-  margin: 12px 0;
-}
-
-.rule-editor select,
-.rule-editor input[type="text"],
-.rule-editor input[type="number"] {
-  width: auto;
-  min-width: 140px;
-  flex: 1;
-}
-
-.matcher .row {
-  padding: 6px 0;
-  border-bottom: none;
-}
-
-.matcher-children {
-  margin-left: 16px;
-  padding-left: 8px;
-  border-left: 2px solid var(--border);
-  margin-top: 4px;
-}
-
-.matcher-child {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.matcher-child > :first-child {
-  flex: 1;
-}
-
-button.small {
-  padding: 3px 8px;
-  font-size: 11px;
-}
-
-/* Rule list drag-to-reorder */
-.rule-row {
-  position: relative;
-  transition: opacity 0.15s ease;
-  /* Block text-selection so click-and-drag starts an HTML5 drag instead
-     of selecting the rule's text. WKWebView (Tauri on macOS) is strict
-     about this — without it, dragstart never fires. */
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.rule-row.dragging {
-  opacity: 0.35;
-}
-
-.rule-row .drag-handle {
-  width: 18px;
-  text-align: center;
-  font-size: 14px;
-  letter-spacing: -2px;
-}
-
-.rule-row.drop-before::before,
-.rule-row.drop-after::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--accent);
-  pointer-events: none;
-}
-
-.rule-row.drop-before::before {
-  top: -1px;
-}
-
-.rule-row.drop-after::after {
-  bottom: -1px;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  html,
+  body,
+  #root {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    /* Kill horizontal rubber-band scroll. */
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
 }

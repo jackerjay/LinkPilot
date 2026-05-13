@@ -8,18 +8,20 @@ import {
   Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { MenuBarPage } from "./pages/menu-bar";
-import { RulesPage } from "./pages/rules";
-import { InspectorPage } from "./pages/inspector";
-import { TestUrlPage } from "./pages/test-url";
-import { BrowsersPage } from "./pages/browsers";
-import { SettingsPage } from "./pages/settings";
-import { onConfigChanged } from "./lib/ipc";
-// 128×128 downscaled from docs/brand/icon.png (the master 1254×1254 is the
-// Tauri bundle source — too large to ship in the renderer JS bundle just
-// for a 22pt sidebar logo). Regenerate with:
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { MenuBarPage } from "@/pages/menu-bar";
+import { RulesPage } from "@/pages/rules";
+import { InspectorPage } from "@/pages/inspector";
+import { TestUrlPage } from "@/pages/test-url";
+import { BrowsersPage } from "@/pages/browsers";
+import { SettingsPage } from "@/pages/settings";
+import { onConfigChanged } from "@/lib/ipc";
+import { cn } from "@/lib/utils";
+// 128×128 downscaled from docs/brand/icon.png (the master is the Tauri
+// bundle source — too large to ship in the renderer JS bundle just for
+// the 22pt sidebar logo). Regenerate with:
 //   sips -Z 128 docs/brand/icon.png --out apps/desktop/src/assets/brand.png
-import brandIcon from "./assets/brand.png";
+import brandIcon from "@/assets/brand.png";
 
 type TabId =
   | "menu-bar"
@@ -59,34 +61,54 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app">
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <img src={brandIcon} alt="LinkPilot" />
-          <h1>LinkPilot</h1>
-        </div>
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.id}
-              className={tab === t.id ? "active" : ""}
-              onClick={() => setTab(t.id)}
-            >
-              <Icon />
-              {t.label}
-            </button>
-          );
-        })}
-      </aside>
-      <main className="content">
-        {tab === "menu-bar" && <MenuBarPage configEpoch={configEpoch} />}
-        {tab === "rules" && <RulesPage configEpoch={configEpoch} />}
-        {tab === "test-url" && <TestUrlPage configEpoch={configEpoch} />}
-        {tab === "inspector" && <InspectorPage />}
-        {tab === "browsers" && <BrowsersPage />}
-        {tab === "settings" && <SettingsPage configEpoch={configEpoch} />}
-      </main>
-    </div>
+    <TooltipProvider delayDuration={200}>
+      <div className="grid h-screen grid-cols-[200px_1fr]">
+        {/* Sidebar — top padding clears the macOS traffic lights overlay.
+            Whole sidebar is a drag region (set on the div via inline style
+            since Tailwind has no utility for -webkit-app-region). Buttons
+            opt out so clicks register. */}
+        <aside
+          className="flex flex-col gap-0.5 border-r border-sidebar-border bg-sidebar px-2.5 pb-3 pt-14 text-sidebar-foreground"
+          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+        >
+          <div className="flex items-center gap-2 px-2 pb-4">
+            <img
+              src={brandIcon}
+              alt="LinkPilot"
+              className="h-[22px] w-[22px] flex-shrink-0 rounded"
+            />
+            <h1 className="text-sm font-semibold tracking-tight">LinkPilot</h1>
+          </div>
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const isActive = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+                className={cn(
+                  "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {t.label}
+              </button>
+            );
+          })}
+        </aside>
+        <main className="overflow-y-auto overflow-x-hidden overscroll-contain px-10 pb-8 pt-12">
+          {tab === "menu-bar" && <MenuBarPage configEpoch={configEpoch} />}
+          {tab === "rules" && <RulesPage configEpoch={configEpoch} />}
+          {tab === "test-url" && <TestUrlPage configEpoch={configEpoch} />}
+          {tab === "inspector" && <InspectorPage />}
+          {tab === "browsers" && <BrowsersPage />}
+          {tab === "settings" && <SettingsPage configEpoch={configEpoch} />}
+        </main>
+      </div>
+    </TooltipProvider>
   );
 }

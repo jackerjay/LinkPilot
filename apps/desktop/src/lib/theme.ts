@@ -26,7 +26,13 @@ function resolveActive(mode: ThemeMode): "light" | "dark" {
 }
 
 function apply(mode: ThemeMode) {
-  document.documentElement.setAttribute("data-theme", resolveActive(mode));
+  const active = resolveActive(mode);
+  const root = document.documentElement;
+  root.setAttribute("data-theme", active);
+  // shadcn/ui consumes a `.dark` class on <html> for the dark token set.
+  // Keep both in sync so the design tokens (Tailwind) and any legacy
+  // [data-theme] selectors agree.
+  root.classList.toggle("dark", active === "dark");
 }
 
 /// Subscribe to mode changes + the system media query if mode === "system".

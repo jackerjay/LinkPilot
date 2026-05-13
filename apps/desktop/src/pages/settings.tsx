@@ -1,13 +1,26 @@
 import { useCallback, useEffect, useState } from "react";
-import { TargetEditor } from "../components/TargetEditor";
-import { ipc } from "../lib/ipc";
-import { useTheme, type ThemeMode } from "../lib/theme";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TargetEditor } from "@/components/TargetEditor";
+import { ipc } from "@/lib/ipc";
+import { useTheme, type ThemeMode } from "@/lib/theme";
 import type {
   BrowserTarget,
   ConfigDocument,
   InstalledBrowser,
   SetDefaultOutcome,
-} from "../lib/types";
+} from "@/lib/types";
 
 interface Props {
   configEpoch: number;
@@ -78,17 +91,13 @@ export function SettingsPage({ configEpoch }: Props) {
     }
   };
 
-  const toggleLaunchAtLogin = async () => {
+  const toggleLaunchAtLogin = async (next: boolean) => {
     if (!doc) return;
-    const next: ConfigDocument = {
-      ...doc,
-      settings: {
-        ...doc.settings,
-        launch_at_login: !doc.settings.launch_at_login,
-      },
-    };
     try {
-      await ipc.configReplace(next);
+      await ipc.configReplace({
+        ...doc,
+        settings: { ...doc.settings, launch_at_login: next },
+      });
       await refresh();
     } catch (err) {
       setError(String(err));
@@ -119,127 +128,174 @@ export function SettingsPage({ configEpoch }: Props) {
   };
 
   return (
-    <>
-      <h2>Settings</h2>
-      <p className="subtitle">Default browser, autostart, and config IO.</p>
-
-      <div className="card">
-        <h3>Default browser</h3>
-        <div className="row">
-          <span className="grow">
-            LinkPilot is currently the system default browser:
-          </span>
-          <span className={`tag ${isDefault ? "ok" : "danger"}`}>
-            {isDefault === null ? "…" : isDefault ? "yes" : "no"}
-          </span>
-        </div>
-        <div className="row">
-          <span className="grow muted">
-            macOS will prompt to confirm. On Windows you'll be sent to the
-            Settings → Default apps page.
-          </span>
-          <button className="primary" onClick={setAsDefault}>
-            Set LinkPilot as default
-          </button>
-        </div>
-      </div>
-
-      <div className="card">
-        <h3>Default target</h3>
-        <p className="muted" style={{ margin: "0 0 12px" }}>
-          Where to open links when <strong>no rule matches</strong>. Changing
-          this rewrites the config file.
+    <div className="space-y-4">
+      <header>
+        <h2 className="text-xl font-semibold tracking-tight">Settings</h2>
+        <p className="text-sm text-muted-foreground">
+          Default browser, autostart, appearance, and config IO.
         </p>
-        {doc ? (
-          <div className="row">
-            <TargetEditor
-              value={doc.default_target}
-              browsers={browsers}
-              onChange={updateDefaultTarget}
+      </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Default browser</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">
+              LinkPilot is currently the system default browser
+            </span>
+            <Badge variant={isDefault ? "success" : "destructive"}>
+              {isDefault === null ? "…" : isDefault ? "yes" : "no"}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-muted-foreground">
+              macOS will prompt to confirm. On Windows you'll be sent to the
+              Settings → Default apps page.
+            </span>
+            <Button onClick={setAsDefault} className="shrink-0">
+              Set LinkPilot as default
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Default target</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Where to open links when <strong>no rule matches</strong>. Changing
+            this rewrites the config file.
+          </p>
+          {doc ? (
+            <div className="flex items-center gap-2">
+              <TargetEditor
+                value={doc.default_target}
+                browsers={browsers}
+                onChange={updateDefaultTarget}
+              />
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">Loading…</span>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>General</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Launch at login</span>
+            <Checkbox
+              checked={doc?.settings.launch_at_login ?? false}
+              onCheckedChange={(v) => toggleLaunchAtLogin(v === true)}
             />
           </div>
-        ) : (
-          <div className="muted">Loading…</div>
-        )}
-      </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm">Config file</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {configPath ?? "…"}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h3>General</h3>
-        <div className="row">
-          <span className="grow">Launch at login</span>
-          <input
-            type="checkbox"
-            checked={doc?.settings.launch_at_login ?? false}
-            onChange={toggleLaunchAtLogin}
-            style={{ width: "auto" }}
-          />
-        </div>
-        <div className="row">
-          <span className="grow">Config file</span>
-          <span className="mono muted">{configPath ?? "…"}</span>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">
+              Theme
+              {themeMode === "system" && (
+                <span className="ml-1 text-xs text-muted-foreground">
+                  — currently <span className="font-mono">{themeActive}</span>
+                </span>
+              )}
+            </span>
+            <Select
+              value={themeMode}
+              onValueChange={(v) => setThemeMode(v as ThemeMode)}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="system">System</SelectItem>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h3>Appearance</h3>
-        <div className="row">
-          <span className="grow">
-            Theme
-            {themeMode === "system" && (
-              <span className="muted">
-                {" "}
-                — currently <span className="mono">{themeActive}</span>
-              </span>
-            )}
-          </span>
-          <select
-            value={themeMode}
-            onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
-            style={{ width: 160 }}
-          >
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="card">
-        <h3>Import / Export</h3>
-        <div className="row">
-          <input
-            value={importPath}
-            placeholder="/absolute/path/to/some.json"
-            onChange={(e) => setImportPath(e.target.value)}
-          />
-          <button onClick={doImport} disabled={!importPath}>
-            Import
-          </button>
-        </div>
-        <div className="row">
-          <input
-            value={exportPath}
-            placeholder="/absolute/path/to/save.json"
-            onChange={(e) => setExportPath(e.target.value)}
-          />
-          <button onClick={doExport} disabled={!exportPath}>
-            Export
-          </button>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Import / Export</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="import-path">Import config from path</Label>
+            <div className="flex gap-2">
+              <Input
+                id="import-path"
+                value={importPath}
+                placeholder="/absolute/path/to/some.json"
+                onChange={(e) => setImportPath(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={doImport}
+                disabled={!importPath}
+              >
+                Import
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="export-path">Export config to path</Label>
+            <div className="flex gap-2">
+              <Input
+                id="export-path"
+                value={exportPath}
+                placeholder="/absolute/path/to/save.json"
+                onChange={(e) => setExportPath(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={doExport}
+                disabled={!exportPath}
+              >
+                Export
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {message && (
-        <div className="card">
-          <span className="tag ok">info</span>
-          <span className="muted"> {message}</span>
-        </div>
+        <Card>
+          <CardContent className="flex items-center gap-2 pt-4">
+            <Badge variant="success">info</Badge>
+            <span className="text-sm text-muted-foreground">{message}</span>
+          </CardContent>
+        </Card>
       )}
       {error && (
-        <div className="card">
-          <span className="tag danger">error</span>
-          <span className="muted"> {error}</span>
-        </div>
+        <Card>
+          <CardContent className="flex items-center gap-2 pt-4">
+            <Badge variant="destructive">error</Badge>
+            <span className="text-sm text-muted-foreground">{error}</span>
+          </CardContent>
+        </Card>
       )}
-    </>
+    </div>
   );
 }

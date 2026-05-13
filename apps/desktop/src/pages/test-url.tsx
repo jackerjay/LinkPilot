@@ -1,25 +1,40 @@
 // Dry-run a URL through the live routing engine. No browser is launched;
 // the daemon evaluates the rules and returns the decision + the full
 // MatcherEval tree, which we render exactly like the Inspector does.
-//
-// Lets you test rules end-to-end without setting LinkPilot as default
-// browser or hitting `lp open --dry-run` in a terminal.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ExplanationView } from "../components/Explanation";
-import { ipc } from "../lib/ipc";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ExplanationView } from "@/components/Explanation";
+import { ipc } from "@/lib/ipc";
 import type {
   BrowserProfile,
   ConfigDocument,
   Explained,
   InstalledBrowser,
   Rule,
-} from "../lib/types";
+} from "@/lib/types";
 import { DecisionLine } from "./menu-bar";
 
 interface Props {
   configEpoch: number;
 }
+
+const NONE = "__none";
 
 export function TestUrlPage({ configEpoch }: Props) {
   const [url, setUrl] = useState("https://github.com/anthropics/anthropic-cookbook");
@@ -64,8 +79,6 @@ export function TestUrlPage({ configEpoch }: Props) {
     };
   }, [fromBrowser]);
 
-  // Debounced live evaluation: 250ms after the last change to any input,
-  // ask the daemon. URL must be non-empty and parse-shaped (has a scheme).
   const evaluate = useCallback(async () => {
     if (!url.trim()) {
       setResult(null);
@@ -103,113 +116,145 @@ export function TestUrlPage({ configEpoch }: Props) {
   }, [result, config]);
 
   return (
-    <>
-      <h2>Test URL</h2>
-      <p className="subtitle">
-        Run a URL through the live router without opening a browser. Edit
-        a rule, switch back here, and the decision updates instantly.
-      </p>
+    <div className="space-y-4">
+      <header>
+        <h2 className="text-xl font-semibold tracking-tight">Test URL</h2>
+        <p className="text-sm text-muted-foreground">
+          Run a URL through the live router without opening a browser. Edit a
+          rule, switch back here, and the decision updates instantly.
+        </p>
+      </header>
 
-      <div className="card">
-        <label>
-          <div className="muted">URL</div>
-          <input
-            type="text"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/some/path"
-          />
-        </label>
-
-        <div className="row" style={{ gap: 12 }}>
-          <label className="grow">
-            <div className="muted">From app (optional)</div>
-            <input
-              type="text"
-              value={fromApp}
-              onChange={(e) => setFromApp(e.target.value)}
-              placeholder="Slack, Terminal, VSCode…"
+      <Card>
+        <CardContent className="space-y-3 pt-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="test-url">URL</Label>
+            <Input
+              id="test-url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/some/path"
             />
-          </label>
-          <label className="grow">
-            <div className="muted">From browser (optional)</div>
-            <select
-              value={fromBrowser}
-              onChange={(e) => setFromBrowser(e.target.value)}
-            >
-              <option value="">— none —</option>
-              {browsers.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.display_name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grow">
-            <div className="muted">From profile (optional)</div>
-            <select
-              value={fromProfile}
-              onChange={(e) => setFromProfile(e.target.value)}
-              disabled={!fromBrowser}
-            >
-              <option value="">— any —</option>
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.display_name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="from-app">From app (optional)</Label>
+              <Input
+                id="from-app"
+                value={fromApp}
+                onChange={(e) => setFromApp(e.target.value)}
+                placeholder="Slack, Terminal, VSCode…"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>From browser (optional)</Label>
+              <Select
+                value={fromBrowser || NONE}
+                onValueChange={(v) => setFromBrowser(v === NONE ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="— none —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>— none —</SelectItem>
+                  {browsers.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>From profile (optional)</Label>
+              <Select
+                value={fromProfile || NONE}
+                onValueChange={(v) => setFromProfile(v === NONE ? "" : v)}
+                disabled={!fromBrowser}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="— any —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>— any —</SelectItem>
+                  {profiles.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {error && (
-        <div className="card">
-          <span className="tag danger">error</span>
-          <span className="muted"> {error}</span>
-        </div>
+        <Card>
+          <CardContent className="flex items-center gap-2 pt-4">
+            <Badge variant="destructive">error</Badge>
+            <span className="text-sm text-muted-foreground">{error}</span>
+          </CardContent>
+        </Card>
       )}
 
       {result && (
-        <div className="card">
-          <h3>Result</h3>
-          <div className="row">
-            <span className="muted" style={{ width: 80 }}>
-              Decision
-            </span>
-            <span className="grow">
+        <Card>
+          <CardHeader>
+            <CardTitle>Result</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <ResultRow label="Decision">
               <DecisionLine decision={result.decision} />
-            </span>
-          </div>
-          <div className="row">
-            <span className="muted" style={{ width: 80 }}>
-              Rule
-            </span>
-            <span className="grow">
+            </ResultRow>
+            <ResultRow label="Rule">
               {matchedRule ? (
                 <>
-                  <span className="mono">#{matchedRule.priority}</span>{" "}
+                  <span className="font-mono text-xs">
+                    #{matchedRule.priority}
+                  </span>{" "}
                   {matchedRule.note ? (
-                    <span>{matchedRule.note}</span>
+                    <span className="text-sm">{matchedRule.note}</span>
                   ) : (
-                    <span className="muted">(no note)</span>
+                    <span className="text-sm text-muted-foreground">
+                      (no note)
+                    </span>
                   )}
                 </>
               ) : (
-                <span className="muted">— default target (no rule matched)</span>
+                <span className="text-sm text-muted-foreground">
+                  — default target (no rule matched)
+                </span>
               )}
-            </span>
-          </div>
-
-          <div className="rule-editor-section">
-            <div className="muted">Why this decision</div>
-            <ExplanationView
-              explanation={result.explanation}
-              emptyMessage="No rule fired. The route would fall back to the configured default_target."
-            />
-          </div>
-        </div>
+            </ResultRow>
+            <div className="space-y-2">
+              <Label>Why this decision</Label>
+              <ExplanationView
+                explanation={result.explanation}
+                emptyMessage="No rule fired. The route would fall back to the configured default_target."
+              />
+            </div>
+          </CardContent>
+        </Card>
       )}
-    </>
+    </div>
+  );
+}
+
+function ResultRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-20 shrink-0 text-xs text-muted-foreground">
+        {label}
+      </span>
+      <span className="flex-1">{children}</span>
+    </div>
   );
 }
