@@ -3,6 +3,7 @@
 #![cfg(target_os = "macos")]
 
 pub mod app_icon;
+pub mod app_picker;
 mod autostart;
 mod default_browser;
 mod inventory;

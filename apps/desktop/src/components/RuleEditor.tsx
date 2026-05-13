@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { AppIcon } from "@/components/AppIcon";
+import { AppPickerButton } from "@/components/AppPickerButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -301,11 +302,16 @@ function MatcherLeafFields({
 
     case "source-app":
       return (
-        <Input
-          placeholder="Slack, VSCode, Terminal…"
-          value={value.name}
-          onChange={(e) => onChange({ ...value, name: e.target.value })}
-        />
+        <>
+          <Input
+            placeholder="Slack, VSCode, Terminal…"
+            value={value.name}
+            onChange={(e) => onChange({ ...value, name: e.target.value })}
+          />
+          <AppPickerButton
+            onPicked={(p) => onChange({ ...value, name: p.name })}
+          />
+        </>
       );
 
     case "source-browser":
