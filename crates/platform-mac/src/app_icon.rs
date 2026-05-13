@@ -108,37 +108,59 @@ fn resolve_app_path(bundle_id: &str) -> Result<PathBuf> {
     Ok(PathBuf::from(first))
 }
 
-/// Resolve a .app by its localized display name (or CFBundleName).
-/// Used by the Rules list when a `source-app` matcher only carries a
-/// human-readable name (e.g. "Slack") and we want its real icon.
+/// Resolve a .app by its localized display name. Tries the cheap path
+/// first and only falls back to Spotlight when filesystem probing fails.
+///
+/// Why the fallback chain: Spotlight's `kMDItemDisplayName` /
+/// `kMDItemCFBundleName` aren't reliably populated for some apps
+/// (Electron-based ones in particular — Lark indexes neither). The
+/// `kMDItemFSName` attribute is much more dependable because Spotlight
+/// always indexes the filename.
 fn resolve_app_path_by_name(name: &str) -> Result<PathBuf> {
-    // Spotlight: match application bundles whose display name OR
-    // CFBundleName equals the input. Quote the name to allow spaces.
+    // 1. /Applications/{Name}.app — the overwhelming common case.
+    let primary = PathBuf::from("/Applications").join(format!("{name}.app"));
+    if primary.exists() {
+        return Ok(primary);
+    }
+    // 2. ~/Applications/{Name}.app — user-scoped install.
+    if let Some(home) = std::env::var_os("HOME") {
+        let user_path = PathBuf::from(home)
+            .join("Applications")
+            .join(format!("{name}.app"));
+        if user_path.exists() {
+            return Ok(user_path);
+        }
+    }
+    // 3. Spotlight by file system name. Works even for apps that don't
+    //    surface their display name in mds metadata.
+    if let Some(path) = mdfind_first(&format!("kMDItemFSName == \"{name}.app\"")) {
+        return Ok(path);
+    }
+    // 4. Last resort: localized display name OR CFBundleName.
     let safe = name.replace('"', "");
-    let query = format!(
+    let by_meta = format!(
         "(kMDItemContentType == 'com.apple.application-bundle') && \
          ((kMDItemDisplayName == \"{safe}\") || (kMDItemCFBundleName == \"{safe}\"))"
     );
-    let out = Command::new("/usr/bin/mdfind")
-        .arg(&query)
-        .output()
-        .map_err(PlatformError::Io)?;
+    if let Some(path) = mdfind_first(&by_meta) {
+        return Ok(path);
+    }
+    Err(PlatformError::Other(format!("no app found for name {name}")))
+}
+
+/// Run `mdfind <query>` and return the most relevant hit. Prefers
+/// /Applications over user / system locations when there are multiple.
+fn mdfind_first(query: &str) -> Option<PathBuf> {
+    let out = Command::new("/usr/bin/mdfind").arg(query).output().ok()?;
     if !out.status.success() {
-        return Err(PlatformError::Other(format!(
-            "mdfind exited {}: {}",
-            out.status,
-            String::from_utf8_lossy(&out.stderr).trim()
-        )));
+        return None;
     }
     let stdout = String::from_utf8_lossy(&out.stdout);
-    // Prefer /Applications over user / system locations when multiple
-    // hits — the user-installed copy is almost always the one we want.
-    let pick = stdout
+    stdout
         .lines()
         .find(|l| l.starts_with("/Applications/"))
         .or_else(|| stdout.lines().next())
-        .ok_or_else(|| PlatformError::Other(format!("no app found for name {name}")))?;
-    Ok(PathBuf::from(pick))
+        .map(PathBuf::from)
 }
 
 /// Read `<app>/Contents/Info.plist` to find the icon file name, then
