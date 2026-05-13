@@ -29,6 +29,7 @@ pub enum LaunchOutcome {
 /// Carry out the launch side of a routing decision. Pure plumbing — the
 /// decision is assumed already logged to history by the caller.
 pub fn execute(state: &AppState, decision: &RoutingDecision, raw_url: &str) -> LaunchOutcome {
+    tracing::debug!(?decision, %raw_url, "dispatch::execute");
     let parsed = match Url::parse(raw_url) {
         Ok(u) => u,
         Err(err) => return LaunchOutcome::Failed(format!("bad URL {raw_url}: {err}")),
@@ -45,10 +46,19 @@ pub fn execute(state: &AppState, decision: &RoutingDecision, raw_url: &str) -> L
         },
 
         RoutingDecision::Ask { candidates, .. } => {
+            tracing::info!(
+                candidate_count = candidates.len(),
+                %raw_url,
+                "dispatch: ask — showing chooser"
+            );
             let target = match resolve_ask(state, candidates, raw_url) {
                 Some(t) => t,
-                None => return LaunchOutcome::Cancelled,
+                None => {
+                    tracing::info!("dispatch: ask cancelled or no candidates");
+                    return LaunchOutcome::Cancelled;
+                }
             };
+            tracing::info!(?target, "dispatch: ask resolved");
             match state.platform.url_launcher().open(&target, &parsed) {
                 Ok(()) => LaunchOutcome::Launched(target),
                 Err(err) => LaunchOutcome::Failed(err.to_string()),

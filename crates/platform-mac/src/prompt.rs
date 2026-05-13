@@ -31,8 +31,13 @@ pub fn pick_browser(url: &str, choices: &[String]) -> Option<String> {
         .join(", ");
 
     let prompt = format!("Open {url} in:");
+    // `tell me to activate` forces the script's own process (osascript) to
+    // the foreground before the chooser is shown. Without it the dialog
+    // sometimes appears behind whichever app the user just clicked the
+    // link in (Lark, Slack, Mail, …) and looks like nothing happened.
     let script = format!(
         r#"
+tell me to activate
 set theList to {{{list_items}}}
 set theChoice to choose from list theList with prompt "{prompt}" with title "LinkPilot" default items {{item 1 of theList}}
 if theChoice is false then
@@ -44,14 +49,20 @@ end if
         prompt = applescript_quote(&prompt),
     );
 
+    tracing::debug!(?choices, %url, "prompt::pick_browser: showing chooser");
     let output = Command::new("/usr/bin/osascript")
         .args(["-e", &script])
         .output()
         .ok()?;
     if !output.status.success() {
+        tracing::warn!(
+            stderr = %String::from_utf8_lossy(&output.stderr).trim(),
+            "prompt::pick_browser: osascript failed"
+        );
         return None;
     }
     let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    tracing::debug!(%result, "prompt::pick_browser: osascript returned");
     if result.is_empty() || result == CANCEL_SENTINEL {
         return None;
     }
