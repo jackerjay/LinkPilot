@@ -146,6 +146,29 @@
     /* Kill horizontal rubber-band scroll. */
     overflow: hidden;
     overscroll-behavior: none;
+
+    /* Match native macOS app feel: labels, cards, list rows are not
+       selectable. Only form fields and code blocks (overridden below)
+       remain selectable so the user can still type into inputs and
+       copy out raw JSON / paths. Tailwind's `select-text` utility on
+       a specific element re-enables selection where useful (e.g. the
+       config-file path in Overview). */
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+
+  /* Re-enable text selection in places where it's actually useful. */
+  input,
+  textarea,
+  [contenteditable="true"],
+  pre,
+  code,
+  .select-text,
+  .select-text * {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: auto;
   }
 }
 

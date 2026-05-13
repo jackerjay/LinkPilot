@@ -78,7 +78,7 @@ export function InspectorPage() {
                   <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">
                     {new Date(r.timestamp_ms).toLocaleTimeString()}
                   </span>
-                  <span className="flex-1 truncate font-mono text-xs">
+                  <span className="flex-1 truncate select-text font-mono text-xs">
                     {r.context.url}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -106,7 +106,9 @@ export function InspectorPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <SummaryRow label="URL">
-              <span className="font-mono text-xs">{selected.context.url}</span>
+              <span className="select-text font-mono text-xs">
+                {selected.context.url}
+              </span>
             </SummaryRow>
             <SummaryRow label="Source">
               {selected.context.source.app_name ? (

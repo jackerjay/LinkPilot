@@ -198,7 +198,7 @@ export function SettingsPage({ configEpoch }: Props) {
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm">Config file</span>
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="select-text font-mono text-xs text-muted-foreground">
               {configPath ?? "…"}
             </span>
           </div>
