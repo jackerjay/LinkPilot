@@ -3,6 +3,7 @@
 // - Settings (the default_target shown when no rule matches)
 
 import { useEffect, useState } from "react";
+import { AppIcon } from "@/components/AppIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -17,6 +18,12 @@ import type {
   BrowserTarget,
   InstalledBrowser,
 } from "@/lib/types";
+
+function appPathFromExecutable(executable: string): string {
+  const idx = executable.lastIndexOf(".app/");
+  if (idx === -1) return executable;
+  return executable.slice(0, idx + 4);
+}
 
 interface Props {
   value: BrowserTarget;
@@ -54,13 +61,21 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
           onChange({ ...value, browser: v, profile: null })
         }
       >
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-[200px]">
           <SelectValue placeholder="— pick a browser —" />
         </SelectTrigger>
         <SelectContent>
           {browsers.map((b) => (
             <SelectItem key={b.id} value={b.id}>
-              {b.display_name}
+              <span className="flex items-center gap-2">
+                <AppIcon
+                  bundleId={b.platform_app_id ?? undefined}
+                  appPath={appPathFromExecutable(b.executable)}
+                  size={16}
+                  alt={b.display_name}
+                />
+                {b.display_name}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>

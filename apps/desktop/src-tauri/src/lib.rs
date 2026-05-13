@@ -125,6 +125,7 @@ pub fn run() {
             commands::request_set_default_browser,
             commands::import_config,
             commands::export_config,
+            commands::app_icon,
         ])
         .build(tauri::generate_context!())
         .expect("error while building LinkPilot")

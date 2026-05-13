@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AppIcon } from "@/components/AppIcon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ipc } from "@/lib/ipc";
@@ -8,6 +9,14 @@ interface Entry {
   browser: InstalledBrowser;
   profiles: BrowserProfile[];
   error?: string;
+}
+
+/// `/Applications/Foo.app/Contents/MacOS/Foo` → `/Applications/Foo.app`.
+/// Falls back to the original path when no `.app/` segment is present.
+function appPathFromExecutable(executable: string): string {
+  const idx = executable.lastIndexOf(".app/");
+  if (idx === -1) return executable;
+  return executable.slice(0, idx + 4);
 }
 
 export function BrowsersPage() {
@@ -75,11 +84,19 @@ export function BrowsersPage() {
         entries.map((e) => (
           <Card key={e.browser.id}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <div>
-                <CardTitle>{e.browser.display_name}</CardTitle>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {e.browser.id}
-                </span>
+              <div className="flex items-center gap-3">
+                <AppIcon
+                  bundleId={e.browser.platform_app_id ?? undefined}
+                  appPath={appPathFromExecutable(e.browser.executable)}
+                  size={32}
+                  alt={e.browser.display_name}
+                />
+                <div>
+                  <CardTitle>{e.browser.display_name}</CardTitle>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {e.browser.id}
+                  </span>
+                </div>
               </div>
               <Badge variant="secondary">{e.browser.kind}</Badge>
             </CardHeader>

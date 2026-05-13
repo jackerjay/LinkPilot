@@ -2195,6 +2195,7 @@ name = "linkpilot-desktop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "linkpilot-core",
  "linkpilot-ipc",
  "linkpilot-platform-linux",

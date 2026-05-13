@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { AppIcon } from "@/components/AppIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -80,7 +81,14 @@ export function InspectorPage() {
                   <span className="flex-1 truncate font-mono text-xs">
                     {r.context.url}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {r.context.source.app_name && (
+                      <AppIcon
+                        bundleId={r.context.source.bundle_id ?? undefined}
+                        size={14}
+                        alt={r.context.source.app_name}
+                      />
+                    )}
                     {r.context.source.app_name ?? r.context.source.type}
                   </span>
                   <DecisionLine decision={r.decision} />
@@ -102,14 +110,19 @@ export function InspectorPage() {
             </SummaryRow>
             <SummaryRow label="Source">
               {selected.context.source.app_name ? (
-                <>
+                <span className="flex items-center gap-2">
+                  <AppIcon
+                    bundleId={selected.context.source.bundle_id ?? undefined}
+                    size={18}
+                    alt={selected.context.source.app_name}
+                  />
                   <span className="font-mono text-xs">
                     {selected.context.source.app_name}
-                  </span>{" "}
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     ({selected.context.source.type})
                   </span>
-                </>
+                </span>
               ) : (
                 <span className="text-xs text-muted-foreground">
                   {selected.context.source.type}
