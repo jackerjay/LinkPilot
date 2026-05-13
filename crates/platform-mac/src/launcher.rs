@@ -24,10 +24,12 @@ impl UrlLauncher for MacUrlLauncher {
 
         let url_str = url.as_str();
         let cmd = match browser.kind {
-            BrowserKind::Chromium | BrowserKind::Arc => {
-                // Launching the binary directly always honours --profile-directory,
-                // even when an instance is already running. Chrome / Edge / Arc /
-                // Brave all share these flags.
+            BrowserKind::Chromium => {
+                // Chrome / Edge / Brave: launching the binary directly
+                // routes the URL to the existing instance AND honours
+                // --profile-directory even when running, so we keep the
+                // direct-exec path which is the only way to target a
+                // specific profile from outside the browser.
                 let mut c = Command::new(&browser.executable);
                 if let Some(profile) = &target.profile {
                     c.arg(format!("--profile-directory={profile}"));
@@ -39,6 +41,19 @@ impl UrlLauncher for MacUrlLauncher {
                     c.arg("--incognito");
                 }
                 c.arg(url_str);
+                c
+            }
+            BrowserKind::Arc => {
+                // Arc has its own single-instance enforcement — running
+                // the binary while Arc is open pops "Arc is already open.
+                // Only one instance of Arc can be opened at a time."
+                // Use `open -a Arc` which sends the URL via Apple Events
+                // to the running instance instead. Arc's Space / profile
+                // routing is delegated to its built-in Air Traffic Control
+                // (see PRD §23) — there's no stable external API to
+                // target a specific Space from here.
+                let mut c = Command::new("/usr/bin/open");
+                c.arg("-a").arg(&browser.display_name).arg(url_str);
                 c
             }
             BrowserKind::Firefox => {
