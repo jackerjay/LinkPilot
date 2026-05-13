@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
+import { AppPickerButton } from "@/components/AppPickerButton";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -142,12 +143,15 @@ export function TestUrlPage({ configEpoch }: Props) {
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="from-app">From app (optional)</Label>
-              <Input
-                id="from-app"
-                value={fromApp}
-                onChange={(e) => setFromApp(e.target.value)}
-                placeholder="Slack, Terminal, VSCode…"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="from-app"
+                  value={fromApp}
+                  onChange={(e) => setFromApp(e.target.value)}
+                  placeholder="Slack, Terminal, VSCode…"
+                />
+                <AppPickerButton onPicked={(p) => setFromApp(p.name)} />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>From browser (optional)</Label>

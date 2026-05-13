@@ -254,6 +254,33 @@ pub struct AppIcon {
     pub data_url: String,
 }
 
+// ----------------------------------------------------------------------------
+// app picker — open the native macOS "Choose Application" dialog. Used by
+// the RuleEditor's source-app matcher and the Test-URL panel's "From app".
+
+#[derive(serde::Serialize)]
+pub struct PickedApp {
+    pub name: String,
+    pub bundle_id: String,
+}
+
+#[tauri::command]
+pub fn pick_app() -> Result<Option<PickedApp>, String> {
+    #[cfg(target_os = "macos")]
+    {
+        return linkpilot_platform_mac::app_picker::choose_app().map(|opt| {
+            opt.map(|a| PickedApp {
+                name: a.name,
+                bundle_id: a.bundle_id,
+            })
+        });
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(None)
+    }
+}
+
 #[tauri::command]
 pub fn app_icon(request: AppIconRequest) -> Option<AppIcon> {
     #[cfg(target_os = "macos")]

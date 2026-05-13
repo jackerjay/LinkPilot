@@ -51,6 +51,7 @@ export const ipc = {
 
   appIcon: (request: AppIconRequest) =>
     invoke<AppIcon | null>("app_icon", { request }),
+  pickApp: () => invoke<PickedApp | null>("pick_app"),
 };
 
 export interface AppIconRequest {
@@ -63,6 +64,11 @@ export interface AppIconRequest {
 export interface AppIcon {
   /** `data:image/png;base64,…` — drop directly into `<img src>`. */
   data_url: string;
+}
+
+export interface PickedApp {
+  name: string;
+  bundle_id: string;
 }
 
 export type RouteLoggedHandler = (record: RouteRecord) => void;
