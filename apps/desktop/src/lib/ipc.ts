@@ -57,6 +57,10 @@ export const ipc = {
 export interface AppIconRequest {
   bundle_id?: string | null;
   app_path?: string | null;
+  /** Display name (Spotlight fallback) when neither bundle_id nor
+   *  app_path is known — e.g. for a source-app matcher that only
+   *  stored the human name "Slack". */
+  name?: string | null;
   /** Pixel size of the longest edge. Defaults to 64 in Rust. */
   size?: number;
 }

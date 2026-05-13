@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { BrowserBadge } from "@/components/BrowserBadge";
+import { WhenDisplay } from "@/components/WhenDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -319,10 +320,10 @@ function RuleRow({
         #{rule.priority}
       </span>
       <span
-        className="flex-1 truncate font-mono text-xs"
+        className="flex-1 min-w-0 truncate text-xs"
         title={JSON.stringify(rule.when)}
       >
-        {describeWhen(rule.when)}
+        <WhenDisplay matcher={rule.when} />
       </span>
       <span className="text-xs text-muted-foreground">
         <ActionDisplay action={rule.then} />
@@ -411,29 +412,6 @@ function AdvancedJsonEditor({
       </div>
     </div>
   );
-}
-
-function describeWhen(t: Rule["when"]): string {
-  switch (t.op) {
-    case "always":
-      return "always";
-    case "url-host":
-      return `host ${t.pattern}`;
-    case "url-path":
-      return `path ${t.pattern}`;
-    case "source-app":
-      return `from app ${t.name}`;
-    case "source-browser":
-      return `from browser ${t.browser}`;
-    case "source-profile":
-      return `from profile ${t.profile}`;
-    case "all":
-      return t.of.map(describeWhen).join(" AND ");
-    case "any":
-      return t.of.map(describeWhen).join(" OR ");
-    case "not":
-      return `NOT (${describeWhen(t.of)})`;
-  }
 }
 
 function ActionDisplay({ action }: { action: Rule["then"] }) {

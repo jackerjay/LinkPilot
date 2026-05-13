@@ -240,6 +240,11 @@ pub struct AppIconRequest {
     pub bundle_id: Option<String>,
     #[serde(default)]
     pub app_path: Option<String>,
+    /// Display name fallback — resolved through Spotlight when neither
+    /// bundle_id nor app_path is available (e.g. a source-app matcher
+    /// only stores "Slack").
+    #[serde(default)]
+    pub name: Option<String>,
     #[serde(default = "default_icon_size")]
     pub size: u32,
 }
@@ -292,14 +297,19 @@ pub fn app_icon(request: AppIconRequest) -> Option<AppIcon> {
             .as_deref()
             .filter(|s| !s.is_empty())
             .map(std::path::Path::new);
-        let png_path =
-            match linkpilot_platform_mac::app_icon::ensure_png(bundle, path, request.size) {
-                Ok(p) => p,
-                Err(err) => {
-                    tracing::debug!(?err, ?bundle, ?path, "app_icon: extraction failed");
-                    return None;
-                }
-            };
+        let name = request.name.as_deref().filter(|s| !s.is_empty());
+        let png_path = match linkpilot_platform_mac::app_icon::ensure_png(
+            bundle,
+            path,
+            name,
+            request.size,
+        ) {
+            Ok(p) => p,
+            Err(err) => {
+                tracing::debug!(?err, ?bundle, ?path, ?name, "app_icon: extraction failed");
+                return None;
+            }
+        };
         let bytes = std::fs::read(&png_path).ok()?;
         let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
         return Some(AppIcon {

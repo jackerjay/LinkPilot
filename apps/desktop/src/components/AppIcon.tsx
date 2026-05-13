@@ -13,20 +13,25 @@ import { useEffect, useState } from "react";
 import { ipc } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
 
-// `bundle_id|app_path` → data URL. `null` means "we tried and the daemon
-// couldn't find one"; we cache that too so we don't keep retrying.
+// `bundle_id|app_path|name` → data URL. `null` means "we tried and the
+// daemon couldn't find one"; we cache that too so we don't keep retrying.
 const cache = new Map<string, string | null>();
 const inflight = new Map<string, Promise<string | null>>();
 
-function cacheKey(bundleId?: string | null, appPath?: string | null): string {
-  return `${bundleId ?? ""}|${appPath ?? ""}`;
+function cacheKey(
+  bundleId?: string | null,
+  appPath?: string | null,
+  name?: string | null,
+): string {
+  return `${bundleId ?? ""}|${appPath ?? ""}|${name ?? ""}`;
 }
 
 async function load(
   bundleId?: string | null,
   appPath?: string | null,
+  name?: string | null,
 ): Promise<string | null> {
-  const key = cacheKey(bundleId, appPath);
+  const key = cacheKey(bundleId, appPath, name);
   if (cache.has(key)) return cache.get(key) ?? null;
   const existing = inflight.get(key);
   if (existing) return existing;
@@ -35,6 +40,7 @@ async function load(
       const result = await ipc.appIcon({
         bundle_id: bundleId ?? null,
         app_path: appPath ?? null,
+        name: name ?? null,
       });
       const url = result?.data_url ?? null;
       cache.set(key, url);
@@ -53,6 +59,11 @@ async function load(
 interface Props {
   bundleId?: string | null;
   appPath?: string | null;
+  /** Resolve the app via Spotlight by display name when neither
+   *  bundleId nor appPath is known. Slowest of the three; only use it
+   *  for surfaces (Rules list source-app matcher) that have no better
+   *  identifier. */
+  name?: string | null;
   /** Rendered CSS size (in CSS pixels). The Rust side always renders 64pt. */
   size?: number;
   className?: string;
@@ -63,33 +74,34 @@ interface Props {
 export function AppIcon({
   bundleId,
   appPath,
+  name,
   size = 18,
   className,
   alt,
 }: Props) {
   const [url, setUrl] = useState<string | null>(() =>
-    cache.get(cacheKey(bundleId, appPath)) ?? null,
+    cache.get(cacheKey(bundleId, appPath, name)) ?? null,
   );
   const [pending, setPending] = useState<boolean>(() => {
-    const k = cacheKey(bundleId, appPath);
+    const k = cacheKey(bundleId, appPath, name);
     return !cache.has(k);
   });
 
   useEffect(() => {
-    if (!bundleId && !appPath) {
+    if (!bundleId && !appPath && !name) {
       setUrl(null);
       setPending(false);
       return;
     }
     let alive = true;
-    const k = cacheKey(bundleId, appPath);
+    const k = cacheKey(bundleId, appPath, name);
     if (cache.has(k)) {
       setUrl(cache.get(k) ?? null);
       setPending(false);
       return;
     }
     setPending(true);
-    load(bundleId, appPath).then((u) => {
+    load(bundleId, appPath, name).then((u) => {
       if (alive) {
         setUrl(u);
         setPending(false);
@@ -98,7 +110,7 @@ export function AppIcon({
     return () => {
       alive = false;
     };
-  }, [bundleId, appPath]);
+  }, [bundleId, appPath, name]);
 
   const style = { width: size, height: size } as const;
 
