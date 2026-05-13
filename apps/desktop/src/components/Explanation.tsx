@@ -1,8 +1,9 @@
 // Recursive view of a MatcherEval tree. Renders ✓ / ✗ per node and a
-// short human-readable label. Shared by the Inspector (post-hoc trace of
-// a routed URL) and the Test-URL panel (live trace as the user types).
+// short human-readable label. Shared by Inspector and Test-URL pages.
 
-import type { MatcherEval } from "../lib/types";
+import { Check, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { MatcherEval } from "@/lib/types";
 
 export function ExplanationView({
   explanation,
@@ -13,7 +14,7 @@ export function ExplanationView({
 }) {
   if (!explanation) {
     return (
-      <div className="empty" style={{ padding: 16 }}>
+      <div className="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
         {emptyMessage}
       </div>
     );
@@ -21,27 +22,26 @@ export function ExplanationView({
   return <EvalNode node={explanation} depth={0} />;
 }
 
-export function EvalNode({
-  node,
-  depth,
-}: {
-  node: MatcherEval;
-  depth: number;
-}) {
+function EvalNode({ node, depth }: { node: MatcherEval; depth: number }) {
   const matched = node.matched;
   return (
-    <div className="matcher" style={{ marginLeft: depth * 12 }}>
-      <div className="row">
+    <div className={depth > 0 ? "ml-3 border-l-2 border-border pl-3" : ""}>
+      <div className="flex items-center gap-2 py-1">
         <span
-          className={`tag ${matched ? "ok" : "danger"}`}
+          className={cn(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+            matched
+              ? "bg-success/15 text-success"
+              : "bg-destructive/15 text-destructive",
+          )}
           title={matched ? "matched" : "did not match"}
         >
-          {matched ? "✓" : "✗"}
+          {matched ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
         </span>
-        <span className="grow mono">{describeEvalNode(node)}</span>
+        <span className="font-mono text-xs">{describeEvalNode(node)}</span>
       </div>
       {hasChildren(node) && (
-        <div className="matcher-children">
+        <div className="mt-1">
           {childList(node).map((c, i) => (
             <EvalNode key={i} node={c} depth={depth + 1} />
           ))}

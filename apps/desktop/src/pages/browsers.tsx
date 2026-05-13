@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { ipc } from "../lib/ipc";
-import type { BrowserProfile, InstalledBrowser } from "../lib/types";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ipc } from "@/lib/ipc";
+import type { BrowserProfile, InstalledBrowser } from "@/lib/types";
 
 interface Entry {
   browser: InstalledBrowser;
@@ -34,68 +36,94 @@ export function BrowsersPage() {
 
   if (error) {
     return (
-      <>
-        <h2>Browsers</h2>
-        <div className="card">
-          <span className="tag danger">error</span>
-          <span className="muted"> {error}</span>
-        </div>
-      </>
+      <div className="space-y-4">
+        <header>
+          <h2 className="text-xl font-semibold tracking-tight">Browsers</h2>
+        </header>
+        <Card>
+          <CardContent className="flex items-center gap-2 pt-4">
+            <Badge variant="destructive">error</Badge>
+            <span className="text-sm text-muted-foreground">{error}</span>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <>
-      <h2>Browsers</h2>
-      <p className="subtitle">
-        Detected browsers and the profiles LinkPilot can route to.
-      </p>
+    <div className="space-y-4">
+      <header>
+        <h2 className="text-xl font-semibold tracking-tight">Browsers</h2>
+        <p className="text-sm text-muted-foreground">
+          Detected browsers and the profiles LinkPilot can route to.
+        </p>
+      </header>
 
       {entries === null ? (
-        <div className="empty">Scanning…</div>
+        <Card>
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            Scanning…
+          </CardContent>
+        </Card>
       ) : entries.length === 0 ? (
-        <div className="card empty">
-          No browsers detected. (Are you running this from a sandbox with no{" "}
-          <span className="mono">/Applications</span>?)
-        </div>
+        <Card>
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            No browsers detected.
+          </CardContent>
+        </Card>
       ) : (
         entries.map((e) => (
-          <div key={e.browser.id} className="card">
-            <div className="row">
-              <span className="grow">
-                <strong>{e.browser.display_name}</strong>{" "}
-                <span className="muted mono">{e.browser.id}</span>
-              </span>
-              <span className="tag">{e.browser.kind}</span>
-            </div>
-            <div className="row">
-              <span className="muted grow mono">{e.browser.executable}</span>
-            </div>
-            {e.error && (
-              <div className="row">
-                <span className="tag danger">profiles</span>
-                <span className="muted">{e.error}</span>
+          <Card key={e.browser.id}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>{e.browser.display_name}</CardTitle>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {e.browser.id}
+                </span>
               </div>
-            )}
-            {e.profiles.length > 0 && (
-              <>
-                <div className="row muted">Profiles</div>
-                {e.profiles.map((p) => (
-                  <div key={p.id} className="row">
-                    <span className="grow">
-                      {p.display_name}
-                      {p.email && (
-                        <span className="muted"> &middot; {p.email}</span>
-                      )}
-                    </span>
-                    <span className="mono muted">{p.id}</span>
+              <Badge variant="secondary">{e.browser.kind}</Badge>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="font-mono text-xs text-muted-foreground">
+                {e.browser.executable}
+              </div>
+              {e.error && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="destructive">profiles</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {e.error}
+                  </span>
+                </div>
+              )}
+              {e.profiles.length > 0 && (
+                <div className="space-y-1 pt-2">
+                  <div className="text-xs text-muted-foreground">Profiles</div>
+                  <div className="divide-y divide-border">
+                    {e.profiles.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between py-1.5"
+                      >
+                        <span className="text-sm">
+                          {p.display_name}
+                          {p.email && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              · {p.email}
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {p.id}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </>
-            )}
-          </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         ))
       )}
-    </>
+    </div>
   );
 }

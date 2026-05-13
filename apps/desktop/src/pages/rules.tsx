@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { RuleEditor } from "../components/RuleEditor";
-import { ipc } from "../lib/ipc";
-import type { ConfigDocument, InstalledBrowser, Rule } from "../lib/types";
+import { GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { RuleEditor } from "@/components/RuleEditor";
+import { ipc } from "@/lib/ipc";
+import { cn } from "@/lib/utils";
+import type { ConfigDocument, InstalledBrowser, Rule } from "@/lib/types";
 
 interface Props {
   configEpoch: number;
@@ -21,10 +32,10 @@ export function RulesPage({ configEpoch }: Props) {
   const [editor, setEditor] = useState<EditorState>({ kind: "closed" });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Drag-to-reorder. The ref is the source of truth across the entire
-  // drag lifecycle (no React stale-closure, no WKWebView dataTransfer.types
-  // limitations during dragover). State drives the visual indicator only —
-  // a one-frame lag there is harmless.
+
+  // Drag-to-reorder: ref is source of truth (no React stale-closure, no
+  // WKWebView dataTransfer.types issues during dragover); state drives
+  // the visual indicator only.
   const draggedIdRef = useRef<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
@@ -59,10 +70,6 @@ export function RulesPage({ configEpoch }: Props) {
     }
   };
 
-  // Visual indicator only — does NOT clear the ref. WKWebView occasionally
-  // fires dragend before drop, and if dragend clears the ref the drop
-  // handler bails out before commitReorder runs. The ref is cleared
-  // explicitly inside onDrop after the commit (or its bailouts).
   const clearVisuals = () => {
     setDraggedId(null);
     setDropTargetId(null);
@@ -73,9 +80,7 @@ export function RulesPage({ configEpoch }: Props) {
     clearVisuals();
   };
 
-  // Commit a reorder: assign priorities N*10 down to 10 in the new order
-  // so the highest item wins. Step 10 leaves room to nudge a single rule
-  // by editing its priority manually later.
+  // Restamp priorities N*10, (N-1)*10, … so the new top wins.
   const commitReorder = async (orderedIds: string[]) => {
     if (!doc) return;
     const byId = new Map(doc.rules.map((r) => [r.id, r] as const));
@@ -92,124 +97,115 @@ export function RulesPage({ configEpoch }: Props) {
     }
   };
 
-  return (
-    <>
-      <h2>Rules</h2>
-      <p className="subtitle">
-        Rules evaluated highest-priority first. Click <em>Edit</em> or{" "}
-        <em>Add rule</em> to use the structured editor; advanced users can fall
-        back to JSON below.
-      </p>
+  const sorted = doc
+    ? [...doc.rules].sort((a, b) => b.priority - a.priority)
+    : [];
 
-      <div className="card">
-        <div className="row">
-          <h3 className="grow" style={{ margin: 0 }}>
-            Rules ({doc?.rules.length ?? 0})
-          </h3>
-          <button
-            className="primary"
+  return (
+    <div className="space-y-4">
+      <header>
+        <h2 className="text-xl font-semibold tracking-tight">Rules</h2>
+        <p className="text-sm text-muted-foreground">
+          Evaluated highest-priority first. Drag a row to reorder; click{" "}
+          <em>Edit</em> or <em>Add rule</em> for the structured editor.
+        </p>
+      </header>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>Rules ({doc?.rules.length ?? 0})</CardTitle>
+          <Button
             onClick={() => setEditor({ kind: "new" })}
             disabled={editor.kind !== "closed"}
           >
-            + Add rule
-          </button>
-        </div>
-        {doc && doc.rules.length === 0 && (
-          <div className="empty">No rules yet — click “Add rule”.</div>
-        )}
-        {doc && doc.rules.length > 1 && (
-          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-            Drag a row to reorder. Highest priority wins; the priority
-            number is restamped (steps of 10) after every drop.
-          </div>
-        )}
-        {doc &&
-          (() => {
-            const sorted = [...doc.rules].sort(
-              (a, b) => b.priority - a.priority,
-            );
-            return sorted.map((r) => {
-              const isDragged = draggedId === r.id;
-              const isDropBefore =
-                dropTargetId === r.id && dropPos === "before" && !isDragged;
-              const isDropAfter =
-                dropTargetId === r.id && dropPos === "after" && !isDragged;
-              return (
-                <RuleRow
-                  key={r.id}
-                  rule={r}
-                  isDragged={isDragged}
-                  isDropBefore={isDropBefore}
-                  isDropAfter={isDropAfter}
-                  onEdit={() => setEditor({ kind: "edit", rule: r })}
-                  onDelete={removeRule}
-                  onDragStart={(e) => {
-                    draggedIdRef.current = r.id;
-                    e.dataTransfer.effectAllowed = "move";
-                    // Firefox requires SOME payload to start the drag.
-                    e.dataTransfer.setData("text/plain", r.id);
-                    setDraggedId(r.id);
-                  }}
-                  onDragEnter={(e) => {
-                    // WKWebView wants dragenter canceled too, not just
-                    // dragover, before it marks the row as droppable.
-                    const src = draggedIdRef.current;
-                    if (!src || src === r.id) return;
-                    e.preventDefault();
-                  }}
-                  onDragOver={(e) => {
-                    const src = draggedIdRef.current;
-                    if (!src || src === r.id) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    const rect = (
-                      e.currentTarget as HTMLElement
-                    ).getBoundingClientRect();
-                    const mid = rect.top + rect.height / 2;
-                    const pos: DropPos =
-                      e.clientY < mid ? "before" : "after";
-                    if (dropTargetId !== r.id) setDropTargetId(r.id);
-                    if (dropPos !== pos) setDropPos(pos);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const sourceId = draggedIdRef.current;
-                    if (!sourceId || sourceId === r.id) {
+            <Plus />
+            Add rule
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {doc && doc.rules.length === 0 && (
+            <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              No rules yet — click "Add rule".
+            </div>
+          )}
+          {doc && doc.rules.length > 0 && (
+            <div className="divide-y divide-border">
+              {sorted.map((r) => {
+                const isDragged = draggedId === r.id;
+                const isDropBefore =
+                  dropTargetId === r.id && dropPos === "before" && !isDragged;
+                const isDropAfter =
+                  dropTargetId === r.id && dropPos === "after" && !isDragged;
+                return (
+                  <RuleRow
+                    key={r.id}
+                    rule={r}
+                    isDragged={isDragged}
+                    isDropBefore={isDropBefore}
+                    isDropAfter={isDropAfter}
+                    onEdit={() => setEditor({ kind: "edit", rule: r })}
+                    onDelete={() => removeRule(r)}
+                    onDragStart={(e) => {
+                      draggedIdRef.current = r.id;
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", r.id);
+                      setDraggedId(r.id);
+                    }}
+                    onDragEnter={(e) => {
+                      const src = draggedIdRef.current;
+                      if (!src || src === r.id) return;
+                      e.preventDefault();
+                    }}
+                    onDragOver={(e) => {
+                      const src = draggedIdRef.current;
+                      if (!src || src === r.id) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      const rect = (
+                        e.currentTarget as HTMLElement
+                      ).getBoundingClientRect();
+                      const mid = rect.top + rect.height / 2;
+                      const pos: DropPos =
+                        e.clientY < mid ? "before" : "after";
+                      if (dropTargetId !== r.id) setDropTargetId(r.id);
+                      if (dropPos !== pos) setDropPos(pos);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const sourceId = draggedIdRef.current;
+                      if (!sourceId || sourceId === r.id) {
+                        clearDrag();
+                        return;
+                      }
+                      const rect = (
+                        e.currentTarget as HTMLElement
+                      ).getBoundingClientRect();
+                      const mid = rect.top + rect.height / 2;
+                      const pos: DropPos =
+                        e.clientY < mid ? "before" : "after";
+                      const ids = sorted.map((s) => s.id);
+                      const from = ids.indexOf(sourceId);
+                      if (from < 0) {
+                        clearDrag();
+                        return;
+                      }
+                      const reordered = ids.filter((_, i) => i !== from);
+                      let insertAt = reordered.indexOf(r.id);
+                      if (pos === "after") insertAt += 1;
+                      reordered.splice(insertAt, 0, sourceId);
                       clearDrag();
-                      return;
-                    }
-                    const rect = (
-                      e.currentTarget as HTMLElement
-                    ).getBoundingClientRect();
-                    const mid = rect.top + rect.height / 2;
-                    const pos: DropPos =
-                      e.clientY < mid ? "before" : "after";
-                    const ids = sorted.map((s) => s.id);
-                    const from = ids.indexOf(sourceId);
-                    if (from < 0) {
-                      clearDrag();
-                      return;
-                    }
-                    const reordered = ids.filter((_, i) => i !== from);
-                    let insertAt = reordered.indexOf(r.id);
-                    if (pos === "after") insertAt += 1;
-                    reordered.splice(insertAt, 0, sourceId);
-                    clearDrag();
-                    commitReorder(reordered).catch((err) =>
-                      setError(String(err)),
-                    );
-                  }}
-                  onDragEnd={() => {
-                    // Clear visuals only; ref is cleared in onDrop. This
-                    // avoids a WKWebView race where dragend fires before
-                    // drop, nuking the ref the drop handler needs to read.
-                    clearVisuals();
-                  }}
-                />
-              );
-            });
-          })()}
-      </div>
+                      commitReorder(reordered).catch((err) =>
+                        setError(String(err)),
+                      );
+                    }}
+                    onDragEnd={clearVisuals}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {editor.kind !== "closed" && (
         <RuleEditor
@@ -220,40 +216,50 @@ export function RulesPage({ configEpoch }: Props) {
         />
       )}
 
-      <div className="card">
-        <div className="row">
-          <h3 className="grow" style={{ margin: 0 }}>
-            Default target
-          </h3>
-          <span className="mono muted">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>Default target</CardTitle>
+          <span className="font-mono text-xs text-muted-foreground">
             {doc?.default_target.browser}
-            {doc?.default_target.profile ? ` / ${doc.default_target.profile}` : ""}
+            {doc?.default_target.profile
+              ? ` / ${doc.default_target.profile}`
+              : ""}
           </span>
-        </div>
-        <div className="muted">
-          Fires when no rule matches. Change it in the <em>Settings</em> tab.
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground">
+            Fires when no rule matches. Change it in the <em>Settings</em> tab.
+          </p>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <div className="row">
-          <h3 className="grow" style={{ margin: 0 }}>
-            Advanced: raw JSON
-          </h3>
-          <button onClick={() => setShowAdvanced((v) => !v)}>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>Advanced: raw JSON</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAdvanced((v) => !v)}
+          >
             {showAdvanced ? "Hide" : "Show"}
-          </button>
-        </div>
-        {showAdvanced && doc && <AdvancedJsonEditor doc={doc} onSaved={refresh} />}
-      </div>
+          </Button>
+        </CardHeader>
+        {showAdvanced && doc && (
+          <CardContent>
+            <AdvancedJsonEditor doc={doc} onSaved={refresh} />
+          </CardContent>
+        )}
+      </Card>
 
       {error && (
-        <div className="card">
-          <span className="tag danger">error</span>
-          <span className="muted"> {error}</span>
-        </div>
+        <Card>
+          <CardContent className="flex items-center gap-2 pt-4">
+            <Badge variant="destructive">error</Badge>
+            <span className="text-sm text-muted-foreground">{error}</span>
+          </CardContent>
+        </Card>
       )}
-    </>
+    </div>
   );
 }
 
@@ -263,7 +269,7 @@ interface RuleRowProps {
   isDropBefore: boolean;
   isDropAfter: boolean;
   onEdit: () => void;
-  onDelete: (rule: Rule) => void;
+  onDelete: () => void;
   onDragStart: (e: DragEvent<HTMLDivElement>) => void;
   onDragEnter: (e: DragEvent<HTMLDivElement>) => void;
   onDragOver: (e: DragEvent<HTMLDivElement>) => void;
@@ -284,40 +290,63 @@ function RuleRow({
   onDrop,
   onDragEnd,
 }: RuleRowProps) {
-  const classes = ["row", "rule-row"];
-  if (isDragged) classes.push("dragging");
-  if (isDropBefore) classes.push("drop-before");
-  if (isDropAfter) classes.push("drop-after");
   return (
     <div
-      className={classes.join(" ")}
       draggable
       onDragStart={onDragStart}
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
+      className={cn(
+        "relative flex select-none items-center gap-2 py-2 transition-opacity",
+        isDragged && "opacity-30",
+        // Drop indicators: 2px primary-colored bar above/below the row.
+        isDropBefore &&
+          "before:pointer-events-none before:absolute before:inset-x-0 before:-top-px before:h-0.5 before:bg-primary",
+        isDropAfter &&
+          "after:pointer-events-none after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-primary",
+      )}
     >
-      <span
-        className="muted drag-handle"
-        title="Drag to reorder"
-        style={{ cursor: "grab", userSelect: "none" }}
-      >
-        ⋮⋮
-      </span>
-      <span className="muted" style={{ width: 50 }}>
+      <GripVertical
+        className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground"
+        aria-hidden
+      />
+      <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">
         #{rule.priority}
       </span>
-      <span className="grow mono" title={JSON.stringify(rule.when)}>
+      <span
+        className="flex-1 truncate font-mono text-xs"
+        title={JSON.stringify(rule.when)}
+      >
         {describeWhen(rule.when)}
       </span>
-      <span className="mono muted">{describeAction(rule.then)}</span>
-      {!rule.enabled && <span className="tag danger">disabled</span>}
-      {rule.source === "ts-compiled" && <span className="tag">ts</span>}
-      <button onClick={onEdit}>Edit</button>
-      <button className="danger" onClick={() => onDelete(rule)}>
-        Delete
-      </button>
+      <span className="font-mono text-xs text-muted-foreground">
+        {describeAction(rule.then)}
+      </span>
+      {!rule.enabled && <Badge variant="destructive">disabled</Badge>}
+      {rule.source === "ts-compiled" && <Badge variant="secondary">ts</Badge>}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" onClick={onEdit}>
+            <Pencil />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Edit rule</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Delete rule</TooltipContent>
+      </Tooltip>
     </div>
   );
 }
@@ -352,31 +381,32 @@ function AdvancedJsonEditor({
   };
 
   return (
-    <>
-      <textarea
+    <div className="space-y-3">
+      <Textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         spellCheck={false}
+        rows={16}
       />
       {error && (
-        <div className="row">
-          <span className="tag danger">error</span>
-          <span className="muted grow">{error}</span>
+        <div className="flex items-center gap-2">
+          <Badge variant="destructive">error</Badge>
+          <span className="text-xs text-muted-foreground">{error}</span>
         </div>
       )}
-      <div className="row">
-        <span className="grow" />
-        <button
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
           onClick={() => setDraft(JSON.stringify(doc, null, 2))}
           disabled={busy}
         >
           Revert
-        </button>
-        <button className="primary" onClick={save} disabled={busy}>
+        </Button>
+        <Button onClick={save} disabled={busy}>
           {busy ? "Saving…" : "Save"}
-        </button>
+        </Button>
       </div>
-    </>
+    </div>
   );
 }
 

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { ipc, onRouteLogged } from "../lib/ipc";
-import type { DoctorReport, RouteRecord, RoutingDecision } from "../lib/types";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ipc, onRouteLogged } from "@/lib/ipc";
+import type { DoctorReport, RouteRecord, RoutingDecision } from "@/lib/types";
 
 interface Props {
   configEpoch: number;
@@ -32,95 +34,133 @@ export function MenuBarPage({ configEpoch }: Props) {
   }, []);
 
   return (
-    <>
-      <h2>Overview</h2>
-      <p className="subtitle">
-        Daemon status and the most recent routing decisions. Use the{" "}
-        <em>Test URL</em> tab to dry-run a URL through the router.
-      </p>
+    <div className="space-y-4">
+      <header>
+        <h2 className="text-xl font-semibold tracking-tight">Overview</h2>
+        <p className="text-sm text-muted-foreground">
+          Daemon status and the most recent routing decisions. Use the{" "}
+          <em>Test URL</em> tab to dry-run a URL through the router.
+        </p>
+      </header>
 
-      <div className="card">
-        <h3>Status</h3>
-        <div className="row">
-          <span className="grow">Daemon version</span>
-          <span className="mono muted">{doctor?.daemon_version ?? "…"}</span>
-        </div>
-        <div className="row">
-          <span className="grow">LinkPilot is default browser</span>
-          <span className={`tag ${doctor?.is_default_browser ? "ok" : "danger"}`}>
-            {doctor?.is_default_browser ? "yes" : "no"}
-          </span>
-        </div>
-        <div className="row">
-          <span className="grow">Installed browsers detected</span>
-          <span>{doctor?.installed_browser_count ?? 0}</span>
-        </div>
-        <div className="row">
-          <span className="grow">Config file</span>
-          <span className="mono muted">{doctor?.config_path ?? "…"}</span>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Status</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <StatusRow label="Daemon version" value={doctor?.daemon_version ?? "…"} mono />
+          <div className="flex items-center justify-between">
+            <span className="text-sm">LinkPilot is default browser</span>
+            <Badge variant={doctor?.is_default_browser ? "success" : "destructive"}>
+              {doctor?.is_default_browser ? "yes" : "no"}
+            </Badge>
+          </div>
+          <StatusRow
+            label="Installed browsers detected"
+            value={String(doctor?.installed_browser_count ?? 0)}
+          />
+          <StatusRow
+            label="Config file"
+            value={doctor?.config_path ?? "…"}
+            mono
+          />
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <h3>Recent routes</h3>
-        {recent.length === 0 ? (
-          <div className="empty">No routes yet. Try `lp open …` or click a link.</div>
-        ) : (
-          recent.map((r, i) => <RouteRow key={i} record={r} />)
-        )}
-      </div>
-    </>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent routes</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {recent.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No routes yet. Try <span className="font-mono">lp open …</span> or
+              click a link.
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {recent.map((r, i) => (
+                <RouteRow key={i} record={r} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function StatusRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sm">{label}</span>
+      <span
+        className={
+          mono
+            ? "font-mono text-xs text-muted-foreground"
+            : "text-sm text-muted-foreground"
+        }
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function RouteRow({ record }: { record: RouteRecord }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2">
+      <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">
+        {new Date(record.timestamp_ms).toLocaleTimeString()}
+      </span>
+      <span className="flex-1 truncate font-mono text-xs">
+        {record.context.url}
+      </span>
+      <DecisionLine decision={record.decision} />
+    </div>
   );
 }
 
 export function DecisionLine({ decision }: { decision: RoutingDecision }) {
   if (decision.action === "open") {
     return (
-      <div className="row">
-        <span className="tag ok">open</span>
-        <span className="grow mono">
+      <div className="flex items-center gap-2">
+        <Badge variant="default">open</Badge>
+        <span className="font-mono text-xs">
           {decision.target.browser}
           {decision.target.profile ? ` / ${decision.target.profile}` : ""}
         </span>
-        <span className="muted">{decision.reason}</span>
       </div>
     );
   }
   if (decision.action === "allow") {
     return (
-      <div className="row">
-        <span className="tag">allow</span>
-        <span className="grow muted">{decision.reason}</span>
+      <div className="flex items-center gap-2">
+        <Badge variant="accent">allow</Badge>
+        <span className="text-xs text-muted-foreground">{decision.reason}</span>
       </div>
     );
   }
   if (decision.action === "block") {
     return (
-      <div className="row">
-        <span className="tag danger">block</span>
-        <span className="grow muted">{decision.reason}</span>
+      <div className="flex items-center gap-2">
+        <Badge variant="destructive">block</Badge>
+        <span className="text-xs text-muted-foreground">{decision.reason}</span>
       </div>
     );
   }
   return (
-    <div className="row">
-      <span className="tag">ask</span>
-      <span className="grow muted">{decision.reason}</span>
-    </div>
-  );
-}
-
-function RouteRow({ record }: { record: RouteRecord }) {
-  const when = new Date(record.timestamp_ms).toLocaleTimeString();
-  return (
-    <div className="row">
-      <span className="muted" style={{ width: 70 }}>
-        {when}
-      </span>
-      <span className="grow mono" title={record.context.url}>
-        {record.context.url}
-      </span>
-      <DecisionLine decision={record.decision} />
+    <div className="flex items-center gap-2">
+      <Badge variant="secondary">ask</Badge>
+      <span className="text-xs text-muted-foreground">{decision.reason}</span>
     </div>
   );
 }
