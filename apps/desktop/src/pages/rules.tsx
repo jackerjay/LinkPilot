@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { BrowserBadge } from "@/components/BrowserBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -219,12 +220,14 @@ export function RulesPage({ configEpoch }: Props) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Default target</CardTitle>
-          <span className="font-mono text-xs text-muted-foreground">
-            {doc?.default_target.browser}
-            {doc?.default_target.profile
-              ? ` / ${doc.default_target.profile}`
-              : ""}
-          </span>
+          {doc && (
+            <span className="text-xs text-muted-foreground">
+              <BrowserBadge
+                browserId={doc.default_target.browser}
+                profile={doc.default_target.profile}
+              />
+            </span>
+          )}
         </CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground">
@@ -321,8 +324,8 @@ function RuleRow({
       >
         {describeWhen(rule.when)}
       </span>
-      <span className="font-mono text-xs text-muted-foreground">
-        {describeAction(rule.then)}
+      <span className="text-xs text-muted-foreground">
+        <ActionDisplay action={rule.then} />
       </span>
       {!rule.enabled && <Badge variant="destructive">disabled</Badge>}
       {rule.source === "ts-compiled" && <Badge variant="secondary">ts</Badge>}
@@ -433,15 +436,23 @@ function describeWhen(t: Rule["when"]): string {
   }
 }
 
-function describeAction(a: Rule["then"]): string {
-  switch (a.kind) {
+function ActionDisplay({ action }: { action: Rule["then"] }) {
+  switch (action.kind) {
     case "open":
-      return `open → ${a.target.browser}${a.target.profile ? "/" + a.target.profile : ""}`;
+      return (
+        <span className="inline-flex items-center gap-1.5">
+          <span>open →</span>
+          <BrowserBadge
+            browserId={action.target.browser}
+            profile={action.target.profile}
+          />
+        </span>
+      );
     case "keep-source":
-      return "keep source";
+      return <span>keep source</span>;
     case "ask":
-      return "ask";
+      return <span>ask</span>;
     case "block":
-      return "block";
+      return <span>block</span>;
   }
 }

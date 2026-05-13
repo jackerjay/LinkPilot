@@ -12,18 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { appPathFromExecutable } from "@/lib/browsers";
 import { ipc } from "@/lib/ipc";
 import type {
   BrowserProfile,
   BrowserTarget,
   InstalledBrowser,
 } from "@/lib/types";
-
-function appPathFromExecutable(executable: string): string {
-  const idx = executable.lastIndexOf(".app/");
-  if (idx === -1) return executable;
-  return executable.slice(0, idx + 4);
-}
 
 interface Props {
   value: BrowserTarget;

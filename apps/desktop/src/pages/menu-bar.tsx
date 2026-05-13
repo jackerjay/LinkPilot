@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { BrowserBadge } from "@/components/BrowserBadge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ipc, onRouteLogged } from "@/lib/ipc";
@@ -134,10 +135,11 @@ export function DecisionLine({ decision }: { decision: RoutingDecision }) {
     return (
       <div className="flex items-center gap-2">
         <Badge variant="default">open</Badge>
-        <span className="font-mono text-xs">
-          {decision.target.browser}
-          {decision.target.profile ? ` / ${decision.target.profile}` : ""}
-        </span>
+        <BrowserBadge
+          browserId={decision.target.browser}
+          profile={decision.target.profile}
+          className="text-xs"
+        />
       </div>
     );
   }
