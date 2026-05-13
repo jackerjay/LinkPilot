@@ -229,3 +229,59 @@ pub fn export_config(state: State<'_, AppState>, path: PathBuf) -> Result<(), St
     let json = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| e.to_string())
 }
+
+// ----------------------------------------------------------------------------
+// app icons — extracted from the system's .icns files, cached to disk,
+// returned to the renderer as base64-encoded PNGs.
+
+#[derive(serde::Deserialize)]
+pub struct AppIconRequest {
+    #[serde(default)]
+    pub bundle_id: Option<String>,
+    #[serde(default)]
+    pub app_path: Option<String>,
+    #[serde(default = "default_icon_size")]
+    pub size: u32,
+}
+
+fn default_icon_size() -> u32 {
+    64
+}
+
+#[derive(serde::Serialize)]
+pub struct AppIcon {
+    /// base64-encoded PNG bytes for a `<img src="data:image/png;base64,…">`.
+    pub data_url: String,
+}
+
+#[tauri::command]
+pub fn app_icon(request: AppIconRequest) -> Option<AppIcon> {
+    #[cfg(target_os = "macos")]
+    {
+        use base64::Engine;
+        let bundle = request.bundle_id.as_deref().filter(|s| !s.is_empty());
+        let path = request
+            .app_path
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .map(std::path::Path::new);
+        let png_path =
+            match linkpilot_platform_mac::app_icon::ensure_png(bundle, path, request.size) {
+                Ok(p) => p,
+                Err(err) => {
+                    tracing::debug!(?err, ?bundle, ?path, "app_icon: extraction failed");
+                    return None;
+                }
+            };
+        let bytes = std::fs::read(&png_path).ok()?;
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        return Some(AppIcon {
+            data_url: format!("data:image/png;base64,{b64}"),
+        });
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = request;
+        None
+    }
+}

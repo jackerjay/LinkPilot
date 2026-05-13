@@ -48,7 +48,22 @@ export const ipc = {
   doctor: () => invoke<DoctorReport>("doctor"),
   importConfig: (path: string) => invoke<void>("import_config", { path }),
   exportConfig: (path: string) => invoke<void>("export_config", { path }),
+
+  appIcon: (request: AppIconRequest) =>
+    invoke<AppIcon | null>("app_icon", { request }),
 };
+
+export interface AppIconRequest {
+  bundle_id?: string | null;
+  app_path?: string | null;
+  /** Pixel size of the longest edge. Defaults to 64 in Rust. */
+  size?: number;
+}
+
+export interface AppIcon {
+  /** `data:image/png;base64,…` — drop directly into `<img src>`. */
+  data_url: string;
+}
 
 export type RouteLoggedHandler = (record: RouteRecord) => void;
 export const onRouteLogged = async (
