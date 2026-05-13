@@ -4,6 +4,7 @@
 
 pub mod app_icon;
 pub mod app_picker;
+pub mod prompt;
 mod autostart;
 mod default_browser;
 mod inventory;

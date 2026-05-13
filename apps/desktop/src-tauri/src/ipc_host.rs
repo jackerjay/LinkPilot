@@ -9,6 +9,7 @@ use linkpilot_core::routing::Router;
 use linkpilot_ipc::server::RequestHandler;
 use tauri::{AppHandle, Emitter};
 
+use crate::dispatch::{self, LaunchOutcome};
 use crate::state::AppState;
 
 pub struct DaemonHandler {
@@ -51,26 +52,16 @@ impl RequestHandler for DaemonHandler {
                 self.state.history.log(record.clone());
                 let _ = self.app.emit("route-logged", &record);
 
-                if let linkpilot_core::routing::RoutingDecision::Open { target, .. } = &decision {
-                    match url::Url::parse(&context.url) {
-                        Ok(parsed) => {
-                            if let Err(err) =
-                                self.state.platform.url_launcher().open(target, &parsed)
-                            {
-                                return Response::Error {
-                                    request_id,
-                                    code: "launch-failed".into(),
-                                    message: err.to_string(),
-                                };
-                            }
-                        }
-                        Err(err) => {
-                            return Response::Error {
-                                request_id,
-                                code: "bad-url".into(),
-                                message: err.to_string(),
-                            };
-                        }
+                match dispatch::execute(&self.state, &decision, &context.url) {
+                    LaunchOutcome::Launched(_)
+                    | LaunchOutcome::Skipped
+                    | LaunchOutcome::Cancelled => {}
+                    LaunchOutcome::Failed(err) => {
+                        return Response::Error {
+                            request_id,
+                            code: "launch-failed".into(),
+                            message: err,
+                        };
                     }
                 }
                 Response::RouteDecision {

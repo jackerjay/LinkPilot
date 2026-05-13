@@ -5,6 +5,7 @@
 //! macOS URL events arrive through `tauri-plugin-deep-link`.
 
 mod commands;
+mod dispatch;
 mod ipc_host;
 mod nmh_supervisor;
 mod state;
