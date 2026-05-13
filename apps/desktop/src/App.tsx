@@ -100,13 +100,26 @@ export default function App() {
             );
           })}
         </aside>
-        <main className="overflow-y-auto overflow-x-hidden overscroll-contain px-10 pb-8 pt-12">
-          {tab === "menu-bar" && <MenuBarPage configEpoch={configEpoch} />}
-          {tab === "rules" && <RulesPage configEpoch={configEpoch} />}
-          {tab === "test-url" && <TestUrlPage configEpoch={configEpoch} />}
-          {tab === "inspector" && <InspectorPage />}
-          {tab === "browsers" && <BrowsersPage />}
-          {tab === "settings" && <SettingsPage configEpoch={configEpoch} />}
+        <main className="flex flex-col overflow-hidden">
+          {/* Drag strip across the top of the content area. With
+              `titleBarStyle: Overlay` macOS removes the title bar but
+              does NOT mark anything as draggable for us; without this
+              strip the user has no way to move the window from above the
+              content. Sidebar already drags itself; this covers the
+              right column. */}
+          <div
+            className="h-8 flex-shrink-0"
+            style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+            aria-hidden
+          />
+          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-10 pb-8 pt-4">
+            {tab === "menu-bar" && <MenuBarPage configEpoch={configEpoch} />}
+            {tab === "rules" && <RulesPage configEpoch={configEpoch} />}
+            {tab === "test-url" && <TestUrlPage configEpoch={configEpoch} />}
+            {tab === "inspector" && <InspectorPage />}
+            {tab === "browsers" && <BrowsersPage />}
+            {tab === "settings" && <SettingsPage configEpoch={configEpoch} />}
+          </div>
         </main>
       </div>
     </TooltipProvider>
