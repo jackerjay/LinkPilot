@@ -10,7 +10,12 @@ Real artwork shipped in v0.1.
 ## Regenerating
 
 ```sh
-# Full bundle matrix (uses the 1254×1254 brand mark):
+# 1. Re-pad the master so the artwork is inside Apple's ~80% safe area
+#    (skip if your source already has transparent padding around the art).
+cargo run -p linkpilot-icon-padder --release -- \
+  docs/brand/icon-raw.png docs/brand/icon.png
+
+# 2. Full bundle matrix (uses the padded 1254×1254 brand mark):
 cd apps/desktop
 npx tauri icon ../../docs/brand/icon.png
 

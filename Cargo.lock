@@ -2224,6 +2224,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "linkpilot-icon-padder"
+version = "0.1.0"
+dependencies = [
+ "image",
+]
+
+[[package]]
 name = "linkpilot-ipc"
 version = "0.1.0"
 dependencies = [
