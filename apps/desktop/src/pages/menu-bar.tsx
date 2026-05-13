@@ -106,8 +106,8 @@ function StatusRow({
       <span
         className={
           mono
-            ? "font-mono text-xs text-muted-foreground"
-            : "text-sm text-muted-foreground"
+            ? "select-text font-mono text-xs text-muted-foreground"
+            : "select-text text-sm text-muted-foreground"
         }
       >
         {value}
@@ -122,7 +122,7 @@ function RouteRow({ record }: { record: RouteRecord }) {
       <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">
         {new Date(record.timestamp_ms).toLocaleTimeString()}
       </span>
-      <span className="flex-1 truncate font-mono text-xs">
+      <span className="flex-1 truncate select-text font-mono text-xs">
         {record.context.url}
       </span>
       <DecisionLine decision={record.decision} />

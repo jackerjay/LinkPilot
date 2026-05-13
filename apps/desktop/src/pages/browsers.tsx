@@ -94,7 +94,7 @@ export function BrowsersPage() {
               <Badge variant="secondary">{e.browser.kind}</Badge>
             </CardHeader>
             <CardContent className="space-y-2">
-              <div className="font-mono text-xs text-muted-foreground">
+              <div className="select-text font-mono text-xs text-muted-foreground">
                 {e.browser.executable}
               </div>
               {e.error && (
