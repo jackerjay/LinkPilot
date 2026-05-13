@@ -306,10 +306,22 @@ function MatcherLeafFields({
           <Input
             placeholder="Slack, VSCode, Terminal…"
             value={value.name}
-            onChange={(e) => onChange({ ...value, name: e.target.value })}
+            onChange={(e) =>
+              // Hand-typed input clears the stored bundle id — the user
+              // is now overriding what the picker captured, and matching
+              // should fall back to name-only. The next picker click can
+              // re-populate it.
+              onChange({ ...value, name: e.target.value, bundle_id: null })
+            }
           />
           <AppPickerButton
-            onPicked={(p) => onChange({ ...value, name: p.name })}
+            onPicked={(p) =>
+              onChange({
+                ...value,
+                name: p.name,
+                bundle_id: p.bundleId || null,
+              })
+            }
           />
         </>
       );
@@ -367,7 +379,7 @@ function matcherFromOp(op: MatcherTree["op"]): MatcherTree {
     case "url-path":
       return { op: "url-path", pattern: "" };
     case "source-app":
-      return { op: "source-app", name: "" };
+      return { op: "source-app", name: "", bundle_id: null };
     case "source-browser":
       return { op: "source-browser", browser: "" };
     case "source-profile":

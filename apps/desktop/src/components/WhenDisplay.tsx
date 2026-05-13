@@ -71,7 +71,10 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
       return (
         <span className="inline-flex items-center gap-1.5">
           <AppIcon
-            name={matcher.name}
+            // Picker-authored rules store bundle_id — most reliable
+            // lookup. Hand-typed / older rules fall back to name.
+            bundleId={matcher.bundle_id ?? undefined}
+            name={matcher.bundle_id ? undefined : matcher.name}
             size={iconSize}
             alt={matcher.name}
           />

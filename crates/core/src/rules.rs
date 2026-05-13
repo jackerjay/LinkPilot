@@ -69,8 +69,15 @@ pub enum MatcherTree {
     UrlHost { pattern: String },
     UrlPath { pattern: String },
 
-    /// Source application bundle id (macOS) or process name.
-    SourceApp { name: String },
+    /// Source application: matches by bundle id when set (stable across
+    /// locales + display-name vs CFBundleName quirks), else falls back to
+    /// case-insensitive name match. Older configs without bundle_id keep
+    /// working via the default value.
+    SourceApp {
+        name: String,
+        #[serde(default)]
+        bundle_id: Option<String>,
+    },
     /// Source browser id (when navigation came from extension).
     SourceBrowser { browser: String },
     /// Source profile id within the source browser.

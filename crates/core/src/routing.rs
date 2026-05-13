@@ -215,15 +215,31 @@ fn eval_tree(tree: &MatcherTree, ctx: &RoutingContext) -> MatcherEval {
             matched: match_path(pattern, &ctx.url),
             pattern: pattern.clone(),
         },
-        MatcherTree::SourceApp { name } => MatcherEval::SourceApp {
-            matched: ctx
-                .source
-                .app_name
-                .as_deref()
-                .map(|n| n.eq_ignore_ascii_case(name))
-                .unwrap_or(false),
-            name: name.clone(),
-        },
+        MatcherTree::SourceApp { name, bundle_id } => {
+            // Bundle id is the stable identifier (e.g. com.electron.lark
+            // matches whether the localized name is "Lark", "Feishu", or
+            // "飞书"). Only fall back to name matching when no bundle id
+            // is stored on the rule — old configs authored by hand, or
+            // rules where the user typed a name without using the picker.
+            let matched = match bundle_id {
+                Some(bid) if !bid.is_empty() => ctx
+                    .source
+                    .bundle_id
+                    .as_deref()
+                    .map(|b| b.eq_ignore_ascii_case(bid))
+                    .unwrap_or(false),
+                _ => ctx
+                    .source
+                    .app_name
+                    .as_deref()
+                    .map(|n| n.eq_ignore_ascii_case(name))
+                    .unwrap_or(false),
+            };
+            MatcherEval::SourceApp {
+                matched,
+                name: name.clone(),
+            }
+        }
         MatcherTree::SourceBrowser { browser } => MatcherEval::SourceBrowser {
             matched: ctx
                 .source
@@ -356,6 +372,7 @@ mod tests {
                     },
                     MatcherTree::SourceApp {
                         name: "Slack".into(),
+                        bundle_id: None,
                     },
                 ],
             },
@@ -399,6 +416,7 @@ mod tests {
                     },
                     MatcherTree::SourceApp {
                         name: "Slack".into(),
+                        bundle_id: None,
                     },
                 ],
             },
