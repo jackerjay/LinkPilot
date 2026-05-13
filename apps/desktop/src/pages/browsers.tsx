@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { appPathFromExecutable } from "@/lib/browsers";
 import { ipc } from "@/lib/ipc";
 import type { BrowserProfile, InstalledBrowser } from "@/lib/types";
 
@@ -9,14 +10,6 @@ interface Entry {
   browser: InstalledBrowser;
   profiles: BrowserProfile[];
   error?: string;
-}
-
-/// `/Applications/Foo.app/Contents/MacOS/Foo` → `/Applications/Foo.app`.
-/// Falls back to the original path when no `.app/` segment is present.
-function appPathFromExecutable(executable: string): string {
-  const idx = executable.lastIndexOf(".app/");
-  if (idx === -1) return executable;
-  return executable.slice(0, idx + 4);
 }
 
 export function BrowsersPage() {

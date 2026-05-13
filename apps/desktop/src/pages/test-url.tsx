@@ -3,6 +3,7 @@
 // MatcherEval tree, which we render exactly like the Inspector does.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppIcon } from "@/components/AppIcon";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { ExplanationView } from "@/components/Explanation";
 import { ipc } from "@/lib/ipc";
+import { appPathFromExecutable } from "@/lib/browsers";
 import type {
   BrowserProfile,
   ConfigDocument,
@@ -160,7 +162,15 @@ export function TestUrlPage({ configEpoch }: Props) {
                   <SelectItem value={NONE}>— none —</SelectItem>
                   {browsers.map((b) => (
                     <SelectItem key={b.id} value={b.id}>
-                      {b.display_name}
+                      <span className="flex items-center gap-2">
+                        <AppIcon
+                          bundleId={b.platform_app_id ?? undefined}
+                          appPath={appPathFromExecutable(b.executable)}
+                          size={16}
+                          alt={b.display_name}
+                        />
+                        {b.display_name}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

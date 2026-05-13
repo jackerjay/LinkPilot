@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
+import { AppIcon } from "@/components/AppIcon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TargetEditor } from "@/components/TargetEditor";
+import { appPathFromExecutable } from "@/lib/browsers";
 import type {
   Action,
   InstalledBrowser,
@@ -318,7 +320,15 @@ function MatcherLeafFields({
           <SelectContent>
             {browsers.map((b) => (
               <SelectItem key={b.id} value={b.id}>
-                {b.display_name} ({b.id})
+                <span className="flex items-center gap-2">
+                  <AppIcon
+                    bundleId={b.platform_app_id ?? undefined}
+                    appPath={appPathFromExecutable(b.executable)}
+                    size={16}
+                    alt={b.display_name}
+                  />
+                  {b.display_name}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
