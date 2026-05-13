@@ -110,10 +110,13 @@ fn locate_icns(app: &Path) -> Result<PathBuf> {
             info_plist.display()
         )));
     }
-    // plutil's -extract returns the raw value of a key. We ask for json so
-    // the output is a quoted string we can trivially strip.
+    // Use `raw` format, not `json`: plutil's json mode requires the
+    // extracted subtree to be a top-level array/object, so a bare string
+    // value like CFBundleIconFile = "AppIcon" makes it bail with
+    // "Invalid object in plist for JSON format". `raw` prints just the
+    // string content with no quoting, which is exactly what we want.
     let out = Command::new("/usr/bin/plutil")
-        .args(["-extract", "CFBundleIconFile", "json", "-o", "-"])
+        .args(["-extract", "CFBundleIconFile", "raw", "-o", "-"])
         .arg(&info_plist)
         .output()
         .map_err(PlatformError::Io)?;
@@ -123,9 +126,7 @@ fn locate_icns(app: &Path) -> Result<PathBuf> {
             String::from_utf8_lossy(&out.stderr).trim()
         )));
     }
-    let raw = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    // The value is JSON like "AppIcon" — strip the surrounding quotes.
-    let name = raw.trim_matches('"');
+    let name = String::from_utf8_lossy(&out.stdout).trim().to_string();
     if name.is_empty() {
         return Err(PlatformError::Other("CFBundleIconFile empty".into()));
     }
