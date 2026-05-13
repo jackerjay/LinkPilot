@@ -37,7 +37,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
       return (
         <span className="inline-flex items-center gap-1.5">
           <Asterisk
-            className="shrink-0 text-muted-foreground"
+            className="shrink-0 text-amber-500"
             style={{ width: iconSize, height: iconSize }}
           />
           always
@@ -48,7 +48,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
       return (
         <span className="inline-flex items-center gap-1.5">
           <Globe
-            className="shrink-0 text-muted-foreground"
+            className="shrink-0 text-sky-500"
             style={{ width: iconSize, height: iconSize }}
           />
           <span className="font-mono">{matcher.pattern}</span>
@@ -59,7 +59,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
       return (
         <span className="inline-flex items-center gap-1.5">
           <Link2
-            className="shrink-0 text-muted-foreground"
+            className="shrink-0 text-emerald-500"
             style={{ width: iconSize, height: iconSize }}
           />
           <span className="text-muted-foreground">path</span>
@@ -92,7 +92,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
       return (
         <span className="inline-flex items-center gap-1.5">
           <User
-            className="shrink-0 text-muted-foreground"
+            className="shrink-0 text-violet-500"
             style={{ width: iconSize, height: iconSize }}
           />
           <span className="text-muted-foreground">profile</span>
@@ -105,7 +105,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
         <ComposedDisplay
           icon={
             <Layers
-              className="shrink-0 text-muted-foreground"
+              className="shrink-0 text-indigo-500"
               style={{ width: iconSize, height: iconSize }}
             />
           }
@@ -120,7 +120,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
         <ComposedDisplay
           icon={
             <Split
-              className="shrink-0 text-muted-foreground"
+              className="shrink-0 text-cyan-500"
               style={{ width: iconSize, height: iconSize }}
             />
           }
@@ -134,10 +134,10 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
       return (
         <span className="inline-flex items-center gap-1.5">
           <Ban
-            className="shrink-0 text-destructive"
+            className="shrink-0 text-rose-500"
             style={{ width: iconSize, height: iconSize }}
           />
-          <span className="text-destructive">NOT</span>
+          <span className="text-rose-500">NOT</span>
           <WhenDisplay matcher={matcher.of} iconSize={iconSize} />
         </span>
       );
