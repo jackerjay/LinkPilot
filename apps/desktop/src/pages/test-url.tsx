@@ -264,11 +264,11 @@ function ResultRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-20 shrink-0 text-xs text-muted-foreground">
+    <div className="flex items-start gap-3">
+      <span className="w-20 shrink-0 pt-0.5 text-xs text-muted-foreground">
         {label}
       </span>
-      <span className="flex-1">{children}</span>
+      <span className="flex-1 min-w-0">{children}</span>
     </div>
   );
 }
