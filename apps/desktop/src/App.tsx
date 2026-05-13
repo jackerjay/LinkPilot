@@ -101,18 +101,19 @@ export default function App() {
           })}
         </aside>
         <main className="flex flex-col overflow-hidden">
-          {/* Drag strip across the top of the content area. With
-              `titleBarStyle: Overlay` macOS removes the title bar but
-              does NOT mark anything as draggable for us; without this
-              strip the user has no way to move the window from above the
-              content. Sidebar already drags itself; this covers the
-              right column. */}
+          {/* Title-bar replacement: full-width drag region covering the
+              entire empty space above the page heading. With
+              `titleBarStyle: Overlay` macOS hides the title bar but does
+              not auto-mark anything as draggable; sidebar drags from its
+              own background, and this strip covers the right column.
+              Sized to match the visible "header area" the user expects
+              (~64px) so dragging works anywhere above the page heading. */}
           <div
-            className="h-8 flex-shrink-0"
+            className="h-16 flex-shrink-0"
             style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
             aria-hidden
           />
-          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-10 pb-8 pt-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-10 pb-8">
             {tab === "menu-bar" && <MenuBarPage configEpoch={configEpoch} />}
             {tab === "rules" && <RulesPage configEpoch={configEpoch} />}
             {tab === "test-url" && <TestUrlPage configEpoch={configEpoch} />}
