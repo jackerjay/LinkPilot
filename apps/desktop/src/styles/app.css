@@ -141,7 +141,11 @@
     background: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: var(--font-sans);
-    font-size: 13px;
+    /* Base size drives every Tailwind text-{xs,sm,base,…} via rem.
+       14px is one tick larger than the macOS native 13px — easier on
+       Retina displays without feeling web-y. Bump to 15px later if
+       still too small. */
+    font-size: 14px;
     -webkit-font-smoothing: antialiased;
     /* Kill horizontal rubber-band scroll. */
     overflow: hidden;
