@@ -2201,6 +2201,7 @@ dependencies = [
  "linkpilot-platform-linux",
  "linkpilot-platform-mac",
  "linkpilot-platform-win",
+ "objc2 0.5.2",
  "serde",
  "serde_json",
  "tauri",

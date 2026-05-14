@@ -176,6 +176,17 @@
   }
 }
 
+/* Picker window: html / body / #root must be transparent so the
+   NSVisualEffectView vibrancy installed under the webview (see
+   picker.rs::apply_glass) is what the user sees behind the inner
+   panel. Without this override the opaque background from the base
+   layer wins and the blur is invisible. */
+html.picker-root,
+html.picker-root body,
+html.picker-root #root {
+  background: transparent !important;
+}
+
 /* Slim, macOS-flavoured scrollbar. Sits inside containers that opt in
    via the .scroll-shy class — keeps the bar inside the content area
    instead of stretching window-edge to window-edge under the title

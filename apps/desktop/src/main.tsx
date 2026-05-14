@@ -14,6 +14,14 @@ bootstrapTheme();
 // sets when opening the picker window (see src-tauri/src/picker.rs).
 const isPicker = new URLSearchParams(window.location.search).get("view") === "picker";
 
+// The picker window relies on a transparent webview so the
+// NSVisualEffectView (vibrancy) behind it shows through. Without this
+// class the global html/body background from app.css would be opaque
+// and the blur would be invisible.
+if (isPicker) {
+  document.documentElement.classList.add("picker-root");
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>{isPicker ? <PickerWindow /> : <App />}</React.StrictMode>,
 );
