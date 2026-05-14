@@ -97,10 +97,11 @@ export function PickerWindow() {
       tabIndex={0}
       onKeyDown={onKeyDown}
       // macOS-transparent window with NSVisualEffectView vibrancy under
-      // the webview (see picker.rs::apply_glass). A thin dark overlay
-      // tints the blur for legibility; rounded corners reveal the
-      // desktop because the window itself is transparent.
-      className="flex h-screen flex-col items-center justify-center gap-5 rounded-2xl bg-black/25 p-6 text-white"
+      // the webview (see picker.rs::apply_glass). Let the vibrancy
+      // carry the entire background — `bg-black/X` on top muddies the
+      // blur. `outline-none` kills the WebKit focus ring on the
+      // tabIndex=0 container that read as an unintentional border.
+      className="flex h-screen flex-col items-center justify-center gap-5 rounded-2xl p-6 text-white outline-none focus:outline-none"
       style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div className="flex w-full flex-col items-center gap-1">

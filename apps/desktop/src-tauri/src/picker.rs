@@ -172,18 +172,21 @@ fn center_position_on_cursor_monitor(
 }
 
 /// Apply macOS frosted-glass vibrancy to the picker window's
-/// background. Falls back silently on non-macOS builds.
+/// background. Sidebar material gives a pronounced "Cmd-Tab"
+/// frosted look (HudWindow we tried first reads as a flat tint).
+/// Falls back silently on non-macOS builds.
 fn apply_glass(window: &tauri::WebviewWindow) {
     #[cfg(target_os = "macos")]
     {
         use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
-        if let Err(err) = apply_vibrancy(
+        match apply_vibrancy(
             window,
-            NSVisualEffectMaterial::HudWindow,
+            NSVisualEffectMaterial::Sidebar,
             Some(NSVisualEffectState::Active),
             Some(16.0), // matches the inner content's rounded-2xl
         ) {
-            tracing::warn!(?err, "picker: vibrancy failed");
+            Ok(()) => tracing::debug!("picker: vibrancy applied"),
+            Err(err) => tracing::warn!(?err, "picker: vibrancy failed"),
         }
     }
     #[cfg(not(target_os = "macos"))]
@@ -194,22 +197,32 @@ fn apply_glass(window: &tauri::WebviewWindow) {
 
 /// Make the picker float over a full-screen Space (Lark, Slack,
 /// browser fullscreen, etc.) and sit above all normal floating
-/// windows. Direct AppKit msg_send! so we don't pull in the entire
-/// objc2-app-kit NSWindow feature tree.
+/// windows.
+///
+/// Two layers:
+///   1. Tauri's safe `set_visible_on_all_workspaces(true)` sets the
+///      CanJoinAllSpaces bit. By itself this still doesn't appear on
+///      full-screen Spaces.
+///   2. We additionally toggle the FullScreenAuxiliary bit via raw
+///      msg_send! to NSWindow.setCollectionBehavior:, plus raise the
+///      window level to NSStatusWindowLevel (25) — above the level
+///      Slack / Lark's own floats use.
 fn elevate_above_fullscreen(window: &tauri::WebviewWindow) {
+    if let Err(err) = window.set_visible_on_all_workspaces(true) {
+        tracing::warn!(?err, "picker: set_visible_on_all_workspaces failed");
+    }
+
     #[cfg(target_os = "macos")]
     {
         use objc2::msg_send;
         use objc2::runtime::AnyObject;
 
-        // NSWindowCollectionBehaviorCanJoinAllSpaces   = 1 << 0  = 1
-        // NSWindowCollectionBehaviorFullScreenAuxiliary = 1 << 8 = 256
-        // Together: the window appears on every Space (including
-        // full-screen Spaces) without itself becoming full-screen.
-        const COLLECTION_BEHAVIOR: u64 = 1 | (1 << 8);
-        // NSStatusWindowLevel — above NSFloatingWindowLevel, below
-        // NSScreenSaverWindowLevel. Slack / Lark floating windows max
-        // out at floating; status puts us above them.
+        // NSWindowCollectionBehaviorCanJoinAllSpaces    = 1 << 0   = 1
+        // NSWindowCollectionBehaviorFullScreenAuxiliary = 1 << 8   = 256
+        // NSUInteger on 64-bit macOS == usize; using usize is what
+        // objc2 wants for the message arg type.
+        const COLLECTION_BEHAVIOR: usize = 1 | (1 << 8);
+        // NSStatusWindowLevel
         const NS_STATUS_WINDOW_LEVEL: isize = 25;
 
         let raw = match window.ns_window() {
@@ -220,6 +233,7 @@ fn elevate_above_fullscreen(window: &tauri::WebviewWindow) {
             }
         };
         if raw.is_null() {
+            tracing::warn!("picker: ns_window null");
             return;
         }
         unsafe {
@@ -227,10 +241,7 @@ fn elevate_above_fullscreen(window: &tauri::WebviewWindow) {
             let _: () = msg_send![ns, setCollectionBehavior: COLLECTION_BEHAVIOR];
             let _: () = msg_send![ns, setLevel: NS_STATUS_WINDOW_LEVEL];
         }
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = window;
+        tracing::debug!("picker: collection behavior + level applied");
     }
 }
 
