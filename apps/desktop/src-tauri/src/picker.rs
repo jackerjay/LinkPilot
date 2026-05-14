@@ -102,9 +102,17 @@ pub fn show_picker(
         None => builder = builder.center(),
     }
     let win = builder.build().ok()?;
-    let _ = win.set_focus();
-    apply_glass(&win);
-    elevate_above_fullscreen(&win);
+    // apply_glass + elevate_above_fullscreen both reach into AppKit
+    // (NSVisualEffectView, NSWindow.setCollectionBehavior /
+    // setLevel:). Those MUST run on the main thread or the process
+    // crashes. show_picker itself is called from a worker thread
+    // (see dispatch.rs spawn), so dispatch back.
+    let win_for_main = win.clone();
+    let _ = app.run_on_main_thread(move || {
+        apply_glass(&win_for_main);
+        elevate_above_fullscreen(&win_for_main);
+        let _ = win_for_main.set_focus();
+    });
     tracing::debug!(%url, "picker: window opened");
 
     // Sync blocking wait — we're a worker thread, this doesn't tie up
