@@ -104,6 +104,7 @@ pub fn show_picker(
     let win = builder.build().ok()?;
     let _ = win.set_focus();
     apply_glass(&win);
+    elevate_above_fullscreen(&win);
     tracing::debug!(%url, "picker: window opened");
 
     // Sync blocking wait — we're a worker thread, this doesn't tie up
@@ -175,6 +176,48 @@ fn apply_glass(window: &tauri::WebviewWindow) {
             Some(16.0), // matches the inner content's rounded-2xl
         ) {
             tracing::warn!(?err, "picker: vibrancy failed");
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = window;
+    }
+}
+
+/// Make the picker float over a full-screen Space (Lark, Slack,
+/// browser fullscreen, etc.) and sit above all normal floating
+/// windows. Direct AppKit msg_send! so we don't pull in the entire
+/// objc2-app-kit NSWindow feature tree.
+fn elevate_above_fullscreen(window: &tauri::WebviewWindow) {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2::msg_send;
+        use objc2::runtime::AnyObject;
+
+        // NSWindowCollectionBehaviorCanJoinAllSpaces   = 1 << 0  = 1
+        // NSWindowCollectionBehaviorFullScreenAuxiliary = 1 << 8 = 256
+        // Together: the window appears on every Space (including
+        // full-screen Spaces) without itself becoming full-screen.
+        const COLLECTION_BEHAVIOR: u64 = 1 | (1 << 8);
+        // NSStatusWindowLevel — above NSFloatingWindowLevel, below
+        // NSScreenSaverWindowLevel. Slack / Lark floating windows max
+        // out at floating; status puts us above them.
+        const NS_STATUS_WINDOW_LEVEL: isize = 25;
+
+        let raw = match window.ns_window() {
+            Ok(p) => p as *mut AnyObject,
+            Err(err) => {
+                tracing::warn!(?err, "picker: ns_window unavailable");
+                return;
+            }
+        };
+        if raw.is_null() {
+            return;
+        }
+        unsafe {
+            let ns: &AnyObject = &*raw;
+            let _: () = msg_send![ns, setCollectionBehavior: COLLECTION_BEHAVIOR];
+            let _: () = msg_send![ns, setLevel: NS_STATUS_WINDOW_LEVEL];
         }
     }
     #[cfg(not(target_os = "macos"))]

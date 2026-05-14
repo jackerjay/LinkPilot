@@ -97,11 +97,10 @@ export function PickerWindow() {
       tabIndex={0}
       onKeyDown={onKeyDown}
       // macOS-transparent window with NSVisualEffectView vibrancy under
-      // the webview (see picker.rs::apply_glass). A semi-transparent
-      // overlay tints the blur dark for legibility and the rounded
-      // corners now show through to the desktop instead of the
-      // window's own background.
-      className="flex h-screen flex-col items-center justify-center gap-5 rounded-2xl bg-black/30 p-6 text-white outline outline-1 -outline-offset-1 outline-white/10 dark:bg-black/40"
+      // the webview (see picker.rs::apply_glass). A thin dark overlay
+      // tints the blur for legibility; rounded corners reveal the
+      // desktop because the window itself is transparent.
+      className="flex h-screen flex-col items-center justify-center gap-5 rounded-2xl bg-black/25 p-6 text-white"
       style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div className="flex w-full flex-col items-center gap-1">
