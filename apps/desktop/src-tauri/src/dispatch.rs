@@ -20,8 +20,10 @@ pub enum LaunchOutcome {
     Launched(#[allow(dead_code)] BrowserTarget),
     /// Decision was Allow / Block — intentionally no launch.
     Skipped,
-    /// User dismissed the Ask prompt.
-    Cancelled,
+    /// Ask flow kicked off on a worker thread; launch (or cancel)
+    /// happens after the user picks. Caller returns immediately so the
+    /// main thread isn't tied up while the picker is on screen.
+    Pending,
     /// A real failure (bad URL, no installed browsers, launcher error).
     Failed(String),
 }
@@ -54,20 +56,39 @@ pub fn execute(
             tracing::info!(
                 candidate_count = candidates.len(),
                 %raw_url,
-                "dispatch: ask — showing picker window"
+                "dispatch: ask — spawning picker thread"
             );
-            let target = match resolve_ask(app, state, candidates, raw_url) {
-                Some(t) => t,
-                None => {
-                    tracing::info!("dispatch: ask cancelled");
-                    return LaunchOutcome::Cancelled;
+            // Detach to a worker thread: opening the picker window +
+            // blocking-recv on the user's pick would otherwise tie up
+            // the caller (main thread for deep-link callback / sync
+            // Tauri command), and then `picker_resolve` (also a sync
+            // command, also on main thread) could never run — classic
+            // deadlock that froze the UI for 60s on the first attempt.
+            let app = app.clone();
+            let state = state.clone();
+            let candidates = candidates.clone();
+            let url = raw_url.to_string();
+            std::thread::spawn(move || {
+                let target = match resolve_ask(&app, &state, &candidates, &url) {
+                    Some(t) => t,
+                    None => {
+                        tracing::info!("dispatch: ask cancelled");
+                        return;
+                    }
+                };
+                let parsed = match Url::parse(&url) {
+                    Ok(u) => u,
+                    Err(err) => {
+                        tracing::error!(?err, %url, "ask: bad URL after pick");
+                        return;
+                    }
+                };
+                tracing::info!(?target, "dispatch: ask resolved — launching");
+                if let Err(err) = state.platform.url_launcher().open(&target, &parsed) {
+                    tracing::error!(?err, "ask: launcher failed");
                 }
-            };
-            tracing::info!(?target, "dispatch: ask resolved");
-            match state.platform.url_launcher().open(&target, &parsed) {
-                Ok(()) => LaunchOutcome::Launched(target),
-                Err(err) => LaunchOutcome::Failed(err.to_string()),
-            }
+            });
+            LaunchOutcome::Pending
         }
 
         RoutingDecision::Allow { .. } | RoutingDecision::Block { .. } => {
