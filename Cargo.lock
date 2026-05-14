@@ -2210,6 +2210,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+ "window-vibrancy",
 ]
 
 [[package]]
