@@ -129,7 +129,7 @@ pub fn route_open(
     match dispatch::execute(&app, state.inner(), &decision, &request.url) {
         LaunchOutcome::Launched(_)
         | LaunchOutcome::Skipped
-        | LaunchOutcome::Cancelled => {}
+        | LaunchOutcome::Pending => {}
         LaunchOutcome::Failed(err) => return Err(err),
     }
     Ok(decision)

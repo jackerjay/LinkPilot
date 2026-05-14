@@ -55,7 +55,7 @@ impl RequestHandler for DaemonHandler {
                 match dispatch::execute(&self.app, &self.state, &decision, &context.url) {
                     LaunchOutcome::Launched(_)
                     | LaunchOutcome::Skipped
-                    | LaunchOutcome::Cancelled => {}
+                    | LaunchOutcome::Pending => {}
                     LaunchOutcome::Failed(err) => {
                         return Response::Error {
                             request_id,

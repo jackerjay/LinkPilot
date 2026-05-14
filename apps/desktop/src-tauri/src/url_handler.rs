@@ -43,7 +43,9 @@ pub fn dispatch_system_url(state: &AppState, app: &AppHandle, url: String) {
     let _ = app.emit("route-logged", &record);
 
     match dispatch::execute(app, state, &decision, &url) {
-        LaunchOutcome::Launched(_) | LaunchOutcome::Skipped | LaunchOutcome::Cancelled => {}
+        LaunchOutcome::Launched(_)
+        | LaunchOutcome::Skipped
+        | LaunchOutcome::Pending => {}
         LaunchOutcome::Failed(err) => {
             tracing::error!(%err, %url, "url_handler: launch failed");
             let _ = app.emit("route-failed", format!("launch failed for {url}: {err}"));
