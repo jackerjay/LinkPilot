@@ -63,11 +63,7 @@ const WINDOW_TIMEOUT_SECS: u64 = 60;
 
 /// Show the picker, block until the user picks or cancels (or 60s
 /// elapses), and return the picked choice id.
-pub fn show_picker(
-    app: &AppHandle,
-    url: &str,
-    mut choices: Vec<PickerChoice>,
-) -> Option<String> {
+pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -> Option<String> {
     // Pre-render every choice's icon as a base64 data URL so the
     // picker webview can paint the icon row on its very first frame
     // — see `PickerChoice::icon_data_url` for why this matters.
@@ -255,14 +251,13 @@ fn render_icon_data_url(
         let bundle = bundle_id.filter(|s| !s.is_empty());
         let path = app_path.filter(|s| !s.is_empty()).map(std::path::Path::new);
         let name = name.filter(|s| !s.is_empty());
-        let png_path =
-            match linkpilot_platform_mac::app_icon::ensure_png(bundle, path, name, 64) {
-                Ok(p) => p,
-                Err(err) => {
-                    tracing::debug!(?err, ?bundle, ?path, ?name, "picker: icon prefetch failed");
-                    return None;
-                }
-            };
+        let png_path = match linkpilot_platform_mac::app_icon::ensure_png(bundle, path, name, 64) {
+            Ok(p) => p,
+            Err(err) => {
+                tracing::debug!(?err, ?bundle, ?path, ?name, "picker: icon prefetch failed");
+                return None;
+            }
+        };
         let bytes = std::fs::read(&png_path).ok()?;
         let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
         Some(format!("data:image/png;base64,{b64}"))
@@ -385,14 +380,10 @@ fn elevate_above_fullscreen(window: &tauri::WebviewWindow) {
     }
 }
 
-
 #[tauri::command]
 pub fn picker_resolve(state: tauri::State<'_, PickerState>, picked: Option<String>) {
-    let sender_opt: Option<mpsc::Sender<Option<String>>> = state
-        .pending
-        .lock()
-        .ok()
-        .and_then(|mut g| g.take());
+    let sender_opt: Option<mpsc::Sender<Option<String>>> =
+        state.pending.lock().ok().and_then(|mut g| g.take());
     if let Some(tx) = sender_opt {
         let _ = tx.send(picked);
     }

@@ -277,7 +277,9 @@ fn classify_ipc_error(err: ClientError) -> IpcError {
     }
 }
 
-fn try_daemon_route_open(context: &RoutingContext) -> std::result::Result<RoutingDecision, IpcError> {
+fn try_daemon_route_open(
+    context: &RoutingContext,
+) -> std::result::Result<RoutingDecision, IpcError> {
     let request = Request::RouteOpen {
         request_id: new_request_id(),
         context: context.clone(),
@@ -285,9 +287,7 @@ fn try_daemon_route_open(context: &RoutingContext) -> std::result::Result<Routin
     let response = client::send(&default_endpoint(), request).map_err(classify_ipc_error)?;
     match response {
         Response::RouteDecision { decision, .. } => Ok(decision),
-        Response::Error { code, message, .. } => {
-            Err(IpcError::Other(format!("{code}: {message}")))
-        }
+        Response::Error { code, message, .. } => Err(IpcError::Other(format!("{code}: {message}"))),
         other => Err(IpcError::Other(format!("unexpected response: {other:?}"))),
     }
 }
@@ -299,9 +299,7 @@ fn try_daemon_doctor() -> std::result::Result<DoctorReport, IpcError> {
     let response = client::send(&default_endpoint(), request).map_err(classify_ipc_error)?;
     match response {
         Response::DoctorReport { report, .. } => Ok(report),
-        Response::Error { code, message, .. } => {
-            Err(IpcError::Other(format!("{code}: {message}")))
-        }
+        Response::Error { code, message, .. } => Err(IpcError::Other(format!("{code}: {message}"))),
         other => Err(IpcError::Other(format!("unexpected response: {other:?}"))),
     }
 }
@@ -314,9 +312,7 @@ fn try_daemon_config_get() -> std::result::Result<linkpilot_core::config::Config
     let response = client::send(&default_endpoint(), request).map_err(classify_ipc_error)?;
     match response {
         Response::ConfigSnapshot { doc, .. } => Ok(doc),
-        Response::Error { code, message, .. } => {
-            Err(IpcError::Other(format!("{code}: {message}")))
-        }
+        Response::Error { code, message, .. } => Err(IpcError::Other(format!("{code}: {message}"))),
         other => Err(IpcError::Other(format!("unexpected response: {other:?}"))),
     }
 }
@@ -390,7 +386,7 @@ fn describe_when(tree: &linkpilot_core::rules::MatcherTree) -> String {
         MatcherTree::Always => "always".into(),
         MatcherTree::UrlHost { pattern } => format!("host {pattern}"),
         MatcherTree::UrlPath { pattern } => format!("path {pattern}"),
-        MatcherTree::SourceApp { name } => format!("from app {name}"),
+        MatcherTree::SourceApp { name, .. } => format!("from app {name}"),
         MatcherTree::SourceBrowser { browser } => format!("from browser {browser}"),
         MatcherTree::SourceProfile { profile } => format!("from profile {profile}"),
         MatcherTree::All { of } => of

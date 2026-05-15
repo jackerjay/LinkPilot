@@ -46,8 +46,8 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let config_path = default_config_path()
-                .map_err(|e| anyhow::anyhow!("resolve config path: {e}"))?;
+            let config_path =
+                default_config_path().map_err(|e| anyhow::anyhow!("resolve config path: {e}"))?;
             let (config_store, created) = ConfigStore::load_or_init(config_path.clone())
                 .map_err(|e| anyhow::anyhow!("load config {}: {e}", config_path.display()))?;
             if created {
@@ -75,9 +75,7 @@ pub fn run() {
             let watcher = config_store
                 .watch(move |origin| {
                     let label = match origin {
-                        linkpilot_core::config::store::ChangeOrigin::External => {
-                            "external"
-                        }
+                        linkpilot_core::config::store::ChangeOrigin::External => "external",
                         linkpilot_core::config::store::ChangeOrigin::Echo => "echo",
                     };
                     let _ = app_handle.emit("config-changed", label);
@@ -129,8 +127,7 @@ pub fn run() {
                 // it has no chrome). Resolve the in-flight ask as
                 // cancelled so the dispatch thread doesn't time out.
                 WindowEvent::CloseRequested { .. } if window.label() == "picker" => {
-                    let state: tauri::State<picker::PickerState> =
-                        window.app_handle().state();
+                    let state: tauri::State<picker::PickerState> = window.app_handle().state();
                     picker::picker_resolve(state, None);
                 }
                 // Tray popover: dismiss when the user clicks elsewhere.

@@ -46,14 +46,17 @@ fn parse_args() -> Option<Args> {
             _ => return None,
         }
     }
-    Some(Args { input, output, scale, exp })
+    Some(Args {
+        input,
+        output,
+        scale,
+        exp,
+    })
 }
 
 fn main() -> ExitCode {
     let Some(args) = parse_args() else {
-        eprintln!(
-            "usage: linkpilot-icon-padder INPUT OUTPUT [--scale 0.82] [--exp 5.0]",
-        );
+        eprintln!("usage: linkpilot-icon-padder INPUT OUTPUT [--scale 0.82] [--exp 5.0]",);
         return ExitCode::FAILURE;
     };
     if !(0.1..=1.0).contains(&args.scale) {

@@ -18,8 +18,8 @@ impl MacAutostart {
     }
 
     fn plist_path(&self) -> Result<PathBuf> {
-        let home = std::env::var_os("HOME")
-            .ok_or_else(|| PlatformError::Other("HOME not set".into()))?;
+        let home =
+            std::env::var_os("HOME").ok_or_else(|| PlatformError::Other("HOME not set".into()))?;
         Ok(PathBuf::from(home)
             .join("Library")
             .join("LaunchAgents")

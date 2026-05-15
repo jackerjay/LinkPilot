@@ -67,13 +67,23 @@ fn default_enabled() -> bool {
 #[serde(tag = "op", rename_all = "kebab-case")]
 pub enum MatcherTree {
     Always,
-    All { of: Vec<MatcherTree> },
-    Any { of: Vec<MatcherTree> },
-    Not { of: Box<MatcherTree> },
+    All {
+        of: Vec<MatcherTree>,
+    },
+    Any {
+        of: Vec<MatcherTree>,
+    },
+    Not {
+        of: Box<MatcherTree>,
+    },
 
     /// Glob-style host match: `github.com`, `*.corp.example.com`.
-    UrlHost { pattern: String },
-    UrlPath { pattern: String },
+    UrlHost {
+        pattern: String,
+    },
+    UrlPath {
+        pattern: String,
+    },
 
     /// Source application: matches by bundle id when set (stable across
     /// locales + display-name vs CFBundleName quirks), else falls back to
@@ -85,16 +95,22 @@ pub enum MatcherTree {
         bundle_id: Option<String>,
     },
     /// Source browser id (when navigation came from extension).
-    SourceBrowser { browser: String },
+    SourceBrowser {
+        browser: String,
+    },
     /// Source profile id within the source browser.
-    SourceProfile { profile: String },
+    SourceProfile {
+        profile: String,
+    },
 }
 
 /// What to do when a rule matches.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum Action {
-    Open { target: BrowserTarget },
+    Open {
+        target: BrowserTarget,
+    },
     /// Keep navigation in the source browser (e.g. OAuth flows).
     KeepSource,
     Ask,

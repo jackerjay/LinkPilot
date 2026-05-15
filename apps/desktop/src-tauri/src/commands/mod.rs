@@ -8,7 +8,9 @@ use linkpilot_core::config::{ConfigDocument, Workspace, WriterId};
 use linkpilot_core::history::RouteRecord;
 use linkpilot_core::platform::SetDefaultOutcome;
 use linkpilot_core::protocol::DoctorReport;
-use linkpilot_core::routing::{Explained, Router, RoutingContext, RoutingDecision, Source, SourceKind};
+use linkpilot_core::routing::{
+    Explained, Router, RoutingContext, RoutingDecision, Source, SourceKind,
+};
 
 use crate::dispatch::{self, LaunchOutcome};
 use linkpilot_core::rules::{Rule, RuleId};
@@ -25,10 +27,7 @@ pub fn config_get(state: State<'_, AppState>) -> ConfigDocument {
 }
 
 #[tauri::command]
-pub fn config_replace(
-    state: State<'_, AppState>,
-    doc: ConfigDocument,
-) -> Result<(), String> {
+pub fn config_replace(state: State<'_, AppState>, doc: ConfigDocument) -> Result<(), String> {
     state
         .config
         .replace(doc, WriterId::Gui)
@@ -66,10 +65,7 @@ pub fn rule_delete(state: State<'_, AppState>, id: RuleId) -> Result<(), String>
 // affected rule so no rule is left dangling.
 
 #[tauri::command]
-pub fn workspace_upsert(
-    state: State<'_, AppState>,
-    workspace: Workspace,
-) -> Result<(), String> {
+pub fn workspace_upsert(state: State<'_, AppState>, workspace: Workspace) -> Result<(), String> {
     let mut doc = state.config.document();
     if let Some(existing) = doc.workspaces.iter_mut().find(|w| w.id == workspace.id) {
         *existing = workspace;
@@ -122,10 +118,7 @@ pub fn workspace_set_enabled(
 /// walking the rule list (see `routing::evaluate_explained`). Used by
 /// the tray popover's Smart Routing toggle.
 #[tauri::command]
-pub fn set_smart_routing(
-    state: State<'_, AppState>,
-    enabled: bool,
-) -> Result<(), String> {
+pub fn set_smart_routing(state: State<'_, AppState>, enabled: bool) -> Result<(), String> {
     let mut doc = state.config.document();
     doc.settings.smart_routing_enabled = enabled;
     state
@@ -162,9 +155,7 @@ fn merged_browsers(state: &AppState) -> Vec<InstalledBrowser> {
 }
 
 #[tauri::command]
-pub fn list_browsers(
-    state: State<'_, AppState>,
-) -> Result<Vec<InstalledBrowser>, String> {
+pub fn list_browsers(state: State<'_, AppState>) -> Result<Vec<InstalledBrowser>, String> {
     Ok(merged_browsers(&state))
 }
 
@@ -174,11 +165,7 @@ pub fn add_custom_browser(
     browser: InstalledBrowser,
 ) -> Result<(), String> {
     let mut doc = state.config.document();
-    if let Some(existing) = doc
-        .custom_browsers
-        .iter_mut()
-        .find(|b| b.id == browser.id)
-    {
+    if let Some(existing) = doc.custom_browsers.iter_mut().find(|b| b.id == browser.id) {
         *existing = browser;
     } else {
         doc.custom_browsers.push(browser);
@@ -190,10 +177,7 @@ pub fn add_custom_browser(
 }
 
 #[tauri::command]
-pub fn remove_custom_browser(
-    state: State<'_, AppState>,
-    id: BrowserId,
-) -> Result<(), String> {
+pub fn remove_custom_browser(state: State<'_, AppState>, id: BrowserId) -> Result<(), String> {
     let mut doc = state.config.document();
     doc.custom_browsers.retain(|b| b.id != id);
     state
@@ -233,10 +217,7 @@ pub struct RouteRequest {
 }
 
 #[tauri::command]
-pub fn route_evaluate(
-    state: State<'_, AppState>,
-    request: RouteRequest,
-) -> Explained {
+pub fn route_evaluate(state: State<'_, AppState>, request: RouteRequest) -> Explained {
     let context = build_context(&request);
     let doc = state.config.document();
     Router::new(&doc).evaluate_explained(&context)
@@ -258,19 +239,14 @@ pub fn route_open(
     let _ = app.emit("route-logged", &record);
 
     match dispatch::execute(&app, state.inner(), &decision, &request.url) {
-        LaunchOutcome::Launched(_)
-        | LaunchOutcome::Skipped
-        | LaunchOutcome::Pending => {}
+        LaunchOutcome::Launched(_) | LaunchOutcome::Skipped | LaunchOutcome::Pending => {}
         LaunchOutcome::Failed(err) => return Err(err),
     }
     Ok(decision)
 }
 
 #[tauri::command]
-pub fn route_history(
-    state: State<'_, AppState>,
-    limit: Option<usize>,
-) -> Vec<RouteRecord> {
+pub fn route_history(state: State<'_, AppState>, limit: Option<usize>) -> Vec<RouteRecord> {
     state.history.recent(limit.unwrap_or(100))
 }
 
@@ -426,18 +402,14 @@ pub fn app_icon(request: AppIconRequest) -> Option<AppIcon> {
             .filter(|s| !s.is_empty())
             .map(std::path::Path::new);
         let name = request.name.as_deref().filter(|s| !s.is_empty());
-        let png_path = match linkpilot_platform_mac::app_icon::ensure_png(
-            bundle,
-            path,
-            name,
-            request.size,
-        ) {
-            Ok(p) => p,
-            Err(err) => {
-                tracing::debug!(?err, ?bundle, ?path, ?name, "app_icon: extraction failed");
-                return None;
-            }
-        };
+        let png_path =
+            match linkpilot_platform_mac::app_icon::ensure_png(bundle, path, name, request.size) {
+                Ok(p) => p,
+                Err(err) => {
+                    tracing::debug!(?err, ?bundle, ?path, ?name, "app_icon: extraction failed");
+                    return None;
+                }
+            };
         let bytes = std::fs::read(&png_path).ok()?;
         let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
         return Some(AppIcon {

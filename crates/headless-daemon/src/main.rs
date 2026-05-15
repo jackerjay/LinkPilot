@@ -9,6 +9,9 @@ use anyhow::Result;
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     let endpoint = linkpilot_ipc::path::default_endpoint();
-    tracing::info!(?endpoint, "linkpilot-daemon placeholder (v0.1 runs inside Tauri)");
+    tracing::info!(
+        ?endpoint,
+        "linkpilot-daemon placeholder (v0.1 runs inside Tauri)"
+    );
     Ok(())
 }

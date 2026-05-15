@@ -226,17 +226,26 @@ fn eval_tree(tree: &MatcherTree, ctx: &RoutingContext) -> MatcherEval {
         MatcherTree::All { of } => {
             let children: Vec<MatcherEval> = of.iter().map(|m| eval_tree(m, ctx)).collect();
             let matched = !children.is_empty() && children.iter().all(|c| c.matched());
-            MatcherEval::All { matched, of: children }
+            MatcherEval::All {
+                matched,
+                of: children,
+            }
         }
         MatcherTree::Any { of } => {
             let children: Vec<MatcherEval> = of.iter().map(|m| eval_tree(m, ctx)).collect();
             let matched = children.iter().any(|c| c.matched());
-            MatcherEval::Any { matched, of: children }
+            MatcherEval::Any {
+                matched,
+                of: children,
+            }
         }
         MatcherTree::Not { of } => {
             let child = eval_tree(of, ctx);
             let matched = !child.matched();
-            MatcherEval::Not { matched, of: Box::new(child) }
+            MatcherEval::Not {
+                matched,
+                of: Box::new(child),
+            }
         }
         MatcherTree::UrlHost { pattern } => MatcherEval::UrlHost {
             matched: match_host(pattern, &ctx.url),
@@ -447,7 +456,11 @@ mod tests {
         config.rules.push(r);
         let decision = Router::new(&config).evaluate(&ctx("https://github.com/x"));
         match decision {
-            RoutingDecision::Open { target, matched_rule, .. } => {
+            RoutingDecision::Open {
+                target,
+                matched_rule,
+                ..
+            } => {
                 // Workspace off → rule skipped → default target (arc) wins.
                 assert_eq!(target.browser.0, "arc");
                 assert!(matched_rule.is_none());
@@ -508,7 +521,11 @@ mod tests {
         assert!(explained.explanation.is_none(), "no rule should have fired");
         // And the decision should be the default target (arc), not chrome.
         match explained.decision {
-            RoutingDecision::Open { target, matched_rule, .. } => {
+            RoutingDecision::Open {
+                target,
+                matched_rule,
+                ..
+            } => {
                 assert_eq!(target.browser.0, "arc");
                 assert!(matched_rule.is_none());
             }

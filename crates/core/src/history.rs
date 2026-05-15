@@ -84,12 +84,7 @@ impl RouteHistory {
 
     pub fn recent(&self, limit: usize) -> Vec<RouteRecord> {
         let guard = self.inner.lock().expect("history mutex poisoned");
-        guard
-            .iter()
-            .rev()
-            .take(limit)
-            .cloned()
-            .collect::<Vec<_>>()
+        guard.iter().rev().take(limit).cloned().collect::<Vec<_>>()
     }
 
     pub fn len(&self) -> usize {

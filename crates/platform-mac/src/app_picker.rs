@@ -64,10 +64,7 @@ pub fn choose_app() -> Result<Option<PickedApp>, String> {
     // Read Info.plist for the bundle id + display name. Falling back
     // to the path basename keeps "name" populated even for bundles
     // with weird Info.plist schemas.
-    let info_plist = format!(
-        "{}/Contents/Info",
-        path.trim_end_matches('/')
-    );
+    let info_plist = format!("{}/Contents/Info", path.trim_end_matches('/'));
 
     let bundle_id = read_plist_key(&info_plist, "CFBundleIdentifier").unwrap_or_default();
 
