@@ -24,12 +24,16 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: apps/desktop/package-lock.json
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
+
+      - name: Verify npm cache
+        working-directory: apps/desktop
+        run: npm cache verify
 
       - name: Install desktop dependencies
         working-directory: apps/desktop
