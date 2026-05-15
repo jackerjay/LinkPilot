@@ -25,19 +25,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: apps/desktop/package-lock.json
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Verify npm cache
-        working-directory: apps/desktop
-        run: npm cache verify
-
       - name: Install desktop dependencies
         working-directory: apps/desktop
-        run: npm install --include=dev --no-audit --no-fund
+        run: corepack yarn install --no-lockfile --non-interactive
 
       - name: Run Rust tests
         run: cargo test --workspace --exclude linkpilot-desktop
@@ -47,7 +41,7 @@ jobs:
 
       - name: Build desktop DMG
         working-directory: apps/desktop
-        run: npm run tauri -- build --bundles dmg
+        run: corepack yarn run tauri build --bundles dmg
 
       - name: Package artifacts
         shell: bash

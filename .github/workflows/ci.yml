@@ -53,17 +53,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: apps/desktop/package-lock.json
-
-      - name: Verify npm cache
-        run: npm cache verify
 
       - name: Install dependencies
-        run: npm install --include=dev --no-audit --no-fund
+        run: corepack yarn install --no-lockfile --non-interactive
 
       - name: Check TypeScript binary
-        run: ./node_modules/.bin/tsc --version
+        run: corepack yarn run tsc --version
 
       - name: Build frontend
-        run: npm run build
+        run: corepack yarn run build
