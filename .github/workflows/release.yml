@@ -56,7 +56,7 @@ jobs:
           shasum -a 256 dist/release/* > dist/release/checksums.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
