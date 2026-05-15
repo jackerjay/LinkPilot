@@ -214,7 +214,7 @@ fn run_rules_list(config: Option<PathBuf>, local: bool) -> Result<()> {
     };
 
     let mut rules: Vec<_> = doc.rules.iter().collect();
-    rules.sort_by(|a, b| b.priority.cmp(&a.priority));
+    rules.sort_by_key(|rule| std::cmp::Reverse(rule.priority));
     if rules.is_empty() {
         println!("(no rules)");
         return Ok(());

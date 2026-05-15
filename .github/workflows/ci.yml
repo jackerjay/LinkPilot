@@ -60,7 +60,7 @@ jobs:
         run: npm ci --include=dev
 
       - name: Check TypeScript binary
-        run: npm exec tsc -- --version
+        run: ./node_modules/.bin/tsc --version
 
       - name: Build frontend
         run: npm run build
