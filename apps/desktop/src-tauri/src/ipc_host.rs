@@ -31,7 +31,10 @@ impl DaemonHandler {
 impl RequestHandler for DaemonHandler {
     fn handle(&self, request: Request) -> Response {
         match request {
-            Request::RouteEvaluate { request_id, context } => {
+            Request::RouteEvaluate {
+                request_id,
+                context,
+            } => {
                 let doc = self.state.config.document();
                 let decision = Router::new(&doc).evaluate(&context);
                 Response::RouteDecision {
@@ -40,7 +43,10 @@ impl RequestHandler for DaemonHandler {
                 }
             }
 
-            Request::RouteOpen { request_id, context } => {
+            Request::RouteOpen {
+                request_id,
+                context,
+            } => {
                 let doc = self.state.config.document();
                 let explained = Router::new(&doc).evaluate_explained(&context);
                 let decision = explained.decision.clone();

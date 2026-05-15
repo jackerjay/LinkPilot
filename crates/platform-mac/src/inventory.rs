@@ -90,8 +90,7 @@ fn search_dirs() -> Vec<PathBuf> {
 }
 
 fn application_support_root() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .map(|h| PathBuf::from(h).join("Library").join("Application Support"))
+    std::env::var_os("HOME").map(|h| PathBuf::from(h).join("Library").join("Application Support"))
 }
 
 fn find_app_path(app_dir: &str) -> Option<PathBuf> {

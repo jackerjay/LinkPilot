@@ -16,7 +16,10 @@ pub fn dispatch_system_url(state: &AppState, app: &AppHandle, url: String) {
     // The Apple Event delivered by tauri-plugin-deep-link doesn't carry the
     // sender, so we ask the platform crate's opener detector — on macOS that
     // returns the most-recently-active app other than LinkPilot itself.
-    let opener = state.platform.opener_detector().detect(&OpenEventHint::default());
+    let opener = state
+        .platform
+        .opener_detector()
+        .detect(&OpenEventHint::default());
     if let Some(o) = &opener {
         tracing::debug!(name = %o.name, bundle = ?o.bundle_id, "detected opener");
     }
@@ -43,9 +46,7 @@ pub fn dispatch_system_url(state: &AppState, app: &AppHandle, url: String) {
     let _ = app.emit("route-logged", &record);
 
     match dispatch::execute(app, state, &decision, &url) {
-        LaunchOutcome::Launched(_)
-        | LaunchOutcome::Skipped
-        | LaunchOutcome::Pending => {}
+        LaunchOutcome::Launched(_) | LaunchOutcome::Skipped | LaunchOutcome::Pending => {}
         LaunchOutcome::Failed(err) => {
             tracing::error!(%err, %url, "url_handler: launch failed");
             let _ = app.emit("route-failed", format!("launch failed for {url}: {err}"));

@@ -43,14 +43,12 @@ pub fn execute(
     };
 
     match decision {
-        RoutingDecision::Open { target, .. } => match state
-            .platform
-            .url_launcher()
-            .open(target, &parsed)
-        {
-            Ok(()) => LaunchOutcome::Launched(target.clone()),
-            Err(err) => LaunchOutcome::Failed(err.to_string()),
-        },
+        RoutingDecision::Open { target, .. } => {
+            match state.platform.url_launcher().open(target, &parsed) {
+                Ok(()) => LaunchOutcome::Launched(target.clone()),
+                Err(err) => LaunchOutcome::Failed(err.to_string()),
+            }
+        }
 
         RoutingDecision::Ask { candidates, .. } => {
             tracing::info!(
@@ -91,9 +89,7 @@ pub fn execute(
             LaunchOutcome::Pending
         }
 
-        RoutingDecision::Allow { .. } | RoutingDecision::Block { .. } => {
-            LaunchOutcome::Skipped
-        }
+        RoutingDecision::Allow { .. } | RoutingDecision::Block { .. } => LaunchOutcome::Skipped,
     }
 }
 

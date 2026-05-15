@@ -17,6 +17,9 @@ fn main() -> Result<()> {
         .init();
 
     let endpoint = linkpilot_ipc::path::default_endpoint();
-    tracing::info!(?endpoint, "linkpilot-native-host placeholder; bridge lands in v0.3");
+    tracing::info!(
+        ?endpoint,
+        "linkpilot-native-host placeholder; bridge lands in v0.3"
+    );
     Ok(())
 }

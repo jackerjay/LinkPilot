@@ -23,10 +23,9 @@ use linkpilot_core::platform::{PlatformError, Result};
 /// Where the PNG cache lives. Co-located with the daemon's config so a
 /// clean uninstall is a single rm -rf.
 fn cache_dir() -> Result<PathBuf> {
-    let home = std::env::var_os("HOME")
-        .ok_or_else(|| PlatformError::Other("HOME not set".into()))?;
-    let dir = PathBuf::from(home)
-        .join("Library/Application Support/LinkPilot/icons");
+    let home =
+        std::env::var_os("HOME").ok_or_else(|| PlatformError::Other("HOME not set".into()))?;
+    let dir = PathBuf::from(home).join("Library/Application Support/LinkPilot/icons");
     fs::create_dir_all(&dir).map_err(PlatformError::Io)?;
     Ok(dir)
 }
@@ -62,11 +61,7 @@ pub fn ensure_png(
     Ok(out)
 }
 
-fn cache_key(
-    bundle_id: Option<&str>,
-    app_path: Option<&Path>,
-    name: Option<&str>,
-) -> String {
+fn cache_key(bundle_id: Option<&str>, app_path: Option<&Path>, name: Option<&str>) -> String {
     if let Some(b) = bundle_id {
         sanitize(b)
     } else if let Some(p) = app_path {
@@ -81,7 +76,13 @@ fn cache_key(
 /// File-system safe: keep alphanumerics, replace anything else with `_`.
 fn sanitize(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '.' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '.' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -102,9 +103,10 @@ fn resolve_app_path(bundle_id: &str) -> Result<PathBuf> {
         )));
     }
     let stdout = String::from_utf8_lossy(&out.stdout);
-    let first = stdout.lines().next().ok_or_else(|| {
-        PlatformError::Other(format!("no app found for bundle id {bundle_id}"))
-    })?;
+    let first = stdout
+        .lines()
+        .next()
+        .ok_or_else(|| PlatformError::Other(format!("no app found for bundle id {bundle_id}")))?;
     Ok(PathBuf::from(first))
 }
 
@@ -145,7 +147,9 @@ fn resolve_app_path_by_name(name: &str) -> Result<PathBuf> {
     if let Some(path) = mdfind_first(&by_meta) {
         return Ok(path);
     }
-    Err(PlatformError::Other(format!("no app found for name {name}")))
+    Err(PlatformError::Other(format!(
+        "no app found for name {name}"
+    )))
 }
 
 /// Run `mdfind <query>` and return the most relevant hit. Prefers

@@ -129,3 +129,29 @@ cd apps/desktop
 npm install
 npm run build       # tsc --noEmit + vite build → apps/desktop/dist/
 ```
+
+## Contributing
+
+LinkPilot is open source under MIT OR Apache-2.0. See `CONTRIBUTING.md` for
+local setup, PR expectations, and the release process. Please report security
+issues privately; see `SECURITY.md`.
+
+## Releases
+
+Maintainers publish releases by pushing a semver tag:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The tag triggers `.github/workflows/release.yml`, which builds the macOS CLI
+and Tauri desktop bundle, creates a GitHub Release, uploads artifacts, and
+publishes SHA-256 checksums.
+
+Current release artifacts are unsigned. On macOS, unsigned builds may require
+removing quarantine before first launch:
+
+```sh
+xattr -dr com.apple.quarantine LinkPilot.app
+```

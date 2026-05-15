@@ -4,13 +4,13 @@
 
 pub mod app_icon;
 pub mod app_picker;
-pub mod prompt;
 mod autostart;
 mod default_browser;
 mod inventory;
 mod launcher;
 mod notifier;
 mod opener;
+pub mod prompt;
 
 use linkpilot_core::platform::{
     Autostart, BrowserInventory, DefaultBrowserController, Notifier, OpenerDetector,

@@ -66,9 +66,6 @@ async fn send_async(endpoint: &Endpoint, request: Request) -> Result<Response, C
 }
 
 #[cfg(not(unix))]
-async fn send_async(
-    _endpoint: &Endpoint,
-    _request: Request,
-) -> Result<Response, ClientError> {
+async fn send_async(_endpoint: &Endpoint, _request: Request) -> Result<Response, ClientError> {
     Err(ClientError::UnsupportedEndpoint)
 }
