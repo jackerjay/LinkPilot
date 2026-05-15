@@ -50,6 +50,12 @@ pub struct Rule {
     pub source: RuleSource,
     #[serde(default)]
     pub note: Option<String>,
+    /// Optional workspace this rule belongs to. When set, the rule only
+    /// participates in routing if the referenced workspace is enabled.
+    /// `None` = "ungrouped"; always evaluated regardless of any
+    /// workspace state. Stable string id (see `config::Workspace`).
+    #[serde(default)]
+    pub workspace_id: Option<String>,
 }
 
 fn default_enabled() -> bool {

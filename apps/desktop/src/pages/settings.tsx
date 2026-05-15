@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -21,6 +17,7 @@ import type {
   InstalledBrowser,
   SetDefaultOutcome,
 } from "@/lib/types";
+import brandIcon from "@/assets/brand.png";
 
 interface Props {
   configEpoch: number;
@@ -128,50 +125,85 @@ export function SettingsPage({ configEpoch }: Props) {
   };
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h2 className="text-xl font-semibold tracking-tight">Settings</h2>
-        <p className="text-sm text-muted-foreground">
-          Default browser, autostart, appearance, and config IO.
-        </p>
-      </header>
+    <div>
+      <h2 className="mac-h2">Settings</h2>
+      <p className="mac-subtitle">
+        Default browser, autostart, appearance, and config IO.
+      </p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Default browser</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">
-              LinkPilot is currently the system default browser
-            </span>
-            <Badge variant={isDefault ? "success" : "destructive"}>
-              {isDefault === null ? "…" : isDefault ? "yes" : "no"}
-            </Badge>
+      <div className="mac-card-title">Default browser</div>
+      <div className="mac-card">
+        <div className="mac-row">
+          <img
+            src={brandIcon}
+            width={22}
+            height={22}
+            alt=""
+            style={{
+              borderRadius: 5,
+              flex: "0 0 22px",
+              boxShadow: "0 0 0 0.5px rgba(0,0,0,0.08)",
+            }}
+          />
+          <div className="grow">
+            <div>
+              {isDefault
+                ? "LinkPilot is the system default browser"
+                : "LinkPilot is not the default browser"}
+            </div>
+            <div className="mac-muted" style={{ fontSize: 11.5 }}>
+              All URLs route through LinkPilot's rules engine.
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-muted-foreground">
-              macOS will prompt to confirm. On Windows you'll be sent to the
-              Settings → Default apps page.
+          <span className={`mac-tag ${isDefault ? "ok" : "danger"}`}>
+            {isDefault === null ? "…" : isDefault ? "active" : "not set"}
+          </span>
+        </div>
+        {!isDefault && (
+          <div className="mac-row">
+            <span className="grow mac-muted" style={{ fontSize: 12 }}>
+              macOS will prompt to confirm. On Windows you'll be sent to
+              Settings → Default apps.
             </span>
-            <Button onClick={setAsDefault} className="shrink-0">
-              Set LinkPilot as default
-            </Button>
+            <button
+              type="button"
+              className="mac-tbtn primary"
+              onClick={setAsDefault}
+            >
+              Change…
+            </button>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Default target</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Where to open links when <strong>no rule matches</strong>. Changing
-            this rewrites the config file.
-          </p>
+      <div className="mac-card-title">Default target</div>
+      <div className="mac-card">
+        <div className="mac-row" style={{ alignItems: "flex-start" }}>
+          <div className="grow">
+            <div className="mac-row-label">Default target</div>
+            <div
+              className="mac-muted"
+              style={{ fontSize: 11.5, marginTop: 2 }}
+            >
+              Where to open links when <strong>no rule matches</strong>.
+              Changing this rewrites the config file.
+            </div>
+          </div>
           {doc ? (
-            <div className="flex items-center gap-2">
+            // TargetEditor returns a fragment of (browser select, profile
+            // select, incognito checkbox). Without a flex container they
+            // stack vertically because shadcn's SelectTrigger is a
+            // block-level button. Wrap them so they sit on one row at
+            // the right of the description, matching System Settings.
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}
+            >
               <TargetEditor
                 value={doc.default_target}
                 browsers={browsers}
@@ -179,122 +211,121 @@ export function SettingsPage({ configEpoch }: Props) {
               />
             </div>
           ) : (
-            <span className="text-sm text-muted-foreground">Loading…</span>
+            <span className="mac-muted">Loading…</span>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>General</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Launch at login</span>
-            <Checkbox
-              checked={doc?.settings.launch_at_login ?? false}
-              onCheckedChange={(v) => toggleLaunchAtLogin(v === true)}
+      <div className="mac-card-title">Appearance</div>
+      <div className="mac-card">
+        <div className="mac-row">
+          <span className="grow mac-row-label">
+            Theme
+            {themeMode === "system" && (
+              <span
+                className="mac-muted"
+                style={{ marginLeft: 6, fontSize: 11.5 }}
+              >
+                — currently <span className="mac-mono">{themeActive}</span>
+              </span>
+            )}
+          </span>
+          <Select
+            value={themeMode}
+            onValueChange={(v) => setThemeMode(v as ThemeMode)}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="system">System</SelectItem>
+              <SelectItem value="light">Light</SelectItem>
+              <SelectItem value="dark">Dark</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="mac-card-title">General</div>
+      <div className="mac-card">
+        <div className="mac-row">
+          <span className="grow mac-row-label">Launch at login</span>
+          <button
+            type="button"
+            className={`mac-switch accent ${doc?.settings.launch_at_login ? "on" : ""}`}
+            aria-pressed={!!doc?.settings.launch_at_login}
+            onClick={() => toggleLaunchAtLogin(!doc?.settings.launch_at_login)}
+          />
+        </div>
+        <div className="mac-row">
+          <span className="grow mac-row-label">Configuration file</span>
+          <span
+            className="select-text mac-mono mac-muted"
+            style={{ fontSize: 11 }}
+            title={configPath ?? undefined}
+          >
+            {configPath ?? "…"}
+          </span>
+        </div>
+      </div>
+
+      <div className="mac-card-title">Import / Export</div>
+      <div className="mac-card mac-card-pad" style={{ display: "grid", gap: 12 }}>
+        <div>
+          <div className="mac-muted" style={{ fontSize: 11, marginBottom: 4 }}>
+            Import config from path
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Input
+              value={importPath}
+              placeholder="/absolute/path/to/some.json"
+              onChange={(e) => setImportPath(e.target.value)}
             />
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm">Config file</span>
-            <span className="select-text font-mono text-xs text-muted-foreground">
-              {configPath ?? "…"}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">
-              Theme
-              {themeMode === "system" && (
-                <span className="ml-1 text-xs text-muted-foreground">
-                  — currently <span className="font-mono">{themeActive}</span>
-                </span>
-              )}
-            </span>
-            <Select
-              value={themeMode}
-              onValueChange={(v) => setThemeMode(v as ThemeMode)}
+            <Button
+              variant="outline"
+              onClick={doImport}
+              disabled={!importPath}
             >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="system">System</SelectItem>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="dark">Dark</SelectItem>
-              </SelectContent>
-            </Select>
+              Import
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Import / Export</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="import-path">Import config from path</Label>
-            <div className="flex gap-2">
-              <Input
-                id="import-path"
-                value={importPath}
-                placeholder="/absolute/path/to/some.json"
-                onChange={(e) => setImportPath(e.target.value)}
-              />
-              <Button
-                variant="outline"
-                onClick={doImport}
-                disabled={!importPath}
-              >
-                Import
-              </Button>
-            </div>
+        </div>
+        <div>
+          <div className="mac-muted" style={{ fontSize: 11, marginBottom: 4 }}>
+            Export config to path
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="export-path">Export config to path</Label>
-            <div className="flex gap-2">
-              <Input
-                id="export-path"
-                value={exportPath}
-                placeholder="/absolute/path/to/save.json"
-                onChange={(e) => setExportPath(e.target.value)}
-              />
-              <Button
-                variant="outline"
-                onClick={doExport}
-                disabled={!exportPath}
-              >
-                Export
-              </Button>
-            </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Input
+              value={exportPath}
+              placeholder="/absolute/path/to/save.json"
+              onChange={(e) => setExportPath(e.target.value)}
+            />
+            <Button
+              variant="outline"
+              onClick={doExport}
+              disabled={!exportPath}
+            >
+              Export
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {message && (
-        <Card>
-          <CardContent className="flex items-center gap-2 pt-4">
-            <Badge variant="success">info</Badge>
-            <span className="text-sm text-muted-foreground">{message}</span>
-          </CardContent>
-        </Card>
+        <div className="mac-card">
+          <div className="mac-row">
+            <span className="mac-tag ok">info</span>
+            <span className="grow mac-muted">{message}</span>
+          </div>
+        </div>
       )}
       {error && (
-        <Card>
-          <CardContent className="flex items-center gap-2 pt-4">
-            <Badge variant="destructive">error</Badge>
-            <span className="text-sm text-muted-foreground">{error}</span>
-          </CardContent>
-        </Card>
+        <div className="mac-card">
+          <div className="mac-row">
+            <span className="mac-tag danger">error</span>
+            <span className="grow mac-muted">{error}</span>
+          </div>
+        </div>
       )}
     </div>
   );

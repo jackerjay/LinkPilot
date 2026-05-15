@@ -60,14 +60,27 @@ pub fn run() {
 
             let state = AppState::new(config_store.clone(), Arc::clone(&history), platform);
 
-            // fsnotify: rebroadcast external edits to the front-end.
+            // fsnotify: rebroadcast every config change to the front-end.
+            //
+            // Both origins emit — frontends that mutate via IPC also
+            // listen on `config-changed` to refresh views they don't
+            // own (sidebar workspace dots, WorkspacePage, etc.). The
+            // origin string distinguishes "I caused this" from "an
+            // external editor caused this" should a consumer want to
+            // skip its own echo, but for now everyone just refetches
+            // — the read is cheap and the emit is debounced by the
+            // watcher itself, so there's no risk of a feedback loop
+            // (IPC reads don't write, so they don't re-fire the watch).
             let app_handle = app.handle().clone();
             let watcher = config_store
-                .watch(move |origin| match origin {
-                    linkpilot_core::config::store::ChangeOrigin::External => {
-                        let _ = app_handle.emit("config-changed", "external");
-                    }
-                    linkpilot_core::config::store::ChangeOrigin::Echo => {}
+                .watch(move |origin| {
+                    let label = match origin {
+                        linkpilot_core::config::store::ChangeOrigin::External => {
+                            "external"
+                        }
+                        linkpilot_core::config::store::ChangeOrigin::Echo => "echo",
+                    };
+                    let _ = app_handle.emit("config-changed", label);
                 })
                 .map_err(|e| anyhow::anyhow!("watch config: {e}"))?;
             state.attach_watcher(watcher);
@@ -120,6 +133,15 @@ pub fn run() {
                         window.app_handle().state();
                     picker::picker_resolve(state, None);
                 }
+                // Tray popover: dismiss when the user clicks elsewhere.
+                // Matches macOS menu-bar popover convention (Bartender,
+                // Stats, the system Wi-Fi menu). Stamp the hide so the
+                // tray-icon click handler doesn't immediately re-show
+                // (focus-lost arrives before click on macOS).
+                WindowEvent::Focused(false) if window.label() == "tray" => {
+                    let _ = window.hide();
+                    tray::note_popover_hidden(window.app_handle());
+                }
                 _ => {}
             }
         })
@@ -128,8 +150,14 @@ pub fn run() {
             commands::config_replace,
             commands::rule_upsert,
             commands::rule_delete,
+            commands::workspace_upsert,
+            commands::workspace_delete,
+            commands::workspace_set_enabled,
+            commands::set_smart_routing,
             commands::doctor,
             commands::list_browsers,
+            commands::add_custom_browser,
+            commands::remove_custom_browser,
             commands::list_profiles,
             commands::route_open,
             commands::route_evaluate,
@@ -142,6 +170,7 @@ pub fn run() {
             commands::pick_app,
             picker::picker_session,
             picker::picker_resolve,
+            tray::tray_open_main,
         ])
         .build(tauri::generate_context!())
         .expect("error while building LinkPilot")

@@ -101,6 +101,20 @@ impl<'a> Router<'a> {
     }
 
     pub fn evaluate_explained(&self, ctx: &RoutingContext) -> Explained {
+        // Master kill-switch: when smart routing is off we don't even
+        // peek at the rules — open in default_target and report it
+        // honestly so the Inspector / history can show *why* a route
+        // bypassed an obviously-matching rule.
+        if !self.config.settings.smart_routing_enabled {
+            return Explained {
+                decision: RoutingDecision::Open {
+                    target: self.config.default_target.clone(),
+                    matched_rule: None,
+                    reason: "smart routing disabled — default target".to_string(),
+                },
+                explanation: None,
+            };
+        }
         // Walk rules in declared order, collecting (priority, rule, eval)
         // for those that match. We have to eval every enabled rule's tree
         // anyway to know whether it matched, so we get the explanation for
@@ -109,6 +123,23 @@ impl<'a> Router<'a> {
         for rule in &self.config.rules {
             if !rule.enabled {
                 continue;
+            }
+            // Workspace gate: a rule in a disabled workspace is silently
+            // skipped (same as `enabled = false`). Missing-workspace
+            // dangling refs default to enabled so an accidentally
+            // orphaned rule keeps working — the delete path clears the
+            // field anyway.
+            if let Some(ws_id) = &rule.workspace_id {
+                let ws_enabled = self
+                    .config
+                    .workspaces
+                    .iter()
+                    .find(|w| &w.id == ws_id)
+                    .map(|w| w.enabled)
+                    .unwrap_or(true);
+                if !ws_enabled {
+                    continue;
+                }
             }
             let eval = eval_tree(&rule.when, ctx);
             if eval.matched() {
@@ -309,6 +340,7 @@ mod tests {
             },
             source: RuleSource::Gui,
             note: None,
+            workspace_id: None,
         }
     }
 
@@ -381,6 +413,7 @@ mod tests {
             },
             source: RuleSource::Gui,
             note: None,
+            workspace_id: None,
         });
         let mut c = ctx("https://github.com/x/y");
         c.source.app_name = Some("Slack".into());
@@ -396,6 +429,50 @@ mod tests {
                 assert!(of[1].matched());
             }
             other => panic!("expected All, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn disabled_workspace_skips_its_rules() {
+        use crate::config::Workspace;
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
+        config.workspaces.push(Workspace {
+            id: "work".into(),
+            display_name: "Work".into(),
+            description: None,
+            enabled: false,
+        });
+        let mut r = rule("github.com", "chrome");
+        r.workspace_id = Some("work".into());
+        config.rules.push(r);
+        let decision = Router::new(&config).evaluate(&ctx("https://github.com/x"));
+        match decision {
+            RoutingDecision::Open { target, matched_rule, .. } => {
+                // Workspace off → rule skipped → default target (arc) wins.
+                assert_eq!(target.browser.0, "arc");
+                assert!(matched_rule.is_none());
+            }
+            other => panic!("expected default open, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn enabled_workspace_lets_rule_through() {
+        use crate::config::Workspace;
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
+        config.workspaces.push(Workspace {
+            id: "work".into(),
+            display_name: "Work".into(),
+            description: None,
+            enabled: true,
+        });
+        let mut r = rule("github.com", "chrome");
+        r.workspace_id = Some("work".into());
+        config.rules.push(r);
+        let decision = Router::new(&config).evaluate(&ctx("https://github.com/x"));
+        match decision {
+            RoutingDecision::Open { target, .. } => assert_eq!(target.browser.0, "chrome"),
+            other => panic!("expected chrome, got {other:?}"),
         }
     }
 
@@ -425,6 +502,7 @@ mod tests {
             },
             source: RuleSource::Gui,
             note: None,
+            workspace_id: None,
         });
         let explained = Router::new(&config).evaluate_explained(&ctx("https://github.com/x/y"));
         assert!(explained.explanation.is_none(), "no rule should have fired");

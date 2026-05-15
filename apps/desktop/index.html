@@ -4,6 +4,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LinkPilot</title>
+    <!--
+      Synchronous picker-mode bootstrap. The picker window's
+      <NSVisualEffectView> backdrop only shows through when html, body
+      and #root are transparent. The bundled CSS achieves that via
+      `html.picker-root { background: transparent !important; }`, but
+      the bundle isn't parsed until after the webview's first paint —
+      which means a white flash between window show and React mount.
+      Setting both the class *and* an inline <style> from the head
+      inline script lands the transparency before the first paint,
+      killing the flicker.
+    -->
+    <script>
+      // Picker AND tray are popover-style windows backed by an
+      // NSVisualEffectView; both need html/body/#root transparent
+      // before the first paint, and both follow the macOS system
+      // appearance rather than LinkPilot's in-app theme (vibrancy
+      // material can't be theme-toggled at runtime, so the surface
+      // colors must match what the backdrop is rendering).
+      (function () {
+        const view = new URLSearchParams(location.search).get("view");
+        if (view !== "picker" && view !== "tray") return;
+        const root = document.documentElement;
+        root.classList.add(view + "-root");
+        const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        root.classList.toggle("dark", dark);
+        root.setAttribute("data-theme", dark ? "dark" : "light");
+        const s = document.createElement("style");
+        s.textContent =
+          "html,body,#root{background:transparent!important;margin:0;height:100%;}";
+        document.head.appendChild(s);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

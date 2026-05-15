@@ -83,7 +83,35 @@ impl UrlLauncher for MacUrlLauncher {
             }
         };
 
-        spawn_detached(cmd)
+        spawn_detached(cmd)?;
+
+        // Post-launch activate-target.
+        //
+        // Why this is here even though the spawn above already
+        // delivers the URL: when LinkPilot is the currently-active
+        // app (it always is right after the picker resolves, and
+        // often is when the user clicked a link inside LinkPilot's
+        // own UI), AppKit keeps LinkPilot's main window in the
+        // foreground UNLESS the about-to-be-active browser pushes
+        // through a strong activation. Chrome/Firefox direct-exec
+        // doesn't issue one. `open -a Foo URL` (Arc/Safari path)
+        // does, but if LinkPilot has a visible window AppKit can
+        // re-promote LinkPilot the moment our NSApp.deactivate
+        // returns. `open -b <bundle_id>` issues an LSLaunchURLs
+        // activate-target call which is sticky against that
+        // re-promotion — it's what `open -a` uses internally but
+        // we invoke it standalone here so it doesn't matter what
+        // launch strategy got chosen above.
+        //
+        // Redundant for Arc/Safari (`open -a` already activated),
+        // critical for Chromium/Firefox. Skip when bundle_id is
+        // unknown — those bundles usually aren't running anyway
+        // and the spawn alone is the activation.
+        if let Some(bundle_id) = &browser.platform_app_id {
+            activate_by_bundle_id(bundle_id);
+        }
+
+        Ok(())
     }
 }
 
@@ -95,4 +123,18 @@ fn spawn_detached(mut cmd: Command) -> Result<()> {
     let _child = cmd.spawn().map_err(PlatformError::Io)?;
     // Browser child runs independently of LinkPilot; do not `wait`.
     Ok(())
+}
+
+/// `/usr/bin/open -b <bundle-id>` → activate the running app with
+/// that bundle id (or launch it if not running). Fire-and-forget;
+/// failure is silently swallowed because the URL itself was already
+/// delivered by the main spawn above — losing the activation boost
+/// is degraded UX, not a hard error.
+fn activate_by_bundle_id(bundle_id: &str) {
+    let mut c = Command::new("/usr/bin/open");
+    c.arg("-b").arg(bundle_id);
+    c.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    let _ = c.spawn();
 }

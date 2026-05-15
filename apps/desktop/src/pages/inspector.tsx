@@ -48,8 +48,8 @@ export function InspectorPage() {
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="text-xl font-semibold tracking-tight">Route Inspector</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="mac-h2">Route Inspector</h2>
+        <p className="mac-subtitle">
           Every decision LinkPilot makes, newest first. Click a row to see why
           the rule matched.
         </p>

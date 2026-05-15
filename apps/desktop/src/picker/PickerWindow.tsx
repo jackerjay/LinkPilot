@@ -18,6 +18,11 @@ interface PickerChoice {
   name: string;
   bundle_id?: string | null;
   app_path?: string | null;
+  /** Base64-encoded PNG (`data:image/png;base64,…`) pre-rendered by
+   *  the Rust side. When present, the renderer paints it directly
+   *  instead of issuing an `app_icon` ipc round-trip — kills the
+   *  blank → real icon flash on every Ask. */
+  icon_data_url?: string | null;
 }
 
 interface PickerSession {
@@ -36,6 +41,15 @@ export function PickerWindow() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Belt-and-suspenders: force every layer above the
+    // NSVisualEffectView to transparent at runtime so the vibrancy
+    // actually reaches the user's eye. The picker-root CSS class
+    // does the same but inline style always wins.
+    document.documentElement.style.background = "transparent";
+    document.body.style.background = "transparent";
+    const root = document.getElementById("root");
+    if (root) root.style.background = "transparent";
+
     invoke<PickerSession | null>("picker_session")
       .then((s) => setSession(s))
       .catch(() => setSession(null));
@@ -101,15 +115,22 @@ export function PickerWindow() {
       // carry the entire background — `bg-black/X` on top muddies the
       // blur. `outline-none` kills the WebKit focus ring on the
       // tabIndex=0 container that read as an unintentional border.
-      className="flex h-screen flex-col items-center justify-center gap-5 rounded-2xl p-6 text-white outline-none focus:outline-none"
+      //
+      // Text colours use the app's theme tokens (--foreground /
+      // --muted-foreground) so the labels stay legible on BOTH the
+      // light-mode HudWindow (light backdrop → dark text) and the
+      // dark-mode HudWindow (dark backdrop → near-white text). The
+      // earlier hard-coded `text-white` / `text-neutral-*` were
+      // designed for dark backdrops only and disappeared in light mode.
+      className="flex h-screen flex-col items-center justify-center gap-5 rounded-2xl p-6 text-foreground outline-none focus:outline-none"
       style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div className="flex w-full flex-col items-center gap-1">
-        <div className="text-xs uppercase tracking-widest text-neutral-400">
+        <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
           Open with
         </div>
         <div
-          className="select-text font-mono text-xs text-neutral-300"
+          className="select-text font-mono text-xs text-foreground/80"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           title={session?.url}
         >
@@ -129,20 +150,35 @@ export function PickerWindow() {
             onMouseEnter={() => setSelected(idx)}
             className={cn(
               "flex w-[88px] flex-col items-center gap-2 rounded-xl px-2 py-3 transition-colors",
+              // Selection ring: use foreground-toned overlays so
+              // contrast works in both light and dark vibrancy.
               idx === selected
-                ? "bg-white/15 ring-1 ring-white/30"
-                : "hover:bg-white/5",
+                ? "bg-foreground/10 ring-1 ring-foreground/25"
+                : "hover:bg-foreground/5",
             )}
           >
-            <AppIcon
-              bundleId={c.bundle_id ?? undefined}
-              appPath={c.app_path ?? undefined}
-              name={c.name}
-              size={56}
-              alt={c.name}
-              className="rounded-xl"
-            />
-            <span className="line-clamp-1 text-xs text-neutral-200">
+            {c.icon_data_url ? (
+              // Pre-rendered icon: paint immediately, no async ipc.
+              // shrink-0 matches AppIcon's class so the layout is
+              // identical to the fallback path below.
+              <img
+                src={c.icon_data_url}
+                alt={c.name}
+                width={56}
+                height={56}
+                className="h-14 w-14 shrink-0 rounded-xl"
+              />
+            ) : (
+              <AppIcon
+                bundleId={c.bundle_id ?? undefined}
+                appPath={c.app_path ?? undefined}
+                name={c.name}
+                size={56}
+                alt={c.name}
+                className="rounded-xl"
+              />
+            )}
+            <span className="line-clamp-1 text-xs font-medium text-foreground">
               {c.name}
             </span>
           </button>
@@ -150,7 +186,7 @@ export function PickerWindow() {
       </div>
 
       <div
-        className="text-[10px] uppercase tracking-widest text-neutral-500"
+        className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground"
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
         ← → select   ⏎ open   esc cancel

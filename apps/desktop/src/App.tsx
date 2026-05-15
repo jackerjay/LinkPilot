@@ -1,25 +1,34 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import {
   Compass,
   FlaskConical,
-  LayoutDashboard,
+  Gauge,
   ScrollText,
   Settings as SettingsIcon,
   Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  OnboardingFlow,
+  isOnboardingNeeded,
+} from "@/onboarding/OnboardingFlow";
 import { MenuBarPage } from "@/pages/menu-bar";
 import { RulesPage } from "@/pages/rules";
 import { InspectorPage } from "@/pages/inspector";
 import { TestUrlPage } from "@/pages/test-url";
 import { BrowsersPage } from "@/pages/browsers";
 import { SettingsPage } from "@/pages/settings";
-import { onConfigChanged } from "@/lib/ipc";
+import { WorkspacePage } from "@/pages/workspace";
+import { ipc, onConfigChanged, onRouteLogged } from "@/lib/ipc";
+import type {
+  ConfigDocument,
+  DoctorReport,
+  RouteRecord,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
-// 128×128 downscaled from docs/brand/icon.png (the master is the Tauri
-// bundle source — too large to ship in the renderer JS bundle just for
-// the 22pt sidebar logo). Regenerate with:
+// 128×128 downscaled from docs/brand/icon.png. Regenerate with:
 //   sips -Z 128 docs/brand/icon.png --out apps/desktop/src/assets/brand.png
 import brandIcon from "@/assets/brand.png";
 
@@ -38,7 +47,7 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { id: "menu-bar", label: "Overview", icon: LayoutDashboard },
+  { id: "menu-bar", label: "Overview", icon: Gauge },
   { id: "rules", label: "Rules", icon: Workflow },
   { id: "test-url", label: "Test URL", icon: FlaskConical },
   { id: "inspector", label: "Inspector", icon: ScrollText },
@@ -49,77 +58,321 @@ const TABS: Tab[] = [
 export default function App() {
   const [tab, setTab] = useState<TabId>("menu-bar");
   const [configEpoch, setConfigEpoch] = useState(0);
+  const [config, setConfig] = useState<ConfigDocument | null>(null);
+  const [doctor, setDoctor] = useState<DoctorReport | null>(null);
+  const [recentRoutes, setRecentRoutes] = useState<RouteRecord[]>([]);
+  // When non-null, the main content area renders the workspace detail
+  // page for this id instead of whatever `tab` is. Sidebar workspace
+  // clicks set this; sidebar tab clicks clear it.
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<
+    string | null
+  >(null);
+  // Optional seed for Rules' filter. Set when WorkspacePage's "Edit in
+  // Rules" jumps over — bumping `token` re-applies even when the user
+  // had already toggled back to "all" in Rules in the meantime.
+  const [pendingRulesFilter, setPendingRulesFilter] = useState<{
+    filter: string;
+    token: number;
+  } | null>(null);
+  // First-run gate. localStorage flag — cheap, no Rust IPC needed, and
+  // resetting it (DevTools or `localStorage.clear()`) is the documented
+  // way to re-run onboarding during testing.
+  const [showOnboarding, setShowOnboarding] = useState(() =>
+    isOnboardingNeeded(),
+  );
+
+  const refreshSidebarData = useCallback(async () => {
+    try {
+      const [cfg, doc, history] = await Promise.all([
+        ipc.configGet(),
+        ipc.doctor(),
+        // Route history powers the per-workspace hit-count chips. 200
+        // is plenty for a "today" sense without paginating; older
+        // records get pushed out naturally by onRouteLogged streaming.
+        ipc.routeHistory(200).catch(() => [] as RouteRecord[]),
+      ]);
+      setConfig(cfg);
+      setDoctor(doc);
+      setRecentRoutes(history);
+    } catch (err) {
+      // Sidebar metadata is non-critical chrome — render gracefully.
+      console.error("sidebar refresh failed", err);
+    }
+  }, []);
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
+    refreshSidebarData();
+  }, [refreshSidebarData, configEpoch]);
+
+  useEffect(() => {
+    let unlistenConfig: (() => void) | undefined;
+    let unlistenRoute: (() => void) | undefined;
+    let unlistenNav: (() => void) | undefined;
     onConfigChanged(() => setConfigEpoch((n) => n + 1)).then((fn) => {
-      unlisten = fn;
+      unlistenConfig = fn;
+    });
+    onRouteLogged((record) => {
+      // Prepend + cap; matches what menu-bar and inspector pages do so
+      // the sidebar workspace hit counts stay in sync with what those
+      // pages render.
+      setRecentRoutes((prev) => [record, ...prev].slice(0, 200));
+    }).then((fn) => {
+      unlistenRoute = fn;
+    });
+    // Tray popover footer buttons deep-link via `tray:navigate` —
+    // payload is the TabId string. Validate before applying so a
+    // future event with a bogus tab can't put us into an invalid
+    // state.
+    listen<string>("tray:navigate", (event) => {
+      const valid: TabId[] = [
+        "menu-bar",
+        "rules",
+        "test-url",
+        "inspector",
+        "browsers",
+        "settings",
+      ];
+      if ((valid as string[]).includes(event.payload)) {
+        setSelectedWorkspaceId(null);
+        setTab(event.payload as TabId);
+      }
+    }).then((fn) => {
+      unlistenNav = fn;
     });
     return () => {
-      unlisten?.();
+      unlistenConfig?.();
+      unlistenRoute?.();
+      unlistenNav?.();
     };
   }, []);
 
+  const workspaces = config?.workspaces ?? [];
+  const daemonVersion = doctor?.daemon_version?.replace(
+    /^linkpilot-daemon\s+/,
+    "v",
+  );
+
+  // Per-workspace hit count: walk recent routes, map each matched_rule
+  // back to its workspace via the live config. Recomputed on every
+  // render — cheap (O(rules + routes)) and avoids stale memoization.
+  const ruleToWorkspace = new Map<string, string | null>();
+  for (const r of config?.rules ?? []) {
+    ruleToWorkspace.set(r.id, r.workspace_id ?? null);
+  }
+  const workspaceHits = new Map<string, number>();
+  for (const rec of recentRoutes) {
+    if (!rec.matched_rule) continue;
+    const wsId = ruleToWorkspace.get(rec.matched_rule);
+    if (!wsId) continue;
+    workspaceHits.set(wsId, (workspaceHits.get(wsId) ?? 0) + 1);
+  }
+
+  const openWorkspaceDetail = (workspaceId: string) => {
+    setSelectedWorkspaceId(workspaceId);
+  };
+
+  const goToTab = (next: TabId) => {
+    setSelectedWorkspaceId(null);
+    setTab(next);
+  };
+
+  const openRulesFilteredToWorkspace = (workspaceId: string) => {
+    setPendingRulesFilter({ filter: workspaceId, token: Date.now() });
+    setSelectedWorkspaceId(null);
+    setTab("rules");
+  };
+
+  if (showOnboarding) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <OnboardingFlow
+          onFinish={() => {
+            setShowOnboarding(false);
+            // Refresh sidebar / page data — onboarding may have written
+            // rules that the rest of the UI needs to see immediately.
+            setConfigEpoch((n) => n + 1);
+          }}
+        />
+      </TooltipProvider>
+    );
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="relative grid h-screen grid-cols-[200px_1fr]">
-        {/* Full-width title-bar drag region. Uses Tauri 2's
-            `data-tauri-drag-region` attribute (more reliable than the
-            -webkit-app-region CSS in WKWebView): a mousedown on this
-            element calls window.startDragging() via Tauri's injected
-            script. Sits above the sidebar + main columns with z-40 so
-            it overlays the empty top strip on BOTH sides, including the
-            area at the same y as the traffic lights but to their right.
-            Traffic lights are rendered by macOS above the webview, so
-            they keep working. */}
+      <div
+        className="mac-window-bg relative grid h-screen"
+        style={{ gridTemplateColumns: "220px 1fr" }}
+      >
+        {/* Full-width title-bar drag region. Tauri 2's
+            data-tauri-drag-region attribute calls window.startDragging() on
+            mousedown. Sits above sidebar+main with z-40 so the empty top
+            strip on both sides is draggable. Traffic lights are rendered
+            by macOS above the webview and keep working. */}
         <div
           data-tauri-drag-region
-          className="absolute inset-x-0 top-0 z-40 h-14"
+          className="absolute inset-x-0 top-0 z-40 h-12"
           aria-hidden
         />
 
-        <aside className="flex flex-col gap-0.5 border-r border-sidebar-border bg-sidebar px-2.5 pb-3 pt-14 text-sidebar-foreground">
-          <div className="flex items-center gap-2 px-2 pb-4">
+        <aside className="mac-sidebar">
+          {/* Top padding (clearing the macOS traffic-light dots) lives in
+              `.mac-sidebar` itself — applying `pt-9` here is overridden
+              by the unlayered class rule and silently loses. */}
+          {/* Pilot wordmark — sits below the traffic-light row so the
+              22pt brand mark + "Pilot" text occupy the same y as the
+              native window title would. */}
+          <div className="flex items-center gap-2 px-2 pb-3">
             <img
               src={brandIcon}
               alt="LinkPilot"
-              className="h-[22px] w-[22px] flex-shrink-0 rounded"
+              className="h-[22px] w-[22px] flex-shrink-0 rounded-[5px]"
+              style={{ boxShadow: "0 0 0 0.5px rgba(0,0,0,0.06)" }}
             />
-            <h1 className="text-sm font-semibold tracking-tight">LinkPilot</h1>
+            <h1
+              className="font-semibold"
+              style={{ fontSize: 14, letterSpacing: "-0.01em" }}
+            >
+              LinkPilot
+            </h1>
           </div>
+
           {TABS.map((t) => {
             const Icon = t.icon;
-            const isActive = tab === t.id;
+            // A tab is visually active only when no workspace detail
+            // page is taking over the right pane.
+            const isActive = tab === t.id && selectedWorkspaceId === null;
             return (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-sidebar-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
+                onClick={() => goToTab(t.id)}
+                className={cn("mac-sidebar-item", isActive && "active")}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                {t.label}
+                <Icon className="mac-symbol-icon h-[15px] w-[15px]" />
+                <span>{t.label}</span>
               </button>
             );
           })}
+
+          {workspaces.length > 0 && (
+            <>
+              <div className="mac-sidebar-section">Workspaces</div>
+              {workspaces.map((w) => {
+                const hits = workspaceHits.get(w.id) ?? 0;
+                const isActive = selectedWorkspaceId === w.id;
+                return (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => openWorkspaceDetail(w.id)}
+                    title={`Open the "${w.display_name}" workspace`}
+                    className={cn(
+                      "mac-sidebar-item",
+                      isActive && "active",
+                      !w.enabled && "opacity-60",
+                    )}
+                  >
+                    <span
+                      className="mac-symbol-icon inline-flex h-[15px] w-[15px] items-center justify-center"
+                      aria-hidden
+                    >
+                      {/* Dot reflects the workspace's `enabled` flag —
+                          green for on (rules in this workspace
+                          participate in routing), grey for off (router
+                          skips them). Matches the on/off mental model
+                          of the WorkspacesCard switch. */}
+                      <span
+                        className="inline-block h-[9px] w-[9px] rounded-full"
+                        style={{
+                          background: w.enabled
+                            ? "var(--mac-ok)"
+                            : "var(--mac-fg-tertiary)",
+                        }}
+                      />
+                    </span>
+                    <span className="truncate flex-1 text-left">
+                      {w.display_name}
+                    </span>
+                    {/* Hit-count chip — shows the number of routes in the
+                        last 200 history records that fired a rule owned
+                        by this workspace. Hidden at 0 to keep the
+                        sidebar quiet for first-run / unused workspaces. */}
+                    {hits > 0 && (
+                      <span
+                        className="mac-mono"
+                        style={{
+                          fontSize: 10.5,
+                          color: "var(--mac-fg-muted)",
+                          fontVariantNumeric: "tabular-nums",
+                          minWidth: 18,
+                          textAlign: "right",
+                        }}
+                      >
+                        {hits}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          <div className="mac-sidebar-spacer" />
+          <div className="mac-sidebar-footer">
+            <span
+              className={cn(
+                "mac-dot",
+                doctor ? "ok" : "warn",
+              )}
+            />
+            <span>
+              Daemon{daemonVersion ? ` · ${daemonVersion}` : ""}
+            </span>
+          </div>
         </aside>
-        <main className="pt-12 pb-4 overflow-hidden">
-          {/* The scrollable region is the INNER container, not <main>.
-              That confines the scrollbar to the vertical space between
-              <main>'s top/bottom padding instead of running edge-to-edge
-              under the title-bar drag strip. Custom thin-scrollbar
-              styling lives in styles/app.css (.scroll-shy). */}
-          <div className="scroll-shy h-full overflow-y-auto overflow-x-hidden overscroll-contain px-10 pb-4">
-            {tab === "menu-bar" && <MenuBarPage configEpoch={configEpoch} />}
-            {tab === "rules" && <RulesPage configEpoch={configEpoch} />}
-            {tab === "test-url" && <TestUrlPage configEpoch={configEpoch} />}
-            {tab === "inspector" && <InspectorPage />}
-            {tab === "browsers" && <BrowsersPage />}
-            {tab === "settings" && <SettingsPage configEpoch={configEpoch} />}
+
+        <main className="flex flex-col overflow-hidden">
+          {/* Toolbar — height and top padding come from `.mac-toolbar`
+              (64px tall, content bottom-aligned with 12px bottom
+              padding) so the title clears the 48px drag-region strip
+              above. */}
+          <div className="mac-toolbar">
+            <span className="mac-toolbar-title">
+              {selectedWorkspaceId
+                ? config?.workspaces.find(
+                    (w) => w.id === selectedWorkspaceId,
+                  )?.display_name ?? "Workspace"
+                : TABS.find((t) => t.id === tab)?.label ?? ""}
+            </span>
+          </div>
+          <div className="mac-scroll">
+            {selectedWorkspaceId ? (
+              <WorkspacePage
+                workspaceId={selectedWorkspaceId}
+                configEpoch={configEpoch}
+                onOpenRulesFiltered={openRulesFilteredToWorkspace}
+                onDeleted={() => goToTab("rules")}
+              />
+            ) : (
+              <>
+                {tab === "menu-bar" && (
+                  <MenuBarPage configEpoch={configEpoch} />
+                )}
+                {tab === "rules" && (
+                  <RulesPage
+                    configEpoch={configEpoch}
+                    pendingFilter={pendingRulesFilter}
+                  />
+                )}
+                {tab === "test-url" && (
+                  <TestUrlPage configEpoch={configEpoch} />
+                )}
+                {tab === "inspector" && <InspectorPage />}
+                {tab === "browsers" && <BrowsersPage />}
+                {tab === "settings" && (
+                  <SettingsPage configEpoch={configEpoch} />
+                )}
+              </>
+            )}
           </div>
         </main>
       </div>
