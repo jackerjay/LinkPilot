@@ -2184,7 +2184,7 @@ dependencies = [
  "notify",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "tracing",
  "url",
  "uuid",
@@ -2239,7 +2239,7 @@ dependencies = [
  "linkpilot-core",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
 ]
@@ -2274,7 +2274,7 @@ dependencies = [
  "objc2-foundation 0.2.2",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "tracing",
  "url",
 ]
