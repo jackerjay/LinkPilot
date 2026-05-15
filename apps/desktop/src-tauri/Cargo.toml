@@ -39,7 +39,7 @@ window-vibrancy = "0.6"
 # Raw NSWindow message sends for the picker — sets the collection
 # behavior so the window can float over a full-screen Space, and
 # raises the level above floating apps.
-objc2 = "0.5"
+objc2 = "0.6"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 linkpilot-platform-win = { workspace = true }
