@@ -13,6 +13,7 @@ import type {
   RoutingDecision,
   Rule,
   SetDefaultOutcome,
+  Workspace,
 } from "./types";
 
 export interface RouteRequest {
@@ -30,7 +31,18 @@ export const ipc = {
   ruleUpsert: (rule: Rule) => invoke<void>("rule_upsert", { rule }),
   ruleDelete: (id: string) => invoke<void>("rule_delete", { id }),
 
+  workspaceUpsert: (workspace: Workspace) =>
+    invoke<void>("workspace_upsert", { workspace }),
+  workspaceDelete: (id: string) =>
+    invoke<void>("workspace_delete", { id }),
+  workspaceSetEnabled: (id: string, enabled: boolean) =>
+    invoke<void>("workspace_set_enabled", { id, enabled }),
+
   listBrowsers: () => invoke<InstalledBrowser[]>("list_browsers"),
+  addCustomBrowser: (browser: InstalledBrowser) =>
+    invoke<void>("add_custom_browser", { browser }),
+  removeCustomBrowser: (id: BrowserId) =>
+    invoke<void>("remove_custom_browser", { id }),
   listProfiles: (browser: BrowserId) =>
     invoke<BrowserProfile[]>("list_profiles", { browser }),
 
@@ -73,6 +85,10 @@ export interface AppIcon {
 export interface PickedApp {
   name: string;
   bundle_id: string;
+  /** POSIX path to the .app bundle. May be empty if osascript couldn't
+   *  resolve the path; callers should fall back to using `name` for
+   *  `open -a` style launching. */
+  app_path: string;
 }
 
 export type RouteLoggedHandler = (record: RouteRecord) => void;

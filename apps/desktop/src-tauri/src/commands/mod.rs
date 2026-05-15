@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use linkpilot_core::browser::{BrowserId, BrowserProfile, InstalledBrowser};
-use linkpilot_core::config::{ConfigDocument, WriterId};
+use linkpilot_core::config::{ConfigDocument, Workspace, WriterId};
 use linkpilot_core::history::RouteRecord;
 use linkpilot_core::platform::SetDefaultOutcome;
 use linkpilot_core::protocol::DoctorReport;
@@ -60,14 +60,145 @@ pub fn rule_delete(state: State<'_, AppState>, id: RuleId) -> Result<(), String>
 }
 
 // ----------------------------------------------------------------------------
-// inventory
+// workspaces — named groups of rules with a batch on/off switch. The
+// router (`linkpilot_core::routing`) skips rules whose workspace is
+// disabled; deleting a workspace clears `workspace_id` on every
+// affected rule so no rule is left dangling.
 
 #[tauri::command]
-pub fn list_browsers(state: State<'_, AppState>) -> Result<Vec<InstalledBrowser>, String> {
+pub fn workspace_upsert(
+    state: State<'_, AppState>,
+    workspace: Workspace,
+) -> Result<(), String> {
+    let mut doc = state.config.document();
+    if let Some(existing) = doc.workspaces.iter_mut().find(|w| w.id == workspace.id) {
+        *existing = workspace;
+    } else {
+        doc.workspaces.push(workspace);
+    }
     state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn workspace_delete(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let mut doc = state.config.document();
+    doc.workspaces.retain(|w| w.id != id);
+    // Clear `workspace_id` on every rule that pointed at the deleted
+    // group, so they revert to "ungrouped" instead of becoming
+    // permanently dangling refs.
+    for rule in &mut doc.rules {
+        if rule.workspace_id.as_deref() == Some(id.as_str()) {
+            rule.workspace_id = None;
+        }
+    }
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn workspace_set_enabled(
+    state: State<'_, AppState>,
+    id: String,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut doc = state.config.document();
+    let Some(ws) = doc.workspaces.iter_mut().find(|w| w.id == id) else {
+        return Err(format!("workspace not found: {id}"));
+    };
+    ws.enabled = enabled;
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
+/// Master rule-evaluation kill-switch. Flips
+/// `Settings.smart_routing_enabled`; the router checks this before
+/// walking the rule list (see `routing::evaluate_explained`). Used by
+/// the tray popover's Smart Routing toggle.
+#[tauri::command]
+pub fn set_smart_routing(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut doc = state.config.document();
+    doc.settings.smart_routing_enabled = enabled;
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
+// ----------------------------------------------------------------------------
+// inventory
+
+/// Merged "every browser this app knows about" — auto-detected from
+/// the platform inventory + user-added custom entries from the config.
+/// Same-id collisions: custom wins (the user explicitly edited that
+/// browser so their data is more authoritative than inventory's
+/// REGISTRY scan). Used by both `list_browsers` (the rendered list)
+/// and `doctor` (the count surfaced on the Overview stat grid) so
+/// custom browsers can't get out of sync between the two views.
+fn merged_browsers(state: &AppState) -> Vec<InstalledBrowser> {
+    let mut detected = state
         .platform
         .browser_inventory()
         .installed_browsers()
+        .unwrap_or_default();
+    let doc = state.config.document();
+    for custom in doc.custom_browsers {
+        if let Some(existing) = detected.iter_mut().find(|b| b.id == custom.id) {
+            *existing = custom;
+        } else {
+            detected.push(custom);
+        }
+    }
+    detected
+}
+
+#[tauri::command]
+pub fn list_browsers(
+    state: State<'_, AppState>,
+) -> Result<Vec<InstalledBrowser>, String> {
+    Ok(merged_browsers(&state))
+}
+
+#[tauri::command]
+pub fn add_custom_browser(
+    state: State<'_, AppState>,
+    browser: InstalledBrowser,
+) -> Result<(), String> {
+    let mut doc = state.config.document();
+    if let Some(existing) = doc
+        .custom_browsers
+        .iter_mut()
+        .find(|b| b.id == browser.id)
+    {
+        *existing = browser;
+    } else {
+        doc.custom_browsers.push(browser);
+    }
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn remove_custom_browser(
+    state: State<'_, AppState>,
+    id: BrowserId,
+) -> Result<(), String> {
+    let mut doc = state.config.document();
+    doc.custom_browsers.retain(|b| b.id != id);
+    state
+        .config
+        .replace(doc, WriterId::Gui)
         .map_err(|e| e.to_string())
 }
 
@@ -194,12 +325,9 @@ pub fn request_set_default_browser(
 
 #[tauri::command]
 pub fn doctor(state: State<'_, AppState>) -> DoctorReport {
-    let installed = state
-        .platform
-        .browser_inventory()
-        .installed_browsers()
-        .map(|v| v.len())
-        .unwrap_or(0);
+    // Count is the *merged* list — without this, custom browsers added
+    // through "Add manually" wouldn't bump the Overview stat tile.
+    let installed_browser_count = merged_browsers(&state).len();
     DoctorReport {
         daemon_version: env!("CARGO_PKG_VERSION").to_string(),
         is_default_browser: state
@@ -208,7 +336,7 @@ pub fn doctor(state: State<'_, AppState>) -> DoctorReport {
             .is_linkpilot_default()
             .unwrap_or(false),
         config_path: Some(state.config.path().display().to_string()),
-        installed_browser_count: installed,
+        installed_browser_count,
         ipc_socket_path: None,
     }
 }

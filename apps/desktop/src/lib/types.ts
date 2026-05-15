@@ -74,18 +74,28 @@ export interface Rule {
   then: Action;
   source: "gui" | "file" | "ts-compiled";
   note?: string | null;
+  /** Optional workspace this rule belongs to. When the referenced
+   *  workspace is disabled, the router skips this rule even if
+   *  `enabled` is true. `null`/undefined = ungrouped. */
+  workspace_id?: string | null;
 }
 
 export interface Workspace {
   id: string;
   display_name: string;
   description?: string | null;
+  /** Batch on/off for every rule that targets this workspace. */
+  enabled: boolean;
 }
 
 export interface Settings {
   launch_at_login: boolean;
   history_retention_days?: number | null;
   record_query_strings: boolean;
+  /** Master kill-switch for rule evaluation. When false the router
+   *  bypasses all rules and opens every link in `default_target`. The
+   *  tray popover's "Smart routing" toggle flips this. */
+  smart_routing_enabled: boolean;
 }
 
 export interface ConfigDocument {
@@ -93,6 +103,10 @@ export interface ConfigDocument {
   default_target: BrowserTarget;
   rules: Rule[];
   workspaces: Workspace[];
+  /** User-added browsers that bypass auto-detection. Merged into
+   *  `list_browsers` server-side; the Browsers page surfaces these as
+   *  removable entries with a "custom" tag. */
+  custom_browsers: InstalledBrowser[];
   settings: Settings;
   meta?: {
     last_writer_token?: string | null;

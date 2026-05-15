@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "bundle:mac": "npx tauri build && ./scripts/patch-info-plist.sh ../../target/release/bundle/macos/LinkPilot.app"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

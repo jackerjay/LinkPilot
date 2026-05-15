@@ -121,8 +121,8 @@ export function TestUrlPage({ configEpoch }: Props) {
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="text-xl font-semibold tracking-tight">Test URL</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="mac-h2">Test URL</h2>
+        <p className="mac-subtitle">
           Run a URL through the live router without opening a browser. Edit a
           rule, switch back here, and the decision updates instantly.
         </p>

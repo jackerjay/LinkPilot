@@ -144,6 +144,9 @@ fn resolve_ask(
             name,
             bundle_id,
             app_path,
+            // Filled in by `show_picker` itself (pre-rendered base64).
+            // Dispatch doesn't have to know about pixel data.
+            icon_data_url: None,
         });
     }
 

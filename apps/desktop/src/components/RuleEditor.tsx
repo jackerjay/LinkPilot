@@ -24,11 +24,13 @@ import type {
   InstalledBrowser,
   MatcherTree,
   Rule,
+  Workspace,
 } from "@/lib/types";
 
 interface Props {
   initial: Rule | null;
   browsers: InstalledBrowser[];
+  workspaces: Workspace[];
   onSave: (rule: Rule) => Promise<void>;
   onCancel: () => void;
 }
@@ -44,10 +46,16 @@ function newRule(): Rule {
     then: { kind: "open", target: { browser: "" } },
     source: "gui",
     note: null,
+    workspace_id: null,
   };
 }
 
-export function RuleEditor({ initial, browsers, onSave, onCancel }: Props) {
+// `Select` from Radix can't represent an empty-string value, so the
+// "no workspace" choice rides on this sentinel and gets mapped back to
+// `null` before save.
+const NO_WORKSPACE = "__none__";
+
+export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: Props) {
   const [draft, setDraft] = useState<Rule>(initial ?? newRule());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +122,36 @@ export function RuleEditor({ initial, browsers, onSave, onCancel }: Props) {
             browsers={browsers}
             onChange={(then) => setDraft({ ...draft, then })}
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="rule-workspace">Workspace</Label>
+          <Select
+            value={draft.workspace_id ?? NO_WORKSPACE}
+            onValueChange={(v) =>
+              setDraft({
+                ...draft,
+                workspace_id: v === NO_WORKSPACE ? null : v,
+              })
+            }
+          >
+            <SelectTrigger id="rule-workspace">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_WORKSPACE}>
+                <span className="text-muted-foreground">— ungrouped —</span>
+              </SelectItem>
+              {workspaces.map((w) => (
+                <SelectItem key={w.id} value={w.id}>
+                  {w.display_name}
+                  {!w.enabled && (
+                    <span className="ml-2 text-muted-foreground">(off)</span>
+                  )}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">

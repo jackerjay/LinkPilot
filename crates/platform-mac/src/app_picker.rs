@@ -1,11 +1,21 @@
-//! Native macOS "Choose Application" dialog.
+//! Native macOS application picker for "Add manually" in the Browsers
+//! page.
 //!
-//! Implemented via osascript so we don't have to pull AppKit / NSWorkspace
-//! into the renderer-facing API. `choose application` is a built-in
-//! AppleScript primitive that opens the same chooser File → Open With …
-//! uses; the user picks an app from /Applications (or browses for it),
-//! and we read back its display name + bundle id.
+//! Implementation note: we deliberately use AppleScript's `choose file`
+//! (Finder-style file browser filtered to `.app` bundles) rather than
+//! `choose application`. The latter only enumerates apps in
+//! LaunchServices' application registry — niche browsers, dev builds,
+//! sideloaded apps, and apps that LS hasn't reindexed yet are
+//! invisible from there. `choose file` lets the user pick any `.app`
+//! bundle anywhere on disk (including network volumes), which is what
+//! "Browse..." in the system app picker does too.
+//!
+//! Bundle metadata (id + display name) is read out of the bundle's
+//! Info.plist after the user picks. Using `defaults read` keeps us
+//! AppKit-free; an alternative would be CoreFoundation via objc2 but
+//! the plumbing isn't worth it for two scalar reads.
 
+use std::path::Path;
 use std::process::Command;
 
 use serde::{Deserialize, Serialize};
@@ -14,14 +24,24 @@ use serde::{Deserialize, Serialize};
 pub struct PickedApp {
     pub name: String,
     pub bundle_id: String,
+    /// POSIX path to the `.app` bundle (e.g. `/Applications/Foo.app`).
+    /// Empty when the chooser couldn't resolve a path — caller falls
+    /// back to `open -a <name>`.
+    #[serde(default)]
+    pub app_path: String,
 }
 
+// `choose file` opens the Finder-shaped file browser; `com.apple
+// .application-bundle` filters it to `.app` packages. `default
+// location` (set to /Applications) gives the user a sane starting
+// point; they can navigate anywhere from there.
 const APPLESCRIPT: &str = r#"
-set theApp to choose application
-return (name of theApp as text) & "|" & (id of theApp as text)
+set theApp to choose file with prompt "Select an application" of type {"com.apple.application-bundle"} default location (POSIX file "/Applications")
+return POSIX path of theApp
 "#;
 
-/// Show the macOS chooser. Returns `Ok(None)` when the user cancels.
+/// Show the native file chooser filtered to `.app` bundles. Returns
+/// `Ok(None)` when the user cancels.
 pub fn choose_app() -> Result<Option<PickedApp>, String> {
     let output = Command::new("/usr/bin/osascript")
         .args(["-e", APPLESCRIPT])
@@ -29,19 +49,62 @@ pub fn choose_app() -> Result<Option<PickedApp>, String> {
         .map_err(|e| format!("osascript spawn: {e}"))?;
 
     if !output.status.success() {
-        // exit code 1 + stderr "User canceled. (-128)" on Cancel — treat
-        // any non-success as "user dismissed". Real failures (missing
-        // osascript, AE permission denial) are extremely rare on macOS.
+        // Cancel → osascript exits 1 with "User canceled. (-128)" on
+        // stderr. Real failures (missing osascript, sandbox denial)
+        // are rare; treat any non-success as a user dismiss so we
+        // don't surface noise.
         return Ok(None);
     }
 
-    let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let mut parts = raw.splitn(2, '|');
-    let name = parts.next().unwrap_or("").trim().to_string();
-    let bundle_id = parts.next().unwrap_or("").trim().to_string();
-
-    if name.is_empty() {
+    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if path.is_empty() {
         return Ok(None);
     }
-    Ok(Some(PickedApp { name, bundle_id }))
+
+    // Read Info.plist for the bundle id + display name. Falling back
+    // to the path basename keeps "name" populated even for bundles
+    // with weird Info.plist schemas.
+    let info_plist = format!(
+        "{}/Contents/Info",
+        path.trim_end_matches('/')
+    );
+
+    let bundle_id = read_plist_key(&info_plist, "CFBundleIdentifier").unwrap_or_default();
+
+    // Display name precedence mirrors what Finder picks: localized
+    // bundle name > bundle name > basename. CFBundleDisplayName is
+    // user-facing (overridable by localization); CFBundleName is the
+    // build-time name; basename is the absolute fallback.
+    let name = read_plist_key(&info_plist, "CFBundleDisplayName")
+        .or_else(|| read_plist_key(&info_plist, "CFBundleName"))
+        .unwrap_or_else(|| basename_without_app(&path));
+
+    Ok(Some(PickedApp {
+        name,
+        bundle_id,
+        app_path: path,
+    }))
+}
+
+fn read_plist_key(info_plist_path: &str, key: &str) -> Option<String> {
+    let out = Command::new("/usr/bin/defaults")
+        .args(["read", info_plist_path, key])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
+fn basename_without_app(path: &str) -> String {
+    Path::new(path)
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "Application".to_string())
 }

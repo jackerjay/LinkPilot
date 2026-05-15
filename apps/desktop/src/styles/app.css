@@ -5,91 +5,159 @@
    `data-theme` is kept in sync for legacy CSS still on the page. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* shadcn/ui design tokens. macOS-flavored palette: pure-grey base for
-   light, slate-zinc-mix for dark, system blue as the brand accent. */
+/* =========================================================================
+   shadcn/ui tokens + macOS Sequoia palette.
+
+   The accent is the Pilot indigo (#5057e8), pulled from the brand mark's
+   blue→purple gradient midpoint. The content area is a near-opaque
+   off-white (#ececee) in light and near-black (#1f1f22) in dark — the
+   exact "System Settings" feel. Vibrancy is restricted to picker / tray
+   surfaces; main window cards are flat with a 0.5px hairline.
+   ========================================================================= */
 :root {
   --radius: 0.5rem;
 
-  --background: 0 0% 96.5%;
-  --foreground: 240 6% 10%;
+  /* shadcn surfaces — mapped onto the macOS palette so existing
+     shadcn-styled components keep working while the new .mac-* layer
+     defines the more granular system. */
+  --background: 240 6% 93%;          /* #ececee */
+  --foreground: 240 6% 12%;           /* #1d1d1f */
 
   --card: 0 0% 100%;
-  --card-foreground: 240 6% 10%;
+  --card-foreground: 240 6% 12%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 240 6% 10%;
+  --popover-foreground: 240 6% 12%;
 
-  --primary: 211 100% 50%;
+  /* Pilot indigo #5057e8 → HSL(236, 76%, 62%) */
+  --primary: 236 76% 62%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 240 5% 96%;
-  --secondary-foreground: 240 6% 10%;
+  --secondary: 240 6% 96%;
+  --secondary-foreground: 240 6% 12%;
 
-  --muted: 240 5% 96%;
-  --muted-foreground: 240 4% 46%;
+  --muted: 240 6% 96%;
+  --muted-foreground: 240 4% 42%;
 
-  --accent: 211 100% 96%;
-  --accent-foreground: 211 100% 30%;
+  --accent: 236 76% 96%;
+  --accent-foreground: 236 76% 38%;
 
-  --destructive: 0 84% 60%;
+  --destructive: 4 100% 61%;          /* #ff453a */
   --destructive-foreground: 0 0% 100%;
 
-  --success: 142 71% 45%;
+  --success: 134 60% 49%;             /* #30c850 */
   --success-foreground: 0 0% 100%;
 
   --border: 240 6% 84%;
   --input: 240 6% 84%;
-  --ring: 211 100% 50%;
+  --ring: 236 76% 62%;
 
-  --sidebar: 240 7% 98%;
-  --sidebar-foreground: 240 6% 30%;
-  --sidebar-accent: 211 100% 50%;
+  --sidebar: 240 7% 90%;              /* #e3e3e6 with subtle accent wash */
+  --sidebar-foreground: 240 6% 18%;
+  --sidebar-accent: 236 76% 62%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-border: 240 6% 88%;
+  --sidebar-border: 240 6% 80%;
+
+  /* ---------- mac-* design system (Sequoia) ---------- */
+  --mac-accent: #5057e8;
+  --mac-accent-soft: color-mix(in srgb, #5057e8 14%, transparent);
+  --mac-accent-soft-hover: color-mix(in srgb, #5057e8 22%, transparent);
+
+  --mac-blur: 36px;
+  --mac-saturate: 180%;
+
+  --mac-window-fill: #ececee;
+  --mac-sidebar-solid: #e3e3e6;
+  --mac-toolbar-fill: #ececee;
+  --mac-tray-fill: rgba(244, 244, 247, 0.66);
+  --mac-card-fill: #ffffff;
+  --mac-inset-fill: rgba(0, 0, 0, 0.04);
+
+  --mac-fg: #1d1d1f;
+  --mac-fg-muted: #6b6b70;
+  --mac-fg-tertiary: #a1a1a6;
+  --mac-border: rgba(0, 0, 0, 0.10);
+  --mac-border-soft: rgba(0, 0, 0, 0.06);
+  --mac-divider: rgba(0, 0, 0, 0.07);
+
+  --mac-sidebar-selected: rgba(0, 0, 0, 0.07);
+  --mac-sidebar-hover: rgba(0, 0, 0, 0.04);
+
+  --mac-radius-window: 11px;
+  --mac-radius-card: 10px;
+  --mac-radius-control: 6px;
+  --mac-radius-popover: 14px;
+
+  --mac-shadow-card: 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --mac-shadow-popover:
+    0 0 0 0.5px rgba(0, 0, 0, 0.15),
+    0 18px 50px rgba(0, 0, 0, 0.28);
+
+  --mac-ok: #30c850;
+  --mac-warn: #ff9f0a;
+  --mac-danger: #ff453a;
 }
 
 .dark {
-  --background: 240 5% 11%;
-  --foreground: 0 0% 96%;
+  --background: 240 4% 12%;          /* #1f1f22 */
+  --foreground: 240 14% 96%;
 
-  --card: 240 4% 17%;
-  --card-foreground: 0 0% 96%;
+  --card: 240 4% 17%;                 /* #2a2a2d */
+  --card-foreground: 240 14% 96%;
 
   --popover: 240 4% 17%;
-  --popover-foreground: 0 0% 96%;
+  --popover-foreground: 240 14% 96%;
 
-  --primary: 211 100% 56%;
+  --primary: 236 76% 68%;             /* slightly brighter in dark */
   --primary-foreground: 0 0% 100%;
 
   --secondary: 240 4% 22%;
-  --secondary-foreground: 0 0% 96%;
+  --secondary-foreground: 240 14% 96%;
 
   --muted: 240 4% 22%;
   --muted-foreground: 240 5% 65%;
 
-  --accent: 211 100% 18%;
-  --accent-foreground: 211 100% 80%;
+  --accent: 236 50% 22%;
+  --accent-foreground: 236 76% 84%;
 
-  --destructive: 0 70% 60%;
+  --destructive: 4 95% 65%;
   --destructive-foreground: 0 0% 100%;
 
-  --success: 142 71% 50%;
+  --success: 134 60% 54%;
   --success-foreground: 0 0% 100%;
 
-  --border: 240 4% 25%;
-  --input: 240 4% 25%;
-  --ring: 211 100% 56%;
+  --border: 240 5% 26%;
+  --input: 240 5% 26%;
+  --ring: 236 76% 68%;
 
-  --sidebar: 240 5% 14%;
-  --sidebar-foreground: 240 5% 75%;
-  --sidebar-accent: 211 100% 56%;
+  --sidebar: 240 5% 17%;
+  --sidebar-foreground: 240 6% 78%;
+  --sidebar-accent: 236 76% 68%;
   --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-border: 240 4% 22%;
+  --sidebar-border: 240 4% 24%;
+
+  /* ---------- mac-* dark overrides ---------- */
+  --mac-window-fill: #1f1f22;
+  --mac-sidebar-solid: #2a2a2d;
+  --mac-toolbar-fill: #1f1f22;
+  --mac-tray-fill: rgba(40, 40, 44, 0.7);
+  --mac-card-fill: #2a2a2d;
+  --mac-inset-fill: rgba(255, 255, 255, 0.04);
+
+  --mac-fg: #f5f5f7;
+  --mac-fg-muted: #a3a3a8;
+  --mac-fg-tertiary: #6e6e73;
+  --mac-border: rgba(255, 255, 255, 0.10);
+  --mac-border-soft: rgba(255, 255, 255, 0.06);
+  --mac-divider: rgba(255, 255, 255, 0.08);
+
+  --mac-sidebar-selected: rgba(255, 255, 255, 0.10);
+  --mac-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --mac-accent-soft: color-mix(in srgb, #5057e8 22%, transparent);
+  --mac-shadow-card: 0 0 0 0.5px rgba(255, 255, 255, 0.04);
 }
 
-/* Make the tokens visible to Tailwind's utility generation. With v4 the
-   @theme block extends the design system; the hsl() wrapper keeps
-   shadcn's hsla() utility consumption working. */
+/* Make the tokens visible to Tailwind's utility generation. */
 @theme inline {
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -123,7 +191,7 @@
   --color-sidebar-border: hsl(var(--sidebar-border));
 
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
@@ -141,28 +209,21 @@
     background: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: var(--font-sans);
-    /* Base size drives every Tailwind text-{xs,sm,base,…} via rem.
-       14px is one tick larger than the macOS native 13px — easier on
-       Retina displays without feeling web-y. Bump to 15px later if
-       still too small. */
-    font-size: 14px;
+    /* 13px native macOS body. Bumped up via Tailwind utilities where
+       needed; cards / rows now feel native instead of web-y. */
+    font-size: 13px;
+    line-height: 1.45;
     -webkit-font-smoothing: antialiased;
-    /* Kill horizontal rubber-band scroll. */
     overflow: hidden;
     overscroll-behavior: none;
 
-    /* Match native macOS app feel: labels, cards, list rows are not
-       selectable. Only form fields and code blocks (overridden below)
-       remain selectable so the user can still type into inputs and
-       copy out raw JSON / paths. Tailwind's `select-text` utility on
-       a specific element re-enables selection where useful (e.g. the
-       config-file path in Overview). */
+    /* Native macOS app feel — no text selection in chrome. Inputs and
+       things tagged .select-text remain selectable. */
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
   }
 
-  /* Re-enable text selection in places where it's actually useful. */
   input,
   textarea,
   [contenteditable="true"],
@@ -176,36 +237,504 @@
   }
 }
 
-/* Picker window: html / body / #root must be transparent so the
+/* Picker window: html / body / #root transparent so the
    NSVisualEffectView vibrancy installed under the webview (see
-   picker.rs::apply_glass) is what the user sees behind the inner
-   panel. Without this override the opaque background from the base
-   layer wins and the blur is invisible. */
+   picker.rs::apply_glass) shows through. */
 html.picker-root,
 html.picker-root body,
 html.picker-root #root {
   background: transparent !important;
 }
 
-/* Slim, macOS-flavoured scrollbar. Sits inside containers that opt in
-   via the .scroll-shy class — keeps the bar inside the content area
-   instead of stretching window-edge to window-edge under the title
-   strip. Transparent thumb that fades in only when the container is
-   hovered, mimicking the system overlay scrollbar. */
-.scroll-shy::-webkit-scrollbar {
+/* Tray window: same transparency contract as picker — the popover's own
+   .mac-popover class provides vibrancy. */
+html.tray-root,
+html.tray-root body,
+html.tray-root #root {
+  background: transparent !important;
+}
+
+/* =========================================================================
+   macOS Sequoia component layer.
+   Used by App.tsx and the page components for native-feel chrome.
+   ========================================================================= */
+
+/* ---- Window shell ----
+   Brand wash inspired by the onboarding welcome screen: three radial
+   blooms (indigo → purple → cyan) painted full-bleed under the entire
+   app. Strength is dialed down vs. the welcome page so it reads as a
+   subtle atmosphere rather than a hero — strong enough to feel
+   premium when the eye drifts to the gaps between cards, weak enough
+   that page content (white cards, mono URLs, dropdowns) keeps the
+   foreground.
+
+   Visible only in the content column: the sidebar has its own opaque
+   accent-tinted fill so the gradient is hidden underneath it. Cards
+   in the content column are already opaque white, so the wash only
+   shows in the 14px gutters between them — exactly the System
+   Settings vibe. */
+.mac-window-bg {
+  background:
+    radial-gradient(80% 70% at 20% 0%,
+      color-mix(in srgb, #5057e8 16%, transparent), transparent 60%),
+    radial-gradient(70% 60% at 100% 0%,
+      color-mix(in srgb, #bf5af2 12%, transparent), transparent 65%),
+    radial-gradient(60% 50% at 50% 100%,
+      color-mix(in srgb, #5ac8fa 10%, transparent), transparent 70%),
+    var(--mac-window-fill);
+}
+
+.dark .mac-window-bg {
+  /* Dark mode bumps each stop ~2x so the gradient survives the much
+     darker base fill. Without this the wash gets eaten by #1f1f22. */
+  background:
+    radial-gradient(80% 70% at 20% 0%,
+      color-mix(in srgb, #5057e8 32%, transparent), transparent 60%),
+    radial-gradient(70% 60% at 100% 0%,
+      color-mix(in srgb, #bf5af2 22%, transparent), transparent 65%),
+    radial-gradient(60% 50% at 50% 100%,
+      color-mix(in srgb, #5ac8fa 18%, transparent), transparent 70%),
+    var(--mac-window-fill);
+}
+
+/* ---- Sidebar ---- */
+.mac-sidebar {
+  position: relative;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--mac-accent) 6%, var(--mac-sidebar-solid)) 0%,
+    var(--mac-sidebar-solid) 70%
+  );
+  border-right: 0.5px solid var(--mac-border);
+  display: flex;
+  flex-direction: column;
+  /* 36px top padding clears the macOS traffic-light buttons that the OS
+     draws over the webview at trafficLightPosition (16, 18). Buttons are
+     ~12px tall, so they occupy y=12..24; 36px gives a 12px breathing gap
+     before the Pilot wordmark row. Without this the dots overlap the
+     "Pilot" text. (Putting the padding in this class rather than relying
+     on a Tailwind `pt-9` utility is intentional — unlayered CSS rules
+     beat layered utilities, which had pt-9 silently losing.) */
+  padding: 36px 10px 12px;
+}
+.mac-sidebar-section {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mac-fg-tertiary);
+  padding: 14px 10px 6px;
+  text-transform: none;
+}
+.mac-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--mac-fg);
+  cursor: default;
+  text-align: left;
+  transition: background 80ms linear;
+}
+.mac-sidebar-item:hover {
+  background: var(--mac-sidebar-hover);
+}
+.mac-sidebar-item.active {
+  background: var(--mac-sidebar-selected);
+  font-weight: 500;
+}
+.mac-sidebar-item.active .mac-symbol-icon {
+  color: var(--mac-accent);
+}
+.mac-symbol-icon {
+  color: var(--mac-fg-muted);
+  flex: 0 0 17px;
+}
+.mac-sidebar-spacer {
+  flex: 1;
+}
+.mac-sidebar-footer {
+  padding: 10px 8px 4px;
+  font-size: 11px;
+  color: var(--mac-fg-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 0.5px solid var(--mac-border-soft);
+  margin: 6px -4px 0;
+}
+.mac-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 7px;
+}
+.mac-dot.ok { background: var(--mac-ok); }
+.mac-dot.warn { background: var(--mac-warn); }
+.mac-dot.danger { background: var(--mac-danger); }
+
+/* ---- Toolbar ---- */
+.mac-toolbar {
+  /* 64px = 52px native toolbar + 12px top so the title sits visually
+     below the drag-region strip (h-12 = 48px). The right column doesn't
+     have traffic lights but we keep the vertical rhythm aligned with
+     the sidebar's 36px padding-top. */
+  height: 64px;
+  flex: 0 0 64px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 0 16px 12px;
+  background: transparent;
+  border-bottom: 0.5px solid var(--mac-border);
+}
+.mac-toolbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mac-fg);
+}
+
+/* ---- Page header (used inside .mac-scroll) ---- */
+.mac-h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--mac-fg);
+}
+.mac-subtitle {
+  margin: 0 0 20px;
+  color: var(--mac-fg-muted);
+  font-size: 13px;
+}
+
+/* ---- Card / Row ---- */
+.mac-card {
+  background: var(--mac-card-fill);
+  border-radius: var(--mac-radius-card);
+  margin-bottom: 14px;
+  overflow: hidden;
+  box-shadow: var(--mac-shadow-card);
+}
+.mac-card-pad {
+  padding: 16px 18px;
+}
+.mac-card-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mac-fg-muted);
+  padding: 0 4px 6px;
+}
+
+.mac-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 18px;
+  border-top: 0.5px solid var(--mac-divider);
+  min-height: 44px;
+}
+.mac-row:first-child { border-top: 0; }
+.mac-row > .grow { flex: 1; min-width: 0; }
+.mac-row-label { color: var(--mac-fg); }
+.mac-row-value { color: var(--mac-fg-muted); font-variant-numeric: tabular-nums; }
+.mac-row.clickable { cursor: default; }
+.mac-row.clickable:hover { background: var(--mac-inset-fill); }
+.mac-row.selected { background: var(--mac-accent-soft); }
+
+/* ---- Tags / chips ---- */
+.mac-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--mac-accent-soft);
+  color: var(--mac-accent);
+  line-height: 1;
+}
+.mac-tag.ok { background: color-mix(in srgb, var(--mac-ok) 16%, transparent); color: var(--mac-ok); }
+.mac-tag.warn { background: color-mix(in srgb, var(--mac-warn) 22%, transparent); color: var(--mac-warn); }
+.mac-tag.danger { background: color-mix(in srgb, var(--mac-danger) 18%, transparent); color: var(--mac-danger); }
+.mac-tag.neutral { background: var(--mac-inset-fill); color: var(--mac-fg-muted); }
+
+.mac-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.mac-muted { color: var(--mac-fg-muted); }
+
+/* ---- Toolbar button / Search / Input ---- */
+.mac-tbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  min-width: 28px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 0.5px solid var(--mac-border);
+  background: var(--mac-card-fill);
+  color: var(--mac-fg);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: default;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+.mac-tbtn:hover {
+  background: color-mix(in srgb, var(--mac-card-fill) 80%, var(--mac-fg-muted) 10%);
+}
+.mac-tbtn.primary {
+  background: var(--mac-accent);
+  color: white;
+  border-color: transparent;
+  box-shadow:
+    0 0.5px 0 rgba(255, 255, 255, 0.3) inset,
+    0 1px 2px rgba(0, 0, 0, 0.10);
+}
+.mac-tbtn.primary:hover { filter: brightness(1.05); }
+.mac-tbtn[disabled] { opacity: 0.5; }
+
+.mac-input {
+  width: 100%;
+  height: 28px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--mac-fg);
+  background: var(--mac-card-fill);
+  border: 0.5px solid var(--mac-border);
+  border-radius: 6px;
+  outline: none;
+}
+.mac-input:focus {
+  border-color: var(--mac-accent);
+  box-shadow: 0 0 0 3px var(--mac-accent-soft);
+}
+
+.mac-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  background: var(--mac-inset-fill);
+  border: 0.5px solid var(--mac-border-soft);
+  border-radius: 7px;
+  color: var(--mac-fg-muted);
+  font-size: 12.5px;
+  min-width: 220px;
+}
+.mac-search input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--mac-fg);
+  font: inherit;
+  flex: 1;
+  padding: 0;
+}
+
+/* ---- macOS switch ---- */
+.mac-switch {
+  width: 36px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.32);
+  position: relative;
+  cursor: default;
+  transition: background 120ms linear;
+  flex: 0 0 36px;
+  display: inline-block;
+  border: 0;
+  padding: 0;
+}
+.mac-switch::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+  transition: transform 140ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mac-switch.on { background: var(--mac-ok); }
+.mac-switch.on::after { transform: translateX(14px); }
+.mac-switch.accent.on { background: var(--mac-accent); }
+
+/* ---- Segmented control ---- */
+.mac-seg {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--mac-inset-fill);
+  border-radius: 7px;
+}
+.mac-seg button {
+  border: 0;
+  background: transparent;
+  padding: 3px 12px;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--mac-fg-muted);
+  cursor: default;
+}
+.mac-seg button.active {
+  background: var(--mac-card-fill);
+  color: var(--mac-fg);
+  box-shadow:
+    0 0.5px 0 rgba(255, 255, 255, 0.6) inset,
+    0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* ---- Stat grid (Overview) ---- */
+.mac-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.mac-stat {
+  background: var(--mac-card-fill);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: var(--mac-shadow-card);
+}
+.mac-stat-label {
+  font-size: 11px;
+  color: var(--mac-fg-muted);
+  font-weight: 500;
+}
+.mac-stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.mac-stat-trend {
+  font-size: 11px;
+  color: var(--mac-ok);
+  margin-top: 2px;
+}
+
+/* ---- Onboarding stepper ---- */
+.mac-onboarding-step {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mac-inset-fill);
+  border: 0.5px solid var(--mac-border);
+  color: var(--mac-fg-muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+.mac-onboarding-step.active {
+  background: var(--mac-accent);
+  color: white;
+  border-color: var(--mac-accent);
+}
+.mac-onboarding-step.done {
+  background: var(--mac-accent-soft);
+  color: var(--mac-accent);
+  border-color: transparent;
+}
+.mac-onboarding-trail {
+  height: 1.5px;
+  width: 36px;
+  background: var(--mac-border);
+}
+.mac-onboarding-trail.done {
+  background: var(--mac-accent);
+}
+
+/* ---- Popover (tray) — keeps vibrancy ---- */
+.mac-popover {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--mac-radius-popover);
+  background: var(--mac-tray-fill);
+  -webkit-backdrop-filter: blur(var(--mac-blur)) saturate(var(--mac-saturate));
+  backdrop-filter: blur(var(--mac-blur)) saturate(var(--mac-saturate));
+  box-shadow: var(--mac-shadow-popover);
+  border: 0.5px solid var(--mac-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--mac-fg);
+}
+.mac-popover-arrow {
+  position: absolute;
+  top: -8px;
+  right: 24px;
+  width: 16px;
+  height: 8px;
+  background: var(--mac-tray-fill);
+  -webkit-backdrop-filter: blur(var(--mac-blur)) saturate(var(--mac-saturate));
+  backdrop-filter: blur(var(--mac-blur)) saturate(var(--mac-saturate));
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+/* Slim, macOS-flavoured scrollbar. */
+.mac-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 28px 28px;
+  scrollbar-width: thin;
+}
+.scroll-shy::-webkit-scrollbar,
+.mac-scroll::-webkit-scrollbar {
   width: 8px;
 }
-.scroll-shy::-webkit-scrollbar-track {
+.scroll-shy::-webkit-scrollbar-track,
+.mac-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
-.scroll-shy::-webkit-scrollbar-thumb {
+.scroll-shy::-webkit-scrollbar-thumb,
+.mac-scroll::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 4px;
   transition: background-color 120ms ease;
 }
-.scroll-shy:hover::-webkit-scrollbar-thumb {
+.scroll-shy:hover::-webkit-scrollbar-thumb,
+.mac-scroll:hover::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
 }
-.scroll-shy::-webkit-scrollbar-thumb:hover {
+.scroll-shy::-webkit-scrollbar-thumb:hover,
+.mac-scroll::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ---- Keyboard hint ---- */
+.mac-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--mac-inset-fill);
+  border: 0.5px solid var(--mac-border-soft);
+  font-size: 11px;
+  color: var(--mac-fg-muted);
 }

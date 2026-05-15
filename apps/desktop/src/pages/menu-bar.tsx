@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import { Bolt, FileText, Globe, Layout } from "lucide-react";
 import { BrowserBadge } from "@/components/BrowserBadge";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import brandIcon from "@/assets/brand.png";
 import { ipc, onRouteLogged } from "@/lib/ipc";
-import type { DoctorReport, RouteRecord, RoutingDecision } from "@/lib/types";
+import type {
+  ConfigDocument,
+  DoctorReport,
+  RouteRecord,
+  RoutingDecision,
+} from "@/lib/types";
 
 interface Props {
   configEpoch: number;
@@ -11,11 +16,18 @@ interface Props {
 
 export function MenuBarPage({ configEpoch }: Props) {
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
+  const [config, setConfig] = useState<ConfigDocument | null>(null);
   const [recent, setRecent] = useState<RouteRecord[]>([]);
 
   const refresh = useCallback(async () => {
-    setDoctor(await ipc.doctor());
-    setRecent(await ipc.routeHistory(5));
+    const [d, c, h] = await Promise.all([
+      ipc.doctor(),
+      ipc.configGet(),
+      ipc.routeHistory(5),
+    ]);
+    setDoctor(d);
+    setConfig(c);
+    setRecent(h);
   }, []);
 
   useEffect(() => {
@@ -34,135 +46,225 @@ export function MenuBarPage({ configEpoch }: Props) {
     };
   }, []);
 
-  return (
-    <div className="space-y-4">
-      <header>
-        <h2 className="text-xl font-semibold tracking-tight">Overview</h2>
-        <p className="text-sm text-muted-foreground">
-          Daemon status and the most recent routing decisions. Use the{" "}
-          <em>Test URL</em> tab to dry-run a URL through the router.
-        </p>
-      </header>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Status</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <StatusRow label="Daemon version" value={doctor?.daemon_version ?? "…"} mono />
-          <div className="flex items-center justify-between">
-            <span className="text-sm">LinkPilot is default browser</span>
-            <Badge variant={doctor?.is_default_browser ? "success" : "destructive"}>
-              {doctor?.is_default_browser ? "yes" : "no"}
-            </Badge>
-          </div>
-          <StatusRow
-            label="Installed browsers detected"
-            value={String(doctor?.installed_browser_count ?? 0)}
-          />
-          <StatusRow
-            label="Config file"
-            value={doctor?.config_path ?? "…"}
-            mono
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent routes</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {recent.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No routes yet. Try <span className="font-mono">lp open …</span> or
-              click a link.
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {recent.map((r, i) => (
-                <RouteRow key={i} record={r} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+  const enabledRules = config?.rules.filter((r) => r.enabled).length ?? 0;
+  const totalRules = config?.rules.length ?? 0;
+  const disabledCount = totalRules - enabledRules;
+  const daemonVersion = doctor?.daemon_version?.replace(
+    /^linkpilot-daemon\s+/,
+    "v",
   );
-}
 
-function StatusRow({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-sm">{label}</span>
-      <span
-        className={
-          mono
-            ? "select-text font-mono text-xs text-muted-foreground"
-            : "select-text text-sm text-muted-foreground"
-        }
-      >
-        {value}
-      </span>
+    <div>
+      <h2 className="mac-h2">Overview</h2>
+      <p className="mac-subtitle">
+        Daemon status and the most recent routing decisions.
+      </p>
+
+      {/* At-a-glance stats */}
+      <div className="mac-stat-grid">
+        <div className="mac-stat">
+          <div className="mac-stat-label">Routes today</div>
+          <div className="mac-stat-value">{recent.length}</div>
+          <div className="mac-stat-trend">
+            {recent.length > 0 ? "Live" : "Awaiting clicks"}
+          </div>
+        </div>
+        <div className="mac-stat">
+          <div className="mac-stat-label">Active rules</div>
+          <div className="mac-stat-value">
+            {enabledRules}
+            <span
+              style={{
+                color: "var(--mac-fg-muted)",
+                fontSize: 15,
+                fontWeight: 500,
+              }}
+            >
+              {" "}
+              / {totalRules}
+            </span>
+          </div>
+          <div
+            className="mac-stat-trend"
+            style={{
+              color:
+                disabledCount > 0 ? "var(--mac-fg-muted)" : "var(--mac-ok)",
+            }}
+          >
+            {disabledCount > 0 ? `${disabledCount} disabled` : "All enabled"}
+          </div>
+        </div>
+        <div className="mac-stat">
+          <div className="mac-stat-label">Browsers</div>
+          <div className="mac-stat-value">
+            {doctor?.installed_browser_count ?? 0}
+          </div>
+          <div className="mac-stat-trend">Detected</div>
+        </div>
+      </div>
+
+      {/* Status card — System-Settings-shaped rows */}
+      <div className="mac-card-title">Status</div>
+      <div className="mac-card">
+        <div className="mac-row">
+          {/* Leading icon stays neutral — the green status signal lives
+              on the right-side dot now, so the icon doesn't double up
+              as a status indicator. */}
+          <span style={{ color: "var(--mac-fg-muted)" }}>
+            <Bolt size={15} strokeWidth={1.8} />
+          </span>
+          <span className="grow mac-row-label">Daemon</span>
+          <span
+            className={`mac-dot ${doctor ? "ok" : "warn"}`}
+            title={doctor ? "Daemon is running" : "Daemon is unreachable"}
+          />
+          <span className="mac-row-value">
+            {doctor ? "running" : "unreachable"}
+            {daemonVersion ? ` · ${daemonVersion}` : ""}
+          </span>
+        </div>
+        <div className="mac-row">
+          {/* Leading icon stays neutral — generic "default browser
+              setting" affordance. The *identity* of the current default
+              (its app icon) renders on the right next to the value. */}
+          <span style={{ color: "var(--mac-fg-muted)" }}>
+            <Layout size={15} strokeWidth={1.8} />
+          </span>
+          <span className="grow mac-row-label">System default browser</span>
+          {doctor?.is_default_browser ? (
+            <span
+              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <img
+                src={brandIcon}
+                width={18}
+                height={18}
+                alt=""
+                style={{
+                  borderRadius: 4,
+                  flex: "0 0 18px",
+                  boxShadow: "0 0 0 0.5px rgba(0,0,0,0.08)",
+                }}
+              />
+              <span className="mac-row-value">LinkPilot</span>
+            </span>
+          ) : (
+            <span className="mac-row-value">Not set</span>
+          )}
+          <span
+            className={`mac-tag ${doctor?.is_default_browser ? "ok" : "danger"}`}
+          >
+            {doctor?.is_default_browser ? "active" : "not set"}
+          </span>
+        </div>
+        <div className="mac-row">
+          <span style={{ color: "var(--mac-fg-muted)" }}>
+            <Globe size={15} strokeWidth={1.8} />
+          </span>
+          <span className="grow mac-row-label">Browsers detected</span>
+          <span className="mac-row-value">
+            {doctor?.installed_browser_count ?? 0} apps
+          </span>
+        </div>
+        <div className="mac-row">
+          <span style={{ color: "var(--mac-fg-muted)" }}>
+            <FileText size={15} strokeWidth={1.8} />
+          </span>
+          <span className="grow mac-row-label">Configuration</span>
+          <span
+            className="select-text mac-mono mac-muted"
+            style={{ fontSize: 11 }}
+            title={doctor?.config_path ?? undefined}
+          >
+            {doctor?.config_path ?? "…"}
+          </span>
+        </div>
+      </div>
+
+      {/* Recent routes */}
+      <div className="mac-card-title">Recent routes</div>
+      <div className="mac-card">
+        {recent.length === 0 ? (
+          <div
+            className="mac-row mac-muted"
+            style={{ justifyContent: "center", padding: "24px 18px" }}
+          >
+            No routes yet. Try{" "}
+            <span className="mac-mono" style={{ margin: "0 4px" }}>
+              lp open …
+            </span>{" "}
+            or click a link.
+          </div>
+        ) : (
+          recent
+            .slice(0, 5)
+            .map((r, i) => <RouteRow key={i} record={r} />)
+        )}
+      </div>
     </div>
   );
 }
 
 function RouteRow({ record }: { record: RouteRecord }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2">
-      <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">
-        {new Date(record.timestamp_ms).toLocaleTimeString()}
+    <div className="mac-row clickable">
+      <span
+        className="mac-muted"
+        style={{
+          width: 70,
+          fontSize: 12,
+          fontVariantNumeric: "tabular-nums",
+          flexShrink: 0,
+        }}
+      >
+        {timeAgo(record.timestamp_ms)}
       </span>
-      <span className="min-w-0 flex-1 truncate select-text font-mono text-xs">
+      <span
+        className="grow mac-mono"
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
         {record.context.url}
       </span>
-      <DecisionLine decision={record.decision} />
+      <DecisionPill decision={record.decision} />
     </div>
   );
 }
 
-export function DecisionLine({ decision }: { decision: RoutingDecision }) {
+export function DecisionPill({ decision }: { decision: RoutingDecision }) {
   if (decision.action === "open") {
     return (
-      <div className="flex items-center gap-2">
-        <Badge variant="default">open</Badge>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
         <BrowserBadge
           browserId={decision.target.browser}
           profile={decision.target.profile}
           className="text-xs"
         />
-      </div>
+      </span>
     );
   }
   if (decision.action === "allow") {
-    return (
-      <div className="flex items-center gap-2">
-        <Badge variant="accent">allow</Badge>
-        <span className="text-xs text-muted-foreground">{decision.reason}</span>
-      </div>
-    );
+    return <span className="mac-tag neutral">allow</span>;
   }
   if (decision.action === "block") {
-    return (
-      <div className="flex items-center gap-2">
-        <Badge variant="destructive">block</Badge>
-        <span className="text-xs text-muted-foreground">{decision.reason}</span>
-      </div>
-    );
+    return <span className="mac-tag danger">blocked</span>;
   }
-  return (
-    <div className="flex items-center gap-2">
-      <Badge variant="secondary">ask</Badge>
-      <span className="text-xs text-muted-foreground">{decision.reason}</span>
-    </div>
-  );
+  return <span className="mac-tag warn">ask</span>;
 }
+
+// Re-export under the old name for components that still import
+// `DecisionLine` from this module. New code should use `DecisionPill`.
+export const DecisionLine = DecisionPill;
+
+function timeAgo(ms: number): string {
+  const s = Math.round((Date.now() - ms) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  return `${Math.round(s / 86400)}d ago`;
+}
+
