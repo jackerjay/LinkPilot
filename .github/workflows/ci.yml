@@ -41,7 +41,7 @@ jobs:
 
   frontend:
     name: Frontend
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/desktop
