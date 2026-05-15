@@ -146,7 +146,7 @@ impl<'a> Router<'a> {
                 hits.push((rule, eval));
             }
         }
-        hits.sort_by(|a, b| b.0.priority.cmp(&a.0.priority));
+        hits.sort_by_key(|hit| std::cmp::Reverse(hit.0.priority));
 
         if let Some((rule, eval)) = hits.into_iter().next() {
             return Explained {
