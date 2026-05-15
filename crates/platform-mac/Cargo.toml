@@ -18,5 +18,5 @@ tracing = { workspace = true }
 core-foundation = "0.10"
 core-foundation-sys = "0.8"
 objc2 = "0.5"
-objc2-foundation = { version = "0.2", features = ["NSString"] }
+objc2-foundation = { version = "0.3", features = ["NSString"] }
 objc2-app-kit = { version = "0.2", features = ["NSWorkspace", "NSRunningApplication"] }
