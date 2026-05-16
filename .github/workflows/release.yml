@@ -53,18 +53,52 @@ jobs:
             target/aarch64-apple-darwin/release/lp
           lipo -info target/universal-apple-darwin/release/lp
 
-      - name: Build desktop DMG (universal)
+      - name: Build desktop .app (universal)
         working-directory: apps/desktop
-        run: corepack yarn run tauri build --target universal-apple-darwin --bundles dmg
+        run: corepack yarn run tauri build --target universal-apple-darwin --bundles app
+
+      # tauri-plugin-deep-link auto-injects a CFBundleURLTypes entry with
+      # Editor role and an internal-looking URL name; macOS's "Default
+      # web browser" picker needs Viewer role, a human-readable name,
+      # LSHandlerRank=Default, plus CFBundleDocumentTypes for HTML.
+      # patch-info-plist.sh rewrites those keys on the bundled .app.
+      # Must run AFTER `tauri build --bundles app` (the keys don't exist
+      # until the plugin injects them) and BEFORE DMG creation (otherwise
+      # the DMG would embed the unpatched plist).
+      - name: Patch Info.plist for default-browser registration
+        run: |
+          chmod +x apps/desktop/scripts/patch-info-plist.sh
+          apps/desktop/scripts/patch-info-plist.sh \
+            target/universal-apple-darwin/release/bundle/macos/LinkPilot.app
+
+      # Manual DMG creation instead of `tauri build --bundles dmg`: that
+      # would re-bundle the .app from scratch and overwrite the patched
+      # Info.plist. Tauri's default DMG has no custom background image
+      # or window layout (no `bundle.macOS.dmg` in tauri.conf.json), so
+      # a vanilla "drag to /Applications" disk image matches the
+      # previous release output.
+      - name: Build DMG from patched .app
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="$(mktemp -d)"
+          cp -R target/universal-apple-darwin/release/bundle/macos/LinkPilot.app "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          mkdir -p dist/release
+          hdiutil create \
+            -volname "LinkPilot" \
+            -srcfolder "$STAGE" \
+            -ov \
+            -format UDZO \
+            "dist/release/LinkPilot_${VERSION}_universal.dmg"
 
       - name: Package artifacts
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist/release
           cp target/universal-apple-darwin/release/lp dist/release/lp-macos
           tar -C dist/release -czf dist/release/lp-macos.tar.gz lp-macos
-          cp target/universal-apple-darwin/release/bundle/dmg/*.dmg dist/release/
           shasum -a 256 dist/release/* > dist/release/checksums.txt
 
       - name: Create GitHub Release
