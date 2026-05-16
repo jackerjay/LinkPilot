@@ -108,3 +108,13 @@ the release workflow uses `hdiutil create` instead.
 - macOS: just Rust + Node 22.
 - Linux dev (workspace check only — no Tauri shell):
   `libwebkit2gtk-4.1-dev libsoup-3.0-dev libgtk-3-dev librsvg2-dev libssl-dev pkg-config`.
+
+## Project skills
+
+`.claude/skills/` ships Claude Code skills scoped to this repo:
+
+- **`add-config-capability`** — invoke when extending the user-configurable
+  surface (new `MatcherTree` variant, `Action` variant, `Settings` field,
+  `Workspace` property, browser metadata field, etc.). Encodes the layered
+  architecture (core schema → daemon Tauri command → `lib/tauri.ts` wrapper
+  → React page → `lp` CLI subcommand) so capabilities don't ship half-wired.
