@@ -68,9 +68,16 @@ What to try:
 
 ```sh
 cd apps/desktop
-npx tauri build
-open src-tauri/target/release/bundle/macos/LinkPilot.app
+npm run bundle:mac      # tauri build + patch-info-plist.sh on the .app
+open ../../target/release/bundle/macos/LinkPilot.app
 ```
+
+`bundle:mac` runs `tauri build` and then patches the bundled `.app`'s
+Info.plist so the macOS "Default web browser" picker recognises LinkPilot
+(see `apps/desktop/scripts/patch-info-plist.sh` for details).
+The DMG it produces alongside is _not_ patched — for a DMG with the
+plist patch baked in, push a `v*.*.*` tag and use the
+`release.yml`-produced artifact instead (see "Releases" below).
 
 Real brand artwork is already shipped in `apps/desktop/src-tauri/icons/`
 (generated from `docs/brand/icon.png` + `docs/brand/tray-template.svg`).
@@ -145,9 +152,27 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The tag triggers `.github/workflows/release.yml`, which builds the macOS CLI
-and Tauri desktop bundle, creates a GitHub Release, uploads artifacts, and
-publishes SHA-256 checksums.
+The tag triggers `.github/workflows/release.yml`, which on `macos-latest`:
+
+1. Builds the `lp` CLI for both `x86_64-apple-darwin` and
+   `aarch64-apple-darwin` and `lipo`s them into one universal binary.
+2. Builds the Tauri shell with `--target universal-apple-darwin --bundles app`
+   so the `.app` is also a universal binary.
+3. Runs `apps/desktop/scripts/patch-info-plist.sh` against the bundled `.app`
+   — rewrites the `tauri-plugin-deep-link` auto-injected `CFBundleURLTypes`
+   entry to Viewer/`Default` and adds `CFBundleDocumentTypes` for HTML so
+   the macOS "Default web browser" picker actually surfaces LinkPilot.
+4. Wraps the patched `.app` in a vanilla `LinkPilot_<version>_universal.dmg`
+   via `hdiutil` (a second `tauri build --bundles dmg` would re-bundle the
+   `.app` and overwrite the plist patch).
+5. Uploads `lp-macos`, `lp-macos.tar.gz`, the DMG, and `checksums.txt`
+   to a GitHub Release.
+
+A single universal DMG works on both Apple Silicon and Intel Macs.
+
+Every PR also runs a `desktop-bundle` smoke job on `macos-latest`
+(`tauri build --debug --bundles app`) so packaging regressions show up
+before a tag is cut.
 
 Current release artifacts are unsigned. On macOS, unsigned builds may require
 removing quarantine before first launch:
