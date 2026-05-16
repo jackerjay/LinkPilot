@@ -1,6 +1,16 @@
-# LinkPilot
+<p align="center">
+  <img src="docs/brand/icon.png" alt="LinkPilot" width="128" height="128">
+</p>
 
-> Route every link to the right browser, profile, and workspace.
+<h1 align="center">LinkPilot</h1>
+
+<p align="center">
+  <em>Route every link to the right browser, profile, and workspace.</em>
+</p>
+
+<p align="center">
+  English | <a href="README.zh.md">简体中文</a>
+</p>
 
 LinkPilot is a macOS-first (Windows / Linux to follow) link router: it sits
 between the OS, your browsers, and the apps that open URLs, and dispatches
