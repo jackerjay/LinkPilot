@@ -38,6 +38,14 @@ cargo check -p linkpilot-desktop
 # CLI release build
 cargo build --release -p linkpilot-cli   # → target/release/lp
 
+# CLI surface — covers everything in the GUI config:
+#   open / doctor / rules / workspaces / config / settings / browsers
+#   / default-browser. Writes always go through the local config file
+#   (atomic rewrite + anti-echo token); a running daemon's fsnotify
+#   watcher picks them up automatically. `lp history` is intentionally
+#   absent — RouteHistory only lives in the daemon's memory and the
+#   IPC protocol has no endpoint for it yet.
+
 # Desktop dev
 cd apps/desktop
 npm install

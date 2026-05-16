@@ -45,11 +45,55 @@ cargo build -p linkpilot-cli
 `lp` talks to the running daemon over a Unix socket
 (`~/Library/Application Support/LinkPilot/linkpilot.sock`) when one is up,
 and falls back to local execution otherwise. Force the local path with
-`--local`.
+`--local`. Writes always go through the local file; the daemon's fsnotify
+watcher picks them up via the anti-echo token, so a running GUI refreshes
+within a frame.
 
 First run writes a starter config to
 `~/Library/Application Support/LinkPilot/linkpilot.config.json` (PRD §22 demo:
 github / notion → Chrome Default, figma / youtube → Arc). Edit and re-run.
+
+The CLI mirrors everything the GUI can configure — see `lp <command> --help`
+for the full surface:
+
+```sh
+# Rules
+lp rules add --host "*.figma.com" --target arc --priority 20
+lp rules add --host github.com --path "/oauth/*" --keep-source --priority 50
+lp rules add --from-app Slack --ask
+lp rules list --all                      # include disabled rules
+lp rules disable <id-prefix>             # 8-char prefix is enough
+lp rules set-priority <id-prefix> 99
+lp rules delete <id-prefix>
+lp rules add --when-json '{"op":"any","of":[...]}' --then-json '{"kind":"block"}'
+
+# Workspaces (batch on/off groups of rules)
+lp workspaces add work --name Work
+lp workspaces disable work               # all `workspace_id=work` rules skipped
+
+# Config inspection + import/export
+lp config show                           # whole document as JSON
+lp config path
+lp config set-default-target arc --profile Personal
+lp config export ./backup.json
+lp config import ./backup.json
+
+# Settings
+lp settings show
+lp settings smart-routing off            # master kill-switch
+lp settings launch-at-login on
+lp settings history-retention 30         # or `clear` for unlimited
+
+# Browsers
+lp browsers list                         # auto-detected + custom, merged
+lp browsers profiles chrome
+lp browsers custom add --id devbuild --name "Chrome Canary" \
+    --kind chromium --exec /Applications/Google\ Chrome\ Canary.app
+
+# Default-browser registration
+lp default-browser status
+lp default-browser set                   # triggers the macOS confirm prompt
+```
 
 ### Desktop app
 

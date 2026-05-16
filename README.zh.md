@@ -34,10 +34,51 @@ cargo build -p linkpilot-cli
 ```
 
 当 daemon 在运行时，`lp` 走 Unix socket
-（`~/Library/Application Support/LinkPilot/linkpilot.sock`）；否则回退到本地直接执行。`--local` 可强制走本地路径。
+（`~/Library/Application Support/LinkPilot/linkpilot.sock`）；否则回退到本地直接执行。`--local` 可强制走本地路径。写入操作始终走本地配置文件 —— daemon 的 fsnotify watcher 通过 anti-echo token 自动拾取变更，运行中的 GUI 一帧内就能刷新。
 
 首次运行会在
 `~/Library/Application Support/LinkPilot/linkpilot.config.json` 写入一份起始配置（PRD §22 示例：github / notion → Chrome Default，figma / youtube → Arc）。编辑后再跑一次即可。
+
+CLI 已覆盖 GUI 所有可配置项 —— 用 `lp <command> --help` 查看完整参数：
+
+```sh
+# 规则
+lp rules add --host "*.figma.com" --target arc --priority 20
+lp rules add --host github.com --path "/oauth/*" --keep-source --priority 50
+lp rules add --from-app Slack --ask
+lp rules list --all                      # 包含已禁用的规则
+lp rules disable <id 前缀>               # 8 位前缀足够
+lp rules set-priority <id 前缀> 99
+lp rules delete <id 前缀>
+lp rules add --when-json '{"op":"any","of":[...]}' --then-json '{"kind":"block"}'
+
+# 工作空间（批量开关一组规则）
+lp workspaces add work --name Work
+lp workspaces disable work               # 所有 workspace_id=work 的规则跳过
+
+# 配置查看 + 导入/导出
+lp config show                           # 整份配置 JSON
+lp config path
+lp config set-default-target arc --profile Personal
+lp config export ./backup.json
+lp config import ./backup.json
+
+# 设置
+lp settings show
+lp settings smart-routing off            # 路由总开关
+lp settings launch-at-login on
+lp settings history-retention 30         # 或 `clear` 表示无限
+
+# 浏览器
+lp browsers list                         # 自动发现 + 自定义，合并后
+lp browsers profiles chrome
+lp browsers custom add --id devbuild --name "Chrome Canary" \
+    --kind chromium --exec /Applications/Google\ Chrome\ Canary.app
+
+# 默认浏览器注册
+lp default-browser status
+lp default-browser set                   # macOS 会弹系统确认
+```
 
 ### 桌面应用
 
