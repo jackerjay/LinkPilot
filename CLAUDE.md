@@ -66,6 +66,9 @@ Two workflows in `.github/workflows/`:
   - Universal binary: builds `lp` for both `x86_64-apple-darwin` and
     `aarch64-apple-darwin`, lipos them together
   - Tauri `--target universal-apple-darwin --bundles app`
+  - Embeds the universal `lp` into `LinkPilot.app/Contents/MacOS/lp`
+    (so the DMG ships GUI + CLI; Settings page symlinks it to
+    `~/.local/bin/lp` via `cli_install_to_path`)
   - Runs `patch-info-plist.sh` against the bundled `.app`
   - Wraps with `hdiutil` into `LinkPilot_<version>_universal.dmg`
   - Uploads `lp-macos`, `lp-macos.tar.gz`, DMG, and `checksums.txt` to GitHub Release

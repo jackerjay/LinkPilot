@@ -29,6 +29,44 @@ plist), and the daemon's Unix-socket IPC server are all wired.
 
 See `docs/linkpilot-design-v0.1.md` (PRD) for the design.
 
+## Install
+
+Two install paths from the same release. Pick whichever (or both).
+
+### CLI only
+
+Headless — useful for terminal workflows, scripts, or alongside the
+GUI from a different release. The `lp` binary is a single static-ish
+executable; no daemon required (`lp open` does local routing when no
+daemon is running, and talks to the GUI's daemon over Unix socket
+when both are installed).
+
+```sh
+# From a release artifact:
+curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/lp-macos.tar.gz \
+  | tar -xz -C ~/.local/bin
+chmod +x ~/.local/bin/lp
+# Add ~/.local/bin to PATH if it isn't already.
+```
+
+### GUI + CLI
+
+Install the `.app` and the bundled `lp` binary comes along. After
+launching LinkPilot, open Settings → Command-line tool and click
+**Install to ~/.local/bin** to symlink `lp` onto your PATH (idempotent;
+re-run after a version upgrade). The bundled binary lives at
+`/Applications/LinkPilot.app/Contents/MacOS/lp` — you can also add
+that directory to PATH directly instead of symlinking.
+
+```sh
+curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/LinkPilot_<version>_universal.dmg -o LinkPilot.dmg
+hdiutil attach LinkPilot.dmg
+cp -R "/Volumes/LinkPilot/LinkPilot.app" /Applications/
+hdiutil detach "/Volumes/LinkPilot"
+xattr -dr com.apple.quarantine /Applications/LinkPilot.app   # unsigned build
+open /Applications/LinkPilot.app
+```
+
 ## Quick start (macOS)
 
 ### CLI — no GUI required

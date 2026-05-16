@@ -57,6 +57,17 @@ jobs:
         working-directory: apps/desktop
         run: corepack yarn run tauri build --target universal-apple-darwin --bundles app
 
+      # Ship the `lp` CLI inside the .app so installing the DMG gives
+      # users both a GUI and a CLI. The Settings page exposes a
+      # one-click symlink-to-PATH installer (`cli_install_to_path`)
+      # that targets ~/.local/bin/lp from this bundled binary.
+      - name: Embed lp CLI inside the .app
+        run: |
+          set -euo pipefail
+          APP=target/universal-apple-darwin/release/bundle/macos/LinkPilot.app
+          cp target/universal-apple-darwin/release/lp "$APP/Contents/MacOS/lp"
+          chmod +x "$APP/Contents/MacOS/lp"
+
       # tauri-plugin-deep-link auto-injects a CFBundleURLTypes entry with
       # Editor role and an internal-looking URL name; macOS's "Default
       # web browser" picker needs Viewer role, a human-readable name,
