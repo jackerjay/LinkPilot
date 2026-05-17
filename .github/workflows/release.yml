@@ -45,13 +45,23 @@ jobs:
       - name: Build CLI (aarch64)
         run: cargo build --release --target aarch64-apple-darwin -p linkpilot-cli
 
-      - name: Lipo CLI into universal binary
+      - name: Build daemon (x86_64)
+        run: cargo build --release --target x86_64-apple-darwin -p linkpilot-headless-daemon
+
+      - name: Build daemon (aarch64)
+        run: cargo build --release --target aarch64-apple-darwin -p linkpilot-headless-daemon
+
+      - name: Lipo CLI + daemon into universal binaries
         run: |
           mkdir -p target/universal-apple-darwin/release
           lipo -create -output target/universal-apple-darwin/release/lp \
             target/x86_64-apple-darwin/release/lp \
             target/aarch64-apple-darwin/release/lp
           lipo -info target/universal-apple-darwin/release/lp
+          lipo -create -output target/universal-apple-darwin/release/linkpilot-daemon \
+            target/x86_64-apple-darwin/release/linkpilot-daemon \
+            target/aarch64-apple-darwin/release/linkpilot-daemon
+          lipo -info target/universal-apple-darwin/release/linkpilot-daemon
 
       - name: Build desktop .app (universal)
         working-directory: apps/desktop
@@ -61,12 +71,19 @@ jobs:
       # users both a GUI and a CLI. The Settings page exposes a
       # one-click symlink-to-PATH installer (`cli_install_to_path`)
       # that targets ~/.local/bin/lp from this bundled binary.
-      - name: Embed lp CLI inside the .app
+      #
+      # Same trick for `linkpilot-daemon`: the GUI's first-run hook
+      # writes the LaunchAgent plist pointing at Contents/MacOS/
+      # linkpilot-daemon, and `lp daemon install` (M2) will too.
+      - name: Embed lp CLI and daemon inside the .app
         run: |
           set -euo pipefail
           APP=target/universal-apple-darwin/release/bundle/macos/LinkPilot.app
           cp target/universal-apple-darwin/release/lp "$APP/Contents/MacOS/lp"
           chmod +x "$APP/Contents/MacOS/lp"
+          cp target/universal-apple-darwin/release/linkpilot-daemon \
+             "$APP/Contents/MacOS/linkpilot-daemon"
+          chmod +x "$APP/Contents/MacOS/linkpilot-daemon"
 
       # tauri-plugin-deep-link auto-injects a CFBundleURLTypes entry with
       # Editor role and an internal-looking URL name; macOS's "Default
@@ -110,6 +127,16 @@ jobs:
           set -euo pipefail
           cp target/universal-apple-darwin/release/lp dist/release/lp-macos
           tar -C dist/release -czf dist/release/lp-macos.tar.gz lp-macos
+          # Standalone daemon tarball — for CLI-only users who want a
+          # background service without installing the .app. Inside the
+          # tarball the binary is named `linkpilot-daemon` so a user can
+          # `mv linkpilot-daemon ~/.local/bin/` and then `linkpilot-daemon
+          # --serve` directly.
+          cp target/universal-apple-darwin/release/linkpilot-daemon \
+             dist/release/linkpilot-daemon-macos
+          tar -C dist/release -czf dist/release/linkpilot-daemon-macos.tar.gz \
+              --transform 's,^linkpilot-daemon-macos,linkpilot-daemon,' \
+              linkpilot-daemon-macos
           shasum -a 256 dist/release/* > dist/release/checksums.txt
 
       - name: Create GitHub Release
