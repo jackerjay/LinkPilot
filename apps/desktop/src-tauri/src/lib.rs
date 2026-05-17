@@ -21,7 +21,15 @@ use linkpilot_core::platform::PlatformProvider;
 use tauri::{Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt;
 
-pub use state::AppState;
+pub use state::{AppState, DaemonMode};
+
+fn probe_existing_daemon(endpoint: &linkpilot_core::endpoint::Endpoint) -> bool {
+    use linkpilot_core::protocol::Request;
+    let req = Request::StatePing {
+        request_id: "gui-startup-probe".into(),
+    };
+    linkpilot_ipc::client::send(endpoint, req).is_ok()
+}
 
 #[cfg(target_os = "macos")]
 fn make_platform(bundle_id: String) -> Arc<dyn PlatformProvider> {
@@ -107,16 +115,44 @@ pub fn run() {
                 }
             });
 
-            // IPC server: `lp` and (future) Native Host attach here.
-            let handler = std::sync::Arc::new(ipc_host::DaemonHandler::new(
-                Arc::clone(&runtime),
-                state.clone(),
-                app.handle().clone(),
-            ));
-            match linkpilot_ipc::server::serve(linkpilot_ipc::path::default_endpoint(), handler) {
-                Ok(ipc) => state.attach_ipc(ipc),
-                Err(err) => tracing::warn!(?err, "ipc server failed to start; GUI still works"),
-            }
+            // v0.2 daemon coexistence:
+            //   - If `linkpilot-daemon` is already running on the socket, the
+            //     GUI runs in "client mode": skip the IPC server bind so we
+            //     don't fight the daemon for the socket. The GUI's local
+            //     ConfigStore + fsnotify still work — they read/write the
+            //     same on-disk config file the daemon does, and the anti-echo
+            //     token keeps both sides in sync.
+            //   - Otherwise (no external daemon) we behave like v0.1: the
+            //     GUI itself hosts the daemon (route_open from `lp`, ipc-host
+            //     handler, etc.).
+            // Inspector history is degraded in client mode (we don't see the
+            // daemon's in-memory history); M3 wires `lp history` through to
+            // the daemon and the GUI can call the same path.
+            let endpoint = linkpilot_ipc::path::default_endpoint();
+            let daemon_mode = if probe_existing_daemon(&endpoint) {
+                tracing::info!(
+                    endpoint = %endpoint.display(),
+                    "external linkpilot-daemon detected; GUI running in client mode"
+                );
+                DaemonMode::External
+            } else {
+                let handler = std::sync::Arc::new(ipc_host::DaemonHandler::new(
+                    Arc::clone(&runtime),
+                    state.clone(),
+                    app.handle().clone(),
+                ));
+                match linkpilot_ipc::server::serve(endpoint, handler) {
+                    Ok(ipc) => {
+                        state.attach_ipc(ipc);
+                        DaemonMode::InProcess
+                    }
+                    Err(err) => {
+                        tracing::warn!(?err, "ipc server failed to start; GUI still works");
+                        DaemonMode::InProcess
+                    }
+                }
+            };
+            state.set_daemon_mode(daemon_mode);
 
             tray::install(&app.handle())?;
             app.manage(state);
