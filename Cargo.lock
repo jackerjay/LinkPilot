@@ -2220,8 +2220,11 @@ name = "linkpilot-headless-daemon"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
  "linkpilot-core",
  "linkpilot-ipc",
+ "linkpilot-platform-mac",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
@@ -4278,6 +4281,7 @@ dependencies = [
  "libc",
  "mio 1.2.0",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

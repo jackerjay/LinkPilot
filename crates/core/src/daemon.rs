@@ -12,9 +12,10 @@
 //! `Ask`) wrap an `Arc<DaemonRuntime>` in their own handler and delegate
 //! everything they don't customise.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::config::ConfigStore;
+use crate::config::{default_config_path, ConfigStore};
 use crate::history::{RouteHistory, RouteRecord};
 use crate::platform::PlatformProvider;
 use crate::protocol::{DoctorReport, Request, Response};
@@ -56,6 +57,29 @@ impl DaemonRuntime {
             platform,
             version: version.into(),
         }
+    }
+
+    /// Convenience constructor used by the standalone `linkpilot-daemon`
+    /// binary. Resolves the default config path (or uses `config_path`
+    /// override), loads-or-initialises the ConfigStore, creates a fresh
+    /// RouteHistory, and ties the supplied platform provider together.
+    ///
+    /// Errors when the config path can't be resolved (e.g. no `$HOME`)
+    /// or the file is unreadable / malformed JSON.
+    pub fn bootstrap(
+        config_path: Option<PathBuf>,
+        platform: Arc<dyn PlatformProvider>,
+        version: impl Into<String>,
+    ) -> Result<(Self, bool), crate::config::store::ConfigError> {
+        let path = match config_path {
+            Some(p) => p,
+            None => default_config_path()?,
+        };
+        let (config, created) = ConfigStore::load_or_init(path)?;
+        Ok((
+            Self::new(config, Arc::new(RouteHistory::new()), platform, version),
+            created,
+        ))
     }
 
     /// Evaluate a routing context and log the resulting record. Returns

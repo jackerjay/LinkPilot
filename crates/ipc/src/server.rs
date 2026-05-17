@@ -62,6 +62,25 @@ pub struct ServerHandle {
     pub endpoint: Endpoint,
 }
 
+impl Drop for ServerHandle {
+    fn drop(&mut self) {
+        // Notify the listener task to stop. The select! branch on the
+        // shutdown receiver runs `remove_file` and returns Ok — clean
+        // path.
+        if let Some(tx) = self._shutdown.take() {
+            let _ = tx.send(());
+        }
+        // Belt-and-suspenders socket cleanup. Field-order Drop runs
+        // _rt next, which tears down the runtime and may cancel the
+        // listener task before its shutdown branch unlinks the file.
+        // We re-do the unlink here so stale sockets don't accumulate
+        // and trip the next daemon start's fail-fast guard.
+        if let Endpoint::UnixSocket(path) = &self.endpoint {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
 #[cfg(unix)]
 async fn run<H: RequestHandler>(
     endpoint: Endpoint,
