@@ -68,6 +68,10 @@ export const ipc = {
   cliInstallStatus: () => invoke<CliInstallStatus>("cli_install_status"),
   cliInstallToPath: (target?: string) =>
     invoke<string>("cli_install_to_path", { target: target ?? null }),
+
+  daemonServiceStatus: () => invoke<DaemonServiceStatus>("daemon_service_status"),
+  daemonServiceInstall: () => invoke<DaemonServiceStatus>("daemon_service_install"),
+  daemonServiceUninstall: () => invoke<DaemonServiceStatus>("daemon_service_uninstall"),
 };
 
 export interface CliInstallStatus {
@@ -78,6 +82,21 @@ export interface CliInstallStatus {
   default_target: string;
   /** True iff `default_target` already points at `bundled_path`. */
   already_installed: boolean;
+}
+
+export interface DaemonServiceStatus {
+  /** Path of the bundled `linkpilot-daemon` binary inside the running
+   *  .app, or null on dev builds. */
+  bundled_path: string | null;
+  /** Whether `~/Library/LaunchAgents/app.linkpilot.daemon.plist` exists. */
+  plist_exists: boolean;
+  /** Whether `launchctl list app.linkpilot.daemon` finds the agent. */
+  loaded: boolean;
+  /** PID of the running daemon, if launchd has it active. */
+  pid: number | null;
+  /** Whether the GUI hosts the daemon itself ("in-process") or is
+   *  talking to a separately-running `linkpilot-daemon` ("external"). */
+  gui_mode: "in-process" | "external";
 }
 
 export interface AppIconRequest {

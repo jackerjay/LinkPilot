@@ -520,3 +520,120 @@ fn default_install_target() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("/"));
     home.join(".local").join("bin").join("lp")
 }
+
+// ----------------------------------------------------------------------------
+// background daemon service — the LaunchAgent that runs `linkpilot-daemon`
+// even when the GUI is closed. v0.2 ships the daemon as a sibling binary
+// inside the .app (Contents/MacOS/linkpilot-daemon); these commands let the
+// Settings page show its state and (un)install the LaunchAgent plist.
+
+#[derive(serde::Serialize)]
+pub struct DaemonServiceStatus {
+    /// Path of the bundled daemon binary inside the running .app, or
+    /// None for dev builds where the embed step hasn't run.
+    pub bundled_path: Option<String>,
+    /// True if `~/Library/LaunchAgents/app.linkpilot.daemon.plist` exists.
+    pub plist_exists: bool,
+    /// True if `launchctl list app.linkpilot.daemon` finds the agent.
+    pub loaded: bool,
+    /// PID of the running daemon, if launchd has it active.
+    pub pid: Option<i32>,
+    /// Which daemon path the GUI is using right now — "in-process" means
+    /// the GUI hosts the daemon itself, "external" means it's talking to
+    /// a separately-running `linkpilot-daemon`.
+    pub gui_mode: &'static str,
+}
+
+#[tauri::command]
+pub fn daemon_service_status(state: tauri::State<'_, AppState>) -> DaemonServiceStatus {
+    #[cfg(target_os = "macos")]
+    {
+        let bundled = locate_bundled_daemon();
+        let agent_status = linkpilot_platform_mac::launch_agent::daemon_status().ok();
+        let gui_mode = match state.daemon_mode() {
+            crate::state::DaemonMode::InProcess => "in-process",
+            crate::state::DaemonMode::External => "external",
+        };
+        return DaemonServiceStatus {
+            bundled_path: bundled,
+            plist_exists: agent_status
+                .as_ref()
+                .map(|s| s.plist_exists)
+                .unwrap_or(false),
+            loaded: agent_status.as_ref().map(|s| s.loaded).unwrap_or(false),
+            pid: agent_status.and_then(|s| s.pid),
+            gui_mode,
+        };
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = state;
+        DaemonServiceStatus {
+            bundled_path: None,
+            plist_exists: false,
+            loaded: false,
+            pid: None,
+            gui_mode: "in-process",
+        }
+    }
+}
+
+#[tauri::command]
+pub fn daemon_service_install() -> Result<DaemonServiceStatus, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let bundled = locate_bundled_daemon().ok_or_else(|| {
+            "bundled `linkpilot-daemon` not found — only the packaged .app installs the background service"
+                .to_string()
+        })?;
+        linkpilot_platform_mac::launch_agent::install_daemon(std::path::Path::new(&bundled))
+            .map_err(|e| e.to_string())?;
+        Ok(refresh_daemon_status(bundled))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("background service is macOS-only in v0.2".into())
+    }
+}
+
+#[tauri::command]
+pub fn daemon_service_uninstall() -> Result<DaemonServiceStatus, String> {
+    #[cfg(target_os = "macos")]
+    {
+        linkpilot_platform_mac::launch_agent::uninstall_daemon().map_err(|e| e.to_string())?;
+        Ok(refresh_daemon_status(
+            locate_bundled_daemon().unwrap_or_default(),
+        ))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("background service is macOS-only in v0.2".into())
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn refresh_daemon_status(bundled: String) -> DaemonServiceStatus {
+    let status = linkpilot_platform_mac::launch_agent::daemon_status().ok();
+    DaemonServiceStatus {
+        bundled_path: if bundled.is_empty() {
+            None
+        } else {
+            Some(bundled)
+        },
+        plist_exists: status.as_ref().map(|s| s.plist_exists).unwrap_or(false),
+        loaded: status.as_ref().map(|s| s.loaded).unwrap_or(false),
+        pid: status.and_then(|s| s.pid),
+        gui_mode: "in-process",
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn locate_bundled_daemon() -> Option<String> {
+    // Sibling of the running .app's main binary, mirroring the lp embed
+    // pattern. In dev (`npx tauri dev`) the daemon isn't sitting in
+    // target/debug next to the desktop binary unless the user ran
+    // `cargo build -p linkpilot-headless-daemon` first.
+    let exe = std::env::current_exe().ok()?;
+    let candidate = exe.parent()?.join("linkpilot-daemon");
+    candidate.is_file().then(|| candidate.display().to_string())
+}

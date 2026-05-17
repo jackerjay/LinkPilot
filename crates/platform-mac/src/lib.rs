@@ -7,6 +7,7 @@ pub mod app_picker;
 mod autostart;
 mod default_browser;
 mod inventory;
+pub mod launch_agent;
 mod launcher;
 mod notifier;
 mod opener;

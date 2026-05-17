@@ -154,6 +154,38 @@ pub fn run() {
             };
             state.set_daemon_mode(daemon_mode);
 
+            // First-run auto-install of the daemon LaunchAgent (production
+            // builds only; dev builds skip so iterating doesn't pollute
+            // the developer's LaunchAgents dir). When a bundled
+            // `linkpilot-daemon` sits next to this binary and the plist
+            // doesn't exist yet, write it + launchctl-load so users get a
+            // backgrounded daemon without any CLI ceremony. Idempotent —
+            // re-runs are no-ops because the plist will already exist.
+            #[cfg(all(target_os = "macos", not(debug_assertions)))]
+            {
+                if let Ok(false) =
+                    linkpilot_platform_mac::launch_agent::daemon_plist_path().map(|p| p.exists())
+                {
+                    if let Some(exe) = std::env::current_exe()
+                        .ok()
+                        .and_then(|p| p.parent().map(|d| d.join("linkpilot-daemon")))
+                    {
+                        if exe.is_file() {
+                            if let Err(err) =
+                                linkpilot_platform_mac::launch_agent::install_daemon(&exe)
+                            {
+                                tracing::warn!(?err, "first-run LaunchAgent install failed");
+                            } else {
+                                tracing::info!(
+                                    plist = %exe.display(),
+                                    "installed daemon LaunchAgent on first run"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
             tray::install(&app.handle())?;
             app.manage(state);
             // Browser-picker state for the Ask UI (see picker.rs).
@@ -219,6 +251,9 @@ pub fn run() {
             commands::pick_app,
             commands::cli_install_status,
             commands::cli_install_to_path,
+            commands::daemon_service_status,
+            commands::daemon_service_install,
+            commands::daemon_service_uninstall,
             picker::picker_session,
             picker::picker_resolve,
             tray::tray_open_main,
