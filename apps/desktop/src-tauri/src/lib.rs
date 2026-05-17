@@ -58,7 +58,22 @@ pub fn run() {
             let bundle_id = app.config().identifier.clone();
             let platform = make_platform(bundle_id);
 
-            let state = AppState::new(config_store.clone(), Arc::clone(&history), platform);
+            // DaemonRuntime is the in-process daemon's state — same logic the
+            // headless `linkpilot-daemon` binary uses. Shared via Arc so the
+            // ipc_host handler (below) and AppState's Tauri commands both see
+            // identical config/history snapshots.
+            let runtime = Arc::new(linkpilot_core::daemon::DaemonRuntime::new(
+                config_store.clone(),
+                Arc::clone(&history),
+                Arc::clone(&platform),
+                env!("CARGO_PKG_VERSION"),
+            ));
+
+            let state = AppState::new(
+                config_store.clone(),
+                Arc::clone(&history),
+                Arc::clone(&platform),
+            );
 
             // fsnotify: rebroadcast every config change to the front-end.
             //
@@ -94,6 +109,7 @@ pub fn run() {
 
             // IPC server: `lp` and (future) Native Host attach here.
             let handler = std::sync::Arc::new(ipc_host::DaemonHandler::new(
+                Arc::clone(&runtime),
                 state.clone(),
                 app.handle().clone(),
             ));

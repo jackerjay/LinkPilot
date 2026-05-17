@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use linkpilot_core::protocol::{Request, Response};
+use linkpilot_core::protocol::Request;
 use thiserror::Error;
 use tokio::sync::oneshot;
 
@@ -20,10 +20,10 @@ pub enum ServerError {
     UnsupportedEndpoint,
 }
 
-/// The daemon implements this once and hands it to `serve`.
-pub trait RequestHandler: Send + Sync + 'static {
-    fn handle(&self, request: Request) -> Response;
-}
+// Trait moved to linkpilot_core::daemon in v0.2 so DaemonRuntime can impl
+// it without a circular crate dependency. Re-exported here so existing
+// `linkpilot_ipc::server::RequestHandler` imports still resolve.
+pub use linkpilot_core::daemon::RequestHandler;
 
 /// Spawn an IPC listener bound to `endpoint`. Returns a shutdown handle that
 /// drops the listener when dropped.

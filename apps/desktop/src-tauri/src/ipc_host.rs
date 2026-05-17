@@ -1,29 +1,37 @@
-//! Daemon-side glue: routes incoming IPC [`Request`] frames to the same code
-//! the Tauri commands call. The actual transport is owned by
-//! [`linkpilot_ipc::server`]; this module only provides the [`RequestHandler`]
-//! impl that the server invokes for every frame.
+//! Daemon-side glue: routes incoming IPC [`Request`] frames.
+//!
+//! Most verbs go straight to [`linkpilot_core::daemon::DaemonRuntime`]'s
+//! default `RequestHandler` impl. We only intercept `RouteOpen` so the
+//! Tauri shell can:
+//!   - emit a `route-logged` event for the Inspector page
+//!   - run the launch through `dispatch::execute`, which knows how to
+//!     spawn the picker window for `Ask` decisions
+//!
+//! All other verbs (RouteEvaluate, ConfigGet, ConfigReplace, Doctor,
+//! StatePing) are pure functions of daemon state — sharing them with the
+//! headless daemon avoids GUI-only drift.
 
-use linkpilot_core::history::RouteRecord;
-use linkpilot_core::protocol::{DoctorReport, Request, Response};
-use linkpilot_core::routing::Router;
-use linkpilot_ipc::server::RequestHandler;
+use std::sync::Arc;
+
+use linkpilot_core::daemon::{DaemonRuntime, RequestHandler};
+use linkpilot_core::protocol::{Request, Response};
 use tauri::{AppHandle, Emitter};
 
 use crate::dispatch::{self, LaunchOutcome};
 use crate::state::AppState;
 
 pub struct DaemonHandler {
-    pub state: AppState,
-    pub app: AppHandle,
-    pub version: String,
+    runtime: Arc<DaemonRuntime>,
+    state: AppState,
+    app: AppHandle,
 }
 
 impl DaemonHandler {
-    pub fn new(state: AppState, app: AppHandle) -> Self {
+    pub fn new(runtime: Arc<DaemonRuntime>, state: AppState, app: AppHandle) -> Self {
         Self {
+            runtime,
             state,
             app,
-            version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
 }
@@ -31,34 +39,16 @@ impl DaemonHandler {
 impl RequestHandler for DaemonHandler {
     fn handle(&self, request: Request) -> Response {
         match request {
-            Request::RouteEvaluate {
-                request_id,
-                context,
-            } => {
-                let doc = self.state.config.document();
-                let decision = Router::new(&doc).evaluate(&context);
-                Response::RouteDecision {
-                    request_id,
-                    decision,
-                }
-            }
-
             Request::RouteOpen {
                 request_id,
                 context,
             } => {
-                let doc = self.state.config.document();
-                let explained = Router::new(&doc).evaluate_explained(&context);
-                let decision = explained.decision.clone();
-                let record = RouteRecord::with_explanation(
-                    context.clone(),
-                    decision.clone(),
-                    explained.explanation,
-                );
-                self.state.history.log(record.clone());
+                let raw_url = context.url.clone();
+                let (explained, record) = self.runtime.evaluate_and_log(context);
                 let _ = self.app.emit("route-logged", &record);
+                let decision = explained.decision;
 
-                match dispatch::execute(&self.app, &self.state, &decision, &context.url) {
+                match dispatch::execute(&self.app, &self.state, &decision, &raw_url) {
                     LaunchOutcome::Launched(_)
                     | LaunchOutcome::Skipped
                     | LaunchOutcome::Pending => {}
@@ -76,55 +66,7 @@ impl RequestHandler for DaemonHandler {
                 }
             }
 
-            Request::ConfigGet { request_id } => Response::ConfigSnapshot {
-                request_id,
-                doc: self.state.config.document(),
-            },
-
-            Request::ConfigReplace {
-                request_id,
-                doc,
-                writer,
-            } => match self.state.config.replace(doc, writer) {
-                Ok(()) => Response::Ack { request_id },
-                Err(err) => Response::Error {
-                    request_id,
-                    code: "config-replace".into(),
-                    message: err.to_string(),
-                },
-            },
-
-            Request::Doctor { request_id } => Response::DoctorReport {
-                request_id,
-                report: DoctorReport {
-                    daemon_version: self.version.clone(),
-                    is_default_browser: self
-                        .state
-                        .platform
-                        .default_browser()
-                        .is_linkpilot_default()
-                        .unwrap_or(false),
-                    config_path: Some(self.state.config.path().display().to_string()),
-                    installed_browser_count: self
-                        .state
-                        .platform
-                        .browser_inventory()
-                        .installed_browsers()
-                        .map(|v| v.len())
-                        .unwrap_or(0),
-                    ipc_socket_path: match linkpilot_ipc::path::default_endpoint() {
-                        linkpilot_ipc::path::Endpoint::UnixSocket(p) => {
-                            Some(p.display().to_string())
-                        }
-                        linkpilot_ipc::path::Endpoint::NamedPipe(s) => Some(s),
-                    },
-                },
-            },
-
-            Request::StatePing { request_id } => Response::Pong {
-                request_id,
-                daemon_version: self.version.clone(),
-            },
+            other => self.runtime.handle(other),
         }
     }
 }
