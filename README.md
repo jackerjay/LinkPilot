@@ -1,6 +1,16 @@
-# LinkPilot
+<p align="center">
+  <img src="docs/brand/icon.png" alt="LinkPilot" width="128" height="128">
+</p>
 
-> Route every link to the right browser, profile, and workspace.
+<h1 align="center">LinkPilot</h1>
+
+<p align="center">
+  <em>Route every link to the right browser, profile, and workspace.</em>
+</p>
+
+<p align="center">
+  English | <a href="README.zh.md">简体中文</a>
+</p>
 
 LinkPilot is a macOS-first (Windows / Linux to follow) link router: it sits
 between the OS, your browsers, and the apps that open URLs, and dispatches
@@ -19,6 +29,44 @@ plist), and the daemon's Unix-socket IPC server are all wired.
 
 See `docs/linkpilot-design-v0.1.md` (PRD) for the design.
 
+## Install
+
+Two install paths from the same release. Pick whichever (or both).
+
+### CLI only
+
+Headless — useful for terminal workflows, scripts, or alongside the
+GUI from a different release. The `lp` binary is a single static-ish
+executable; no daemon required (`lp open` does local routing when no
+daemon is running, and talks to the GUI's daemon over Unix socket
+when both are installed).
+
+```sh
+# From a release artifact:
+curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/lp-macos.tar.gz \
+  | tar -xz -C ~/.local/bin
+chmod +x ~/.local/bin/lp
+# Add ~/.local/bin to PATH if it isn't already.
+```
+
+### GUI + CLI
+
+Install the `.app` and the bundled `lp` binary comes along. After
+launching LinkPilot, open Settings → Command-line tool and click
+**Install to ~/.local/bin** to symlink `lp` onto your PATH (idempotent;
+re-run after a version upgrade). The bundled binary lives at
+`/Applications/LinkPilot.app/Contents/MacOS/lp` — you can also add
+that directory to PATH directly instead of symlinking.
+
+```sh
+curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/LinkPilot_<version>_universal.dmg -o LinkPilot.dmg
+hdiutil attach LinkPilot.dmg
+cp -R "/Volumes/LinkPilot/LinkPilot.app" /Applications/
+hdiutil detach "/Volumes/LinkPilot"
+xattr -dr com.apple.quarantine /Applications/LinkPilot.app   # unsigned build
+open /Applications/LinkPilot.app
+```
+
 ## Quick start (macOS)
 
 ### CLI — no GUI required
@@ -35,11 +83,55 @@ cargo build -p linkpilot-cli
 `lp` talks to the running daemon over a Unix socket
 (`~/Library/Application Support/LinkPilot/linkpilot.sock`) when one is up,
 and falls back to local execution otherwise. Force the local path with
-`--local`.
+`--local`. Writes always go through the local file; the daemon's fsnotify
+watcher picks them up via the anti-echo token, so a running GUI refreshes
+within a frame.
 
 First run writes a starter config to
 `~/Library/Application Support/LinkPilot/linkpilot.config.json` (PRD §22 demo:
 github / notion → Chrome Default, figma / youtube → Arc). Edit and re-run.
+
+The CLI mirrors everything the GUI can configure — see `lp <command> --help`
+for the full surface:
+
+```sh
+# Rules
+lp rules add --host "*.figma.com" --target arc --priority 20
+lp rules add --host github.com --path "/oauth/*" --keep-source --priority 50
+lp rules add --from-app Slack --ask
+lp rules list --all                      # include disabled rules
+lp rules disable <id-prefix>             # 8-char prefix is enough
+lp rules set-priority <id-prefix> 99
+lp rules delete <id-prefix>
+lp rules add --when-json '{"op":"any","of":[...]}' --then-json '{"kind":"block"}'
+
+# Workspaces (batch on/off groups of rules)
+lp workspaces add work --name Work
+lp workspaces disable work               # all `workspace_id=work` rules skipped
+
+# Config inspection + import/export
+lp config show                           # whole document as JSON
+lp config path
+lp config set-default-target arc --profile Personal
+lp config export ./backup.json
+lp config import ./backup.json
+
+# Settings
+lp settings show
+lp settings smart-routing off            # master kill-switch
+lp settings launch-at-login on
+lp settings history-retention 30         # or `clear` for unlimited
+
+# Browsers
+lp browsers list                         # auto-detected + custom, merged
+lp browsers profiles chrome
+lp browsers custom add --id devbuild --name "Chrome Canary" \
+    --kind chromium --exec /Applications/Google\ Chrome\ Canary.app
+
+# Default-browser registration
+lp default-browser status
+lp default-browser set                   # triggers the macOS confirm prompt
+```
 
 ### Desktop app
 
@@ -68,9 +160,16 @@ What to try:
 
 ```sh
 cd apps/desktop
-npx tauri build
-open src-tauri/target/release/bundle/macos/LinkPilot.app
+npm run bundle:mac      # tauri build + patch-info-plist.sh on the .app
+open ../../target/release/bundle/macos/LinkPilot.app
 ```
+
+`bundle:mac` runs `tauri build` and then patches the bundled `.app`'s
+Info.plist so the macOS "Default web browser" picker recognises LinkPilot
+(see `apps/desktop/scripts/patch-info-plist.sh` for details).
+The DMG it produces alongside is _not_ patched — for a DMG with the
+plist patch baked in, push a `v*.*.*` tag and use the
+`release.yml`-produced artifact instead (see "Releases" below).
 
 Real brand artwork is already shipped in `apps/desktop/src-tauri/icons/`
 (generated from `docs/brand/icon.png` + `docs/brand/tray-template.svg`).
@@ -145,9 +244,27 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The tag triggers `.github/workflows/release.yml`, which builds the macOS CLI
-and Tauri desktop bundle, creates a GitHub Release, uploads artifacts, and
-publishes SHA-256 checksums.
+The tag triggers `.github/workflows/release.yml`, which on `macos-latest`:
+
+1. Builds the `lp` CLI for both `x86_64-apple-darwin` and
+   `aarch64-apple-darwin` and `lipo`s them into one universal binary.
+2. Builds the Tauri shell with `--target universal-apple-darwin --bundles app`
+   so the `.app` is also a universal binary.
+3. Runs `apps/desktop/scripts/patch-info-plist.sh` against the bundled `.app`
+   — rewrites the `tauri-plugin-deep-link` auto-injected `CFBundleURLTypes`
+   entry to Viewer/`Default` and adds `CFBundleDocumentTypes` for HTML so
+   the macOS "Default web browser" picker actually surfaces LinkPilot.
+4. Wraps the patched `.app` in a vanilla `LinkPilot_<version>_universal.dmg`
+   via `hdiutil` (a second `tauri build --bundles dmg` would re-bundle the
+   `.app` and overwrite the plist patch).
+5. Uploads `lp-macos`, `lp-macos.tar.gz`, the DMG, and `checksums.txt`
+   to a GitHub Release.
+
+A single universal DMG works on both Apple Silicon and Intel Macs.
+
+Every PR also runs a `desktop-bundle` smoke job on `macos-latest`
+(`tauri build --debug --bundles app`) so packaging regressions show up
+before a tag is cut.
 
 Current release artifacts are unsigned. On macOS, unsigned builds may require
 removing quarantine before first launch:

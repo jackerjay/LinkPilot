@@ -2172,6 +2172,7 @@ dependencies = [
  "linkpilot-core",
  "linkpilot-ipc",
  "linkpilot-platform-mac",
+ "serde_json",
  "tracing",
  "tracing-subscriber",
  "url",

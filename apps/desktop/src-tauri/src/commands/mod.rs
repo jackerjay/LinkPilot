@@ -422,3 +422,101 @@ pub fn app_icon(request: AppIconRequest) -> Option<AppIcon> {
         None
     }
 }
+
+// ----------------------------------------------------------------------------
+// command-line tool — the `lp` binary is bundled inside the .app under
+// `Contents/MacOS/lp` (see release.yml). These commands let the Settings page
+// surface its location and create a user-PATH symlink so users get a
+// "GUI + CLI" install with one click.
+
+#[derive(serde::Serialize)]
+pub struct CliInstallStatus {
+    /// Absolute path of `lp` inside the running .app bundle, or `null`
+    /// when running from a dev build (where the embed step hasn't run).
+    pub bundled_path: Option<String>,
+    /// Where `cli_install_to_path` would symlink by default: `~/.local/bin/lp`.
+    pub default_target: String,
+    /// True iff `default_target` already symlinks to `bundled_path`.
+    pub already_installed: bool,
+}
+
+#[tauri::command]
+pub fn cli_install_status() -> CliInstallStatus {
+    let bundled = locate_bundled_lp();
+    let default_target = default_install_target();
+    let already_installed = match (bundled.as_ref(), &default_target) {
+        (Some(b), t) => std::fs::read_link(t)
+            .map(|link| link == PathBuf::from(b))
+            .unwrap_or(false),
+        _ => false,
+    };
+    CliInstallStatus {
+        bundled_path: bundled,
+        default_target: default_target.display().to_string(),
+        already_installed,
+    }
+}
+
+#[tauri::command]
+pub fn cli_install_to_path(target: Option<String>) -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let bundled = locate_bundled_lp().ok_or_else(|| {
+            "bundled `lp` not found — this only works on the packaged .app, \
+             not dev builds (`npx tauri dev`)"
+                .to_string()
+        })?;
+        let target_path = target
+            .map(PathBuf::from)
+            .unwrap_or_else(default_install_target);
+
+        if let Some(parent) = target_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("creating {}: {e}", parent.display()))?;
+        }
+        // Idempotency: if the existing entry already points at the bundled
+        // `lp`, treat the call as a no-op success. Otherwise replace it.
+        if target_path.symlink_metadata().is_ok() {
+            if let Ok(existing) = std::fs::read_link(&target_path) {
+                if existing == PathBuf::from(&bundled) {
+                    return Ok(target_path.display().to_string());
+                }
+            }
+            std::fs::remove_file(&target_path)
+                .map_err(|e| format!("removing existing {}: {e}", target_path.display()))?;
+        }
+        std::os::unix::fs::symlink(&bundled, &target_path)
+            .map_err(|e| format!("symlinking to {}: {e}", target_path.display()))?;
+        Ok(target_path.display().to_string())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = target;
+        Err("CLI install is only supported on macOS in v0.1".to_string())
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn locate_bundled_lp() -> Option<String> {
+    // `current_exe()` inside a .app bundle returns
+    // `…/LinkPilot.app/Contents/MacOS/linkpilot-desktop`, so the sibling
+    // `lp` is what release.yml embeds. In `tauri dev` the exe lives in
+    // `target/debug/` with no `lp` next to it — we return None there.
+    let exe = std::env::current_exe().ok()?;
+    let candidate = exe.parent()?.join("lp");
+    candidate.is_file().then(|| candidate.display().to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn locate_bundled_lp() -> Option<String> {
+    None
+}
+
+fn default_install_target() -> PathBuf {
+    // ~/.local/bin/lp — user-writable, no admin auth needed. The XDG
+    // user-binary convention; users add it to PATH in their shell rc.
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/"));
+    home.join(".local").join("bin").join("lp")
+}

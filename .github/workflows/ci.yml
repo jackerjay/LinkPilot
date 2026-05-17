@@ -62,3 +62,37 @@ jobs:
 
       - name: Build frontend
         run: corepack yarn run build
+
+  desktop-bundle:
+    name: Desktop bundle smoke test
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-bundle-smoke
+
+      - name: Install desktop dependencies
+        working-directory: apps/desktop
+        run: corepack yarn install --no-lockfile --non-interactive
+
+      # Builds the .app bundle only (skips DMG packaging) in debug mode
+      # so the Tauri bundling pipeline — icons, Info.plist, capabilities,
+      # frontend assets — gets exercised on every PR without paying the
+      # full release-build cost.
+      - name: Build Tauri .app (debug)
+        working-directory: apps/desktop
+        run: corepack yarn run tauri build --debug --bundles app

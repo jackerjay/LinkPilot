@@ -64,7 +64,21 @@ export const ipc = {
   appIcon: (request: AppIconRequest) =>
     invoke<AppIcon | null>("app_icon", { request }),
   pickApp: () => invoke<PickedApp | null>("pick_app"),
+
+  cliInstallStatus: () => invoke<CliInstallStatus>("cli_install_status"),
+  cliInstallToPath: (target?: string) =>
+    invoke<string>("cli_install_to_path", { target: target ?? null }),
 };
+
+export interface CliInstallStatus {
+  /** Absolute path of `lp` inside the running .app bundle, or `null` for
+   *  dev builds where the embed step hasn't run. */
+  bundled_path: string | null;
+  /** `~/.local/bin/lp` — what `cliInstallToPath()` writes by default. */
+  default_target: string;
+  /** True iff `default_target` already points at `bundled_path`. */
+  already_installed: boolean;
+}
 
 export interface AppIconRequest {
   bundle_id?: string | null;

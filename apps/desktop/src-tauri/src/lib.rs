@@ -165,6 +165,8 @@ pub fn run() {
             commands::export_config,
             commands::app_icon,
             commands::pick_app,
+            commands::cli_install_status,
+            commands::cli_install_to_path,
             picker::picker_session,
             picker::picker_resolve,
             tray::tray_open_main,

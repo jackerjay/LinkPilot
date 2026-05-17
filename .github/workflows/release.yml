@@ -20,6 +20,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -28,6 +29,8 @@ jobs:
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-universal
 
       - name: Install desktop dependencies
         working-directory: apps/desktop
@@ -36,21 +39,77 @@ jobs:
       - name: Run Rust tests
         run: cargo test --workspace --exclude linkpilot-desktop
 
-      - name: Build CLI
-        run: cargo build --release -p linkpilot-cli
+      - name: Build CLI (x86_64)
+        run: cargo build --release --target x86_64-apple-darwin -p linkpilot-cli
 
-      - name: Build desktop DMG
+      - name: Build CLI (aarch64)
+        run: cargo build --release --target aarch64-apple-darwin -p linkpilot-cli
+
+      - name: Lipo CLI into universal binary
+        run: |
+          mkdir -p target/universal-apple-darwin/release
+          lipo -create -output target/universal-apple-darwin/release/lp \
+            target/x86_64-apple-darwin/release/lp \
+            target/aarch64-apple-darwin/release/lp
+          lipo -info target/universal-apple-darwin/release/lp
+
+      - name: Build desktop .app (universal)
         working-directory: apps/desktop
-        run: corepack yarn run tauri build --bundles dmg
+        run: corepack yarn run tauri build --target universal-apple-darwin --bundles app
+
+      # Ship the `lp` CLI inside the .app so installing the DMG gives
+      # users both a GUI and a CLI. The Settings page exposes a
+      # one-click symlink-to-PATH installer (`cli_install_to_path`)
+      # that targets ~/.local/bin/lp from this bundled binary.
+      - name: Embed lp CLI inside the .app
+        run: |
+          set -euo pipefail
+          APP=target/universal-apple-darwin/release/bundle/macos/LinkPilot.app
+          cp target/universal-apple-darwin/release/lp "$APP/Contents/MacOS/lp"
+          chmod +x "$APP/Contents/MacOS/lp"
+
+      # tauri-plugin-deep-link auto-injects a CFBundleURLTypes entry with
+      # Editor role and an internal-looking URL name; macOS's "Default
+      # web browser" picker needs Viewer role, a human-readable name,
+      # LSHandlerRank=Default, plus CFBundleDocumentTypes for HTML.
+      # patch-info-plist.sh rewrites those keys on the bundled .app.
+      # Must run AFTER `tauri build --bundles app` (the keys don't exist
+      # until the plugin injects them) and BEFORE DMG creation (otherwise
+      # the DMG would embed the unpatched plist).
+      - name: Patch Info.plist for default-browser registration
+        run: |
+          chmod +x apps/desktop/scripts/patch-info-plist.sh
+          apps/desktop/scripts/patch-info-plist.sh \
+            target/universal-apple-darwin/release/bundle/macos/LinkPilot.app
+
+      # Manual DMG creation instead of `tauri build --bundles dmg`: that
+      # would re-bundle the .app from scratch and overwrite the patched
+      # Info.plist. Tauri's default DMG has no custom background image
+      # or window layout (no `bundle.macOS.dmg` in tauri.conf.json), so
+      # a vanilla "drag to /Applications" disk image matches the
+      # previous release output.
+      - name: Build DMG from patched .app
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="$(mktemp -d)"
+          cp -R target/universal-apple-darwin/release/bundle/macos/LinkPilot.app "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          mkdir -p dist/release
+          hdiutil create \
+            -volname "LinkPilot" \
+            -srcfolder "$STAGE" \
+            -ov \
+            -format UDZO \
+            "dist/release/LinkPilot_${VERSION}_universal.dmg"
 
       - name: Package artifacts
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist/release
-          cp target/release/lp dist/release/lp-macos
+          cp target/universal-apple-darwin/release/lp dist/release/lp-macos
           tar -C dist/release -czf dist/release/lp-macos.tar.gz lp-macos
-          cp target/release/bundle/dmg/*.dmg dist/release/
           shasum -a 256 dist/release/* > dist/release/checksums.txt
 
       - name: Create GitHub Release
