@@ -245,14 +245,14 @@ pub struct RecommendedWatcherHandle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn tmp_path() -> PathBuf {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        std::env::temp_dir().join(format!("linkpilot-test-{nanos}.json"))
+        // Per-call UUID instead of SystemTime nanos: `cargo test` runs the
+        // three tests below in parallel, and on macOS SystemTime resolves
+        // at microsecond granularity (not nanoseconds like Linux), so two
+        // calls in the same microsecond produce the same path and the
+        // tests race each other's `remove_file`.
+        std::env::temp_dir().join(format!("linkpilot-test-{}.json", Uuid::new_v4()))
     }
 
     #[test]
