@@ -614,11 +614,7 @@ fn run_doctor(config: Option<PathBuf>, local: bool, json: bool) -> Result<()> {
 
 fn run_rules_list(config: Option<PathBuf>, local: bool, json: bool, all: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
-    let mut rules: Vec<_> = doc
-        .rules
-        .iter()
-        .filter(|r| all || r.enabled)
-        .collect();
+    let mut rules: Vec<_> = doc.rules.iter().filter(|r| all || r.enabled).collect();
     rules.sort_by_key(|r| std::cmp::Reverse(r.priority));
     if json {
         for r in &rules {
@@ -729,14 +725,10 @@ fn build_matcher(a: &RuleAddArgs) -> Result<MatcherTree> {
         });
     }
     if let Some(b) = &a.from_browser {
-        clauses.push(MatcherTree::SourceBrowser {
-            browser: b.clone(),
-        });
+        clauses.push(MatcherTree::SourceBrowser { browser: b.clone() });
     }
     if let Some(p) = &a.from_profile {
-        clauses.push(MatcherTree::SourceProfile {
-            profile: p.clone(),
-        });
+        clauses.push(MatcherTree::SourceProfile { profile: p.clone() });
     }
     match clauses.len() {
         0 => Err(anyhow!(
@@ -1123,7 +1115,10 @@ fn run_default_browser_status(json: bool) -> Result<()> {
         println!("is_linkpilot_default: {is_us}");
         println!(
             "current_default:      {}",
-            current.as_ref().map(|c| c.0.as_str()).unwrap_or("(unknown)")
+            current
+                .as_ref()
+                .map(|c| c.0.as_str())
+                .unwrap_or("(unknown)")
         );
     }
     Ok(())

@@ -466,7 +466,9 @@ pub fn cli_install_to_path(target: Option<String>) -> Result<String, String> {
              not dev builds (`npx tauri dev`)"
                 .to_string()
         })?;
-        let target_path = target.map(PathBuf::from).unwrap_or_else(default_install_target);
+        let target_path = target
+            .map(PathBuf::from)
+            .unwrap_or_else(default_install_target);
 
         if let Some(parent) = target_path.parent() {
             std::fs::create_dir_all(parent)
