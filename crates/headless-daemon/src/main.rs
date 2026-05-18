@@ -16,7 +16,9 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use linkpilot_core::daemon::DaemonRuntime;
+use linkpilot_core::daemon::{
+    cleanup_stale_pid_file, pid_file_path, remove_pid_file, write_pid_file, DaemonRuntime,
+};
 use linkpilot_core::endpoint::{default_endpoint, Endpoint};
 use linkpilot_core::platform::PlatformProvider;
 use linkpilot_core::protocol::Request;
@@ -82,10 +84,29 @@ fn main() -> Result<()> {
             "wrote first-run config"
         );
     }
+
+    // PID file: clean up any leftover from a previously-crashed daemon
+    // before stamping our own PID. This is read by `lp daemon status`
+    // and `lp daemon stop`; without the stale-cleanup, a hard kill of
+    // the previous daemon would leave a PID file that the CLI keeps
+    // reporting as "running" forever.
+    let pid_path = pid_file_path().context("resolve pid file path")?;
+    match cleanup_stale_pid_file(&pid_path) {
+        Ok(true) => tracing::info!(path = %pid_path.display(), "cleaned up stale pid file"),
+        Ok(false) => {}
+        Err(err) => {
+            tracing::warn!(?err, path = %pid_path.display(), "stale pid cleanup failed; continuing")
+        }
+    }
+    if let Err(err) = write_pid_file(&pid_path) {
+        tracing::warn!(?err, path = %pid_path.display(), "writing pid file failed; continuing");
+    }
+
     tracing::info!(
         endpoint = %endpoint.display(),
         version = env!("CARGO_PKG_VERSION"),
         config = %runtime.config.path().display(),
+        pid_file = %pid_path.display(),
         "linkpilot-daemon starting"
     );
 
@@ -108,6 +129,14 @@ fn main() -> Result<()> {
     // sends the shutdown signal to the spawned listener and waits for
     // the socket to unlink.
     drop(handle);
+
+    // PID file cleanup happens AFTER the socket is gone so a racing
+    // `lp daemon status` doesn't see "PID file missing but socket
+    // present" and infer a half-dead daemon.
+    if let Err(err) = remove_pid_file(&pid_path) {
+        tracing::warn!(?err, path = %pid_path.display(), "removing pid file on shutdown failed");
+    }
+
     let _ = args.serve; // suppress dead_code until we add other modes
     Ok(())
 }

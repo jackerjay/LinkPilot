@@ -2182,6 +2182,7 @@ dependencies = [
 name = "linkpilot-core"
 version = "0.2.0-alpha.3"
 dependencies = [
+ "libc",
  "notify",
  "serde",
  "serde_json",

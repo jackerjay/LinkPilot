@@ -12,9 +12,10 @@
 //! `Ask`) wrap an `Arc<DaemonRuntime>` in their own handler and delegate
 //! everything they don't customise.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::config::store::{ConfigError, Result as ConfigResult};
 use crate::config::{default_config_path, ConfigStore};
 use crate::history::{RouteHistory, RouteRecord};
 use crate::platform::PlatformProvider;
@@ -221,6 +222,128 @@ impl RequestHandler for DaemonRuntime {
     }
 }
 
+// ---------------------------------------------------------------------------
+// PID file management
+//
+// Shared between the standalone `linkpilot-daemon` binary (writes/cleans
+// on startup + shutdown) and the `lp daemon ...` CLI (reads for status /
+// stop). The socket remains the source of truth for "is the daemon
+// alive?" — a successful StatePing is canonical — but the PID file is
+// what the CLI uses to *signal* a running daemon, and what reveals a
+// half-dead daemon (socket bind failed but process still up) for the
+// diagnostics.
+// ---------------------------------------------------------------------------
+
+/// Where the daemon writes its PID file. Same directory as the config
+/// file (`~/Library/Application Support/LinkPilot/...` on macOS). The
+/// path is platform-derived, not user-configurable — CLI subcommands
+/// must be able to locate it without any config plumbing.
+pub fn pid_file_path() -> ConfigResult<PathBuf> {
+    let cfg = default_config_path()?;
+    let dir = cfg.parent().ok_or(ConfigError::NoDefaultDir)?;
+    Ok(dir.join("linkpilot-daemon.pid"))
+}
+
+/// Atomically write the current process's PID to `path`. Caller is
+/// responsible for resolving the path (typically via [`pid_file_path`]).
+///
+/// Uses temp + rename so a reader that opens the file mid-write never
+/// sees a truncated integer. Creates the parent directory if missing
+/// — the daemon may run before the config dir has ever been touched.
+pub fn write_pid_file(path: &Path) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let tmp = pid_tmp_path(path);
+    std::fs::write(&tmp, std::process::id().to_string())?;
+    std::fs::rename(&tmp, path)
+}
+
+/// Read the PID stored at `path`. Returns:
+/// - `Ok(Some(pid))` — file exists and parses as a positive u32.
+/// - `Ok(None)` — file is missing, empty, or unparseable. The caller
+///   should treat all three the same (no live daemon claimed).
+/// - `Err(e)` — IO errors other than `NotFound`.
+pub fn read_pid_file(path: &Path) -> std::io::Result<Option<u32>> {
+    match std::fs::read_to_string(path) {
+        Ok(s) => Ok(s.trim().parse::<u32>().ok()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e),
+    }
+}
+
+/// Remove the PID file. `NotFound` is not an error — the daemon may
+/// have been killed before reaching its shutdown hook.
+pub fn remove_pid_file(path: &Path) -> std::io::Result<()> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
+/// Check whether the PID file at `path` is stale. If it names a dead
+/// process, unlink it and return `Ok(true)`. If the named process is
+/// alive, leave the file and return `Ok(false)`. Missing / unparseable
+/// file is also `Ok(false)`.
+///
+/// Call this before [`write_pid_file`] on daemon startup so a
+/// previously-crashed daemon's PID doesn't keep a `lp daemon status`
+/// thinking we're "running" forever.
+pub fn cleanup_stale_pid_file(path: &Path) -> std::io::Result<bool> {
+    let Some(pid) = read_pid_file(path)? else {
+        return Ok(false);
+    };
+    if process_is_alive(pid) {
+        return Ok(false);
+    }
+    remove_pid_file(path)?;
+    Ok(true)
+}
+
+/// True if the given PID is a running process owned by the current
+/// user (or a process we can't signal but that exists — EPERM).
+///
+/// Unix: `kill(pid, 0)` — sig 0 is the documented permission/existence
+/// probe; no signal is delivered. Non-unix is a stub: the daemon-mgmt
+/// surface only ships on macOS in v0.2, so the CLI will refuse to run
+/// on Windows long before this matters.
+#[cfg(unix)]
+pub fn process_is_alive(pid: u32) -> bool {
+    // libc::pid_t is i32 on all supported targets. PIDs that overflow
+    // i32 (>= 2^31) aren't reachable on macOS / Linux.
+    if pid == 0 || pid > i32::MAX as u32 {
+        return false;
+    }
+    let res = unsafe { libc::kill(pid as libc::pid_t, 0) };
+    if res == 0 {
+        return true;
+    }
+    // EPERM = process exists but we lack signal permission. For the
+    // daemon (user-scoped LaunchAgent runs as the same user) this is
+    // unreachable, but we treat it as "alive" defensively so a
+    // privileged-but-uncooperative process isn't mistaken for dead.
+    std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+}
+
+#[cfg(not(unix))]
+pub fn process_is_alive(_pid: u32) -> bool {
+    // Daemon mgmt is macOS-only in v0.2; pretend alive so callers never
+    // unlink a PID file they shouldn't on platforms where we can't tell.
+    true
+}
+
+fn pid_tmp_path(path: &Path) -> PathBuf {
+    let mut tmp = path.to_path_buf();
+    let mut name = path
+        .file_name()
+        .map(|s| s.to_os_string())
+        .unwrap_or_default();
+    name.push(".tmp");
+    tmp.set_file_name(name);
+    tmp
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -320,6 +443,62 @@ mod tests {
             }
             other => panic!("expected launch-failed Error, got {other:?}"),
         }
+    }
+
+    fn tmp_pid_path() -> PathBuf {
+        std::env::temp_dir().join(format!("linkpilot-pid-test-{}.pid", Uuid::new_v4()))
+    }
+
+    #[test]
+    fn write_then_read_pid_round_trips() {
+        let path = tmp_pid_path();
+        write_pid_file(&path).unwrap();
+        let pid = read_pid_file(&path).unwrap();
+        assert_eq!(pid, Some(std::process::id()));
+        remove_pid_file(&path).unwrap();
+    }
+
+    #[test]
+    fn cleanup_stale_unlinks_dead_pid() {
+        let path = tmp_pid_path();
+        // PID 999999 is virtually guaranteed to not exist (PID_MAX is
+        // 99999 on macOS by default, much lower on Linux out of the box).
+        std::fs::write(&path, "999999").unwrap();
+        let removed = cleanup_stale_pid_file(&path).unwrap();
+        assert!(removed, "should unlink stale PID file");
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn cleanup_stale_keeps_live_pid() {
+        let path = tmp_pid_path();
+        // Our own PID is definitely alive.
+        std::fs::write(&path, std::process::id().to_string()).unwrap();
+        let removed = cleanup_stale_pid_file(&path).unwrap();
+        assert!(!removed, "live PID should not be unlinked");
+        assert!(path.exists());
+        remove_pid_file(&path).unwrap();
+    }
+
+    #[test]
+    fn cleanup_stale_missing_file_is_noop() {
+        let path = tmp_pid_path();
+        let removed = cleanup_stale_pid_file(&path).unwrap();
+        assert!(!removed);
+    }
+
+    #[test]
+    fn read_pid_returns_none_for_garbage() {
+        let path = tmp_pid_path();
+        std::fs::write(&path, "not a number\n").unwrap();
+        assert_eq!(read_pid_file(&path).unwrap(), None);
+        remove_pid_file(&path).unwrap();
+    }
+
+    #[test]
+    fn remove_pid_missing_is_ok() {
+        let path = tmp_pid_path();
+        assert!(remove_pid_file(&path).is_ok());
     }
 
     #[test]

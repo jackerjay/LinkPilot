@@ -14,3 +14,7 @@ uuid = { workspace = true }
 url = { workspace = true }
 tracing = { workspace = true }
 notify = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+# `kill(pid, 0)` for daemon PID-file liveness probing (see daemon.rs).
+libc = "0.2"
