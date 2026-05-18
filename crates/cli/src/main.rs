@@ -1977,10 +1977,7 @@ fn run_history(limit: usize, json: bool) -> Result<()> {
 
     // Human table — matches the column ordering of `lp rules list` so a
     // user moving between the two sees the same shape.
-    println!(
-        "{:<10}  {:<20}  {:<8}  {}",
-        "time", "host", "rule", "decision"
-    );
+    println!("{:<10}  {:<20}  {:<8}  decision", "time", "host", "rule");
     for rec in &records {
         let when = format_relative(rec.timestamp_ms);
         let host = url_host(&rec.context.url);
