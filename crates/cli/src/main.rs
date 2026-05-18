@@ -280,6 +280,18 @@ enum ConfigAction {
         #[arg(long)]
         new_window: bool,
     },
+    /// Compile a `linkpilot.config.ts` (via @linkpilot/config DSL) into
+    /// the daemon's JSON config. Requires `bun` on PATH.
+    Compile {
+        /// Path to the `.ts` config file. Should `import { ... } from
+        /// "@linkpilot/config"` and call `printConfig(defineConfig({...}))`.
+        source: PathBuf,
+        /// Write the compiled JSON to this path instead of replacing the
+        /// daemon's active config. Useful for `git`-tracked outputs or
+        /// dry-runs.
+        #[arg(long)]
+        to: Option<PathBuf>,
+    },
 }
 
 // --- settings ---
@@ -510,6 +522,7 @@ fn main() -> Result<()> {
                 incognito,
                 new_window,
             } => run_config_set_default_target(cli.config, browser, profile, incognito, new_window),
+            ConfigAction::Compile { source, to } => run_config_compile(cli.config, source, to),
         },
         Command::Settings { action } => match action {
             SettingsAction::Show => run_settings_show(cli.config, cli.local),
@@ -1012,6 +1025,114 @@ fn run_config_set_default_target(
         );
         Ok(())
     })
+}
+
+/// `lp config compile <source.ts> [--to PATH]`.
+///
+/// Pipeline:
+///   1. Locate `bun` on PATH; fail fast with an install hint if missing.
+///   2. `bun run <source>` — bun handles .ts natively (~30ms cold).
+///   3. Capture stdout, JSON-parse into ConfigDocument. The DSL's
+///      `printConfig` helper writes exactly that to stdout.
+///   4. Write: either `ConfigStore::replace(doc, WriterId::TsCompiled)`
+///      to the live config (default), or `--to PATH` to a file.
+///
+/// On TS compile error: bun's stderr is passed through verbatim, our
+/// own exit is 1, no file is touched.
+fn run_config_compile(config: Option<PathBuf>, source: PathBuf, to: Option<PathBuf>) -> Result<()> {
+    use std::process::Command;
+
+    if !source.exists() {
+        return Err(anyhow!("source file not found: {}", source.display()));
+    }
+
+    let bun = which_on_path("bun").ok_or_else(|| {
+        anyhow!(
+            "`bun` not found on PATH.\n\
+             Install with:\n    \
+                 brew install oven-sh/bun/bun\n\
+             or:\n    \
+                 curl -fsSL https://bun.sh/install | bash"
+        )
+    })?;
+
+    let out = Command::new(&bun)
+        .arg("run")
+        .arg(&source)
+        .output()
+        .with_context(|| format!("spawning {}", bun.display()))?;
+    if !out.status.success() {
+        // Bun's stderr is the user's TS compile error (or runtime
+        // error) — surfacing it verbatim is the actionable thing.
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        eprint!("{stderr}");
+        return Err(anyhow!(
+            "bun exited {} compiling {}",
+            out.status,
+            source.display()
+        ));
+    }
+
+    let stdout = String::from_utf8(out.stdout)
+        .with_context(|| format!("bun stdout from {} was not UTF-8", source.display()))?;
+    let doc: ConfigDocument = serde_json::from_str(&stdout).with_context(|| {
+        format!(
+            "DSL output is not a valid ConfigDocument.\n\
+             Make sure your config ends with `printConfig(defineConfig({{ ... }}))` \
+             — the helper from @linkpilot/config that emits the daemon's JSON shape.\n\
+             First 200 bytes of bun stdout: {}",
+            stdout.chars().take(200).collect::<String>()
+        )
+    })?;
+
+    if let Some(dest) = to {
+        // --to PATH: write the JSON verbatim, never touch the daemon's
+        // live config. Same atomic write semantics as `lp config export`.
+        let json = serde_json::to_string_pretty(&doc)?;
+        if let Some(parent) = dest.parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent)
+                    .with_context(|| format!("creating {}", parent.display()))?;
+            }
+        }
+        std::fs::write(&dest, json).with_context(|| format!("writing {}", dest.display()))?;
+        eprintln!(
+            "linkpilot: compiled {} → {} ({} rules)",
+            source.display(),
+            dest.display(),
+            doc.rules.len()
+        );
+        return Ok(());
+    }
+
+    // Default path: replace the live daemon config. Tagged TsCompiled so
+    // the GUI knows to render these rules read-only (M4.4).
+    let (store, _) = load_store(config)?;
+    store
+        .replace(doc.clone(), WriterId::TsCompiled)
+        .map_err(|e| anyhow!("writing config: {e}"))?;
+    eprintln!(
+        "linkpilot: compiled {} → {} ({} rules)",
+        source.display(),
+        store.path().display(),
+        doc.rules.len()
+    );
+    Ok(())
+}
+
+/// Look up an executable on PATH. Returns the first match, or None if
+/// nothing on PATH has the given filename. Cheap enough to call once
+/// per invocation; we keep `daemon_cli::which_on_path` separate to
+/// avoid pulling the macOS-gated `mod` from outside its cfg.
+fn which_on_path(bin: &str) -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    for dir in std::env::split_paths(&path) {
+        let cand = dir.join(bin);
+        if cand.exists() {
+            return Some(cand);
+        }
+    }
+    None
 }
 
 // ===========================================================================
