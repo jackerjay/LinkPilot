@@ -134,9 +134,16 @@ jobs:
           # --serve` directly.
           cp target/universal-apple-darwin/release/linkpilot-daemon \
              dist/release/linkpilot-daemon-macos
-          tar -C dist/release -czf dist/release/linkpilot-daemon-macos.tar.gz \
-              --transform 's,^linkpilot-daemon-macos,linkpilot-daemon,' \
-              linkpilot-daemon-macos
+          # The tarball entry must be named `linkpilot-daemon` so users can
+          # `mv linkpilot-daemon ~/.local/bin/` after `tar -xzf`. macOS runners
+          # ship BSD tar (no `--transform`), so stage the file under its final
+          # name in a temp dir instead of relying on tar to rename it.
+          staging="$(mktemp -d)"
+          cp target/universal-apple-darwin/release/linkpilot-daemon \
+             "$staging/linkpilot-daemon"
+          tar -C "$staging" -czf dist/release/linkpilot-daemon-macos.tar.gz \
+              linkpilot-daemon
+          rm -rf "$staging"
           shasum -a 256 dist/release/* > dist/release/checksums.txt
 
       - name: Create GitHub Release
