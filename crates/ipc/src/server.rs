@@ -3,12 +3,12 @@
 
 use std::sync::Arc;
 
-use linkpilot_core::protocol::Request;
+use linkpilot_core::protocol::{Request, Response, ERROR_UNKNOWN_VERB};
 use thiserror::Error;
 use tokio::sync::oneshot;
 
 use crate::path::Endpoint;
-use crate::transport::{read_frame, write_frame};
+use crate::transport::{peek_request_id, read_raw_frame, write_frame, TransportError};
 
 #[derive(Debug, Error)]
 pub enum ServerError {
@@ -136,12 +136,32 @@ async fn serve_connection_unix<H: RequestHandler>(
     let mut reader = read_half;
     let mut writer = write_half;
     loop {
-        let req: Request = match read_frame(&mut reader).await {
-            Ok(r) => r,
-            Err(crate::transport::TransportError::Closed) => return Ok(()),
+        // Read raw bytes first; we still need the typed Request for the
+        // happy path, but pulling them apart lets us recover from an
+        // unrecognised verb (forward compat with v0.3+ clients) instead
+        // of dropping the connection like protocol v1 did.
+        let raw = match read_raw_frame(&mut reader).await {
+            Ok(buf) => buf,
+            Err(TransportError::Closed) => return Ok(()),
             Err(err) => return Err(err.into()),
         };
-        let resp = handler.handle(req);
+        let resp = match serde_json::from_slice::<Request>(&raw) {
+            Ok(req) => handler.handle(req),
+            Err(err) => {
+                // Best-effort: echo the original request_id so the
+                // client can match this Error to its in-flight call.
+                // If the frame is so malformed that no request_id is
+                // recoverable, send empty — clients should still be
+                // able to surface the message text.
+                let request_id = peek_request_id(&raw).unwrap_or_default();
+                tracing::debug!(?err, request_id = %request_id, "ipc: unrecognised request");
+                Response::Error {
+                    request_id,
+                    code: ERROR_UNKNOWN_VERB.into(),
+                    message: format!("request type not recognised by this daemon: {err}"),
+                }
+            }
+        };
         write_frame(&mut writer, &resp).await?;
     }
 }
