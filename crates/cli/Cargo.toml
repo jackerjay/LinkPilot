@@ -22,3 +22,7 @@ url = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 linkpilot-platform-mac = { workspace = true }
+# `lp daemon stop` SIGTERMs the PID file's process; `lp daemon start`
+# setsid() to detach the spawned daemon. Both are POSIX-only, so libc
+# is target-scoped (we'd rather not pull it on the Windows stub path).
+libc = "0.2"

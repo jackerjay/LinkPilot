@@ -109,6 +109,13 @@ enum Command {
         #[command(subcommand)]
         action: DefaultBrowserAction,
     },
+
+    /// Manage the background `linkpilot-daemon` — start, stop, status,
+    /// install/uninstall the LaunchAgent, tail logs.
+    Daemon {
+        #[command(subcommand)]
+        action: DaemonAction,
+    },
 }
 
 // --- rules ---
@@ -375,6 +382,41 @@ enum DefaultBrowserAction {
     Set,
 }
 
+// --- daemon (M2) ---
+
+#[derive(Subcommand, Debug)]
+enum DaemonAction {
+    /// Spawn a background `linkpilot-daemon --serve` if none is running.
+    /// Idempotent — does nothing if a daemon already answers StatePing.
+    Start,
+    /// Send SIGTERM to the running daemon via the PID file. Refuses if
+    /// the daemon is managed by launchd (run `lp daemon uninstall` instead).
+    Stop,
+    /// Stop, wait for the socket to close, then start again.
+    Restart,
+    /// Print daemon liveness, version, PID, socket path, and whether
+    /// the LaunchAgent is installed.
+    Status {
+        /// JSON output for scripting.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Install the LaunchAgent plist so the daemon runs at login.
+    /// Idempotent: re-installing overwrites the plist and reloads launchd.
+    Install,
+    /// Unload + delete the LaunchAgent plist, then SIGTERM the daemon.
+    Uninstall,
+    /// Tail `~/Library/Logs/LinkPilot/daemon.{out,err}.log`.
+    Logs {
+        /// Follow the log file as new lines are appended (Ctrl-C to exit).
+        #[arg(long, short = 'f')]
+        follow: bool,
+        /// Number of trailing lines to print before following.
+        #[arg(long, short = 'n', default_value = "50")]
+        lines: usize,
+    },
+}
+
 // ---------------------------------------------------------------------------
 // Platform glue + main
 
@@ -497,6 +539,15 @@ fn main() -> Result<()> {
         Command::DefaultBrowser { action } => match action {
             DefaultBrowserAction::Status { json } => run_default_browser_status(json),
             DefaultBrowserAction::Set => run_default_browser_set(),
+        },
+        Command::Daemon { action } => match action {
+            DaemonAction::Start => run_daemon_start(),
+            DaemonAction::Stop => run_daemon_stop(),
+            DaemonAction::Restart => run_daemon_restart(),
+            DaemonAction::Status { json } => run_daemon_status(json),
+            DaemonAction::Install => run_daemon_install(),
+            DaemonAction::Uninstall => run_daemon_uninstall(),
+            DaemonAction::Logs { follow, lines } => run_daemon_logs(follow, lines),
         },
     }
 }
@@ -1400,4 +1451,433 @@ fn describe_action(action: &Action) -> String {
 
 fn short_id(uuid: &str) -> String {
     uuid.chars().take(8).collect()
+}
+
+// ===========================================================================
+// `lp daemon <action>` (M2)
+//
+// All daemon-management subcommands are macOS-only in v0.2. The Linux /
+// Windows daemon ports land later; in the meantime non-macOS hosts get a
+// single friendly error rather than a half-working install path.
+
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_unsupported(action: &str) -> Result<()> {
+    Err(anyhow!(
+        "`lp daemon {action}` is macOS-only in v0.2 (no daemon shipped on this platform yet)"
+    ))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_start() -> Result<()> {
+    run_daemon_unsupported("start")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_stop() -> Result<()> {
+    run_daemon_unsupported("stop")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_restart() -> Result<()> {
+    run_daemon_unsupported("restart")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_status(_json: bool) -> Result<()> {
+    run_daemon_unsupported("status")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_install() -> Result<()> {
+    run_daemon_unsupported("install")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_uninstall() -> Result<()> {
+    run_daemon_unsupported("uninstall")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_logs(_follow: bool, _lines: usize) -> Result<()> {
+    run_daemon_unsupported("logs")
+}
+
+#[cfg(target_os = "macos")]
+mod daemon_cli {
+    use anyhow::{anyhow, Context, Result};
+    use linkpilot_core::daemon::{pid_file_path, read_pid_file, remove_pid_file};
+    use linkpilot_core::protocol::{Request, Response};
+    use linkpilot_ipc::client;
+    use linkpilot_ipc::path::default_endpoint;
+    use linkpilot_platform_mac::launch_agent::{self, LaunchAgentStatus, DAEMON_LABEL};
+    use std::path::{Path, PathBuf};
+    use std::time::{Duration, Instant};
+
+    /// Snapshot of every signal `lp daemon status` cares about, gathered once
+    /// per invocation so JSON / human output stay consistent.
+    pub struct DaemonSnapshot {
+        pub running: bool,
+        pub version: Option<String>,
+        pub pid: Option<u32>,
+        pub socket: String,
+        pub agent: LaunchAgentStatus,
+        pub pid_file: PathBuf,
+    }
+
+    pub fn snapshot() -> Result<DaemonSnapshot> {
+        let endpoint = default_endpoint();
+        let socket = endpoint.display();
+        let ping = client::send(
+            &endpoint,
+            Request::StatePing {
+                request_id: "lp-daemon-status".into(),
+            },
+        );
+        let (running, version) = match ping {
+            Ok(Response::Pong { daemon_version, .. }) => (true, Some(daemon_version)),
+            _ => (false, None),
+        };
+        let pid_file = pid_file_path().context("resolve pid file path")?;
+        let pid = read_pid_file(&pid_file).ok().flatten();
+        let agent = launch_agent::daemon_status().unwrap_or_default();
+        Ok(DaemonSnapshot {
+            running,
+            version,
+            pid,
+            socket,
+            agent,
+            pid_file,
+        })
+    }
+
+    /// Locate a `linkpilot-daemon` binary the CLI can spawn:
+    ///   1. `LINKPILOT_DAEMON` env override (for development).
+    ///   2. The installed .app at `/Applications/LinkPilot.app/Contents/MacOS/`.
+    ///   3. Sibling of the current `lp` executable (CI-built `target/...`).
+    ///   4. `PATH` lookup of `linkpilot-daemon`.
+    pub fn locate_daemon_binary() -> Result<PathBuf> {
+        if let Some(p) = std::env::var_os("LINKPILOT_DAEMON") {
+            let path = PathBuf::from(p);
+            if path.exists() {
+                return Ok(path);
+            }
+        }
+        let installed =
+            PathBuf::from("/Applications/LinkPilot.app/Contents/MacOS/linkpilot-daemon");
+        if installed.exists() {
+            return Ok(installed);
+        }
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                let sibling = dir.join("linkpilot-daemon");
+                if sibling.exists() {
+                    return Ok(sibling);
+                }
+            }
+        }
+        if let Ok(path) = which_on_path("linkpilot-daemon") {
+            return Ok(path);
+        }
+        Err(anyhow!(
+            "no linkpilot-daemon binary found.\n\
+             Looked at: $LINKPILOT_DAEMON, /Applications/LinkPilot.app/Contents/MacOS/, \
+             alongside `lp`, and $PATH.\n\
+             Install LinkPilot.app, or `cargo build -p linkpilot-headless-daemon` for dev."
+        ))
+    }
+
+    fn which_on_path(bin: &str) -> Result<PathBuf> {
+        let path = std::env::var_os("PATH").ok_or_else(|| anyhow!("PATH not set"))?;
+        for dir in std::env::split_paths(&path) {
+            let candidate = dir.join(bin);
+            if candidate.exists() {
+                return Ok(candidate);
+            }
+        }
+        Err(anyhow!("{bin} not on PATH"))
+    }
+
+    /// Spawn `linkpilot-daemon --serve` detached from this process. Stdout
+    /// and stderr go to /dev/null — if the user wants logs they install
+    /// the LaunchAgent (which writes to ~/Library/Logs/LinkPilot/).
+    pub fn spawn_daemon(exec: &Path) -> Result<()> {
+        use std::os::unix::process::CommandExt;
+        use std::process::{Command, Stdio};
+        let mut cmd = Command::new(exec);
+        cmd.arg("--serve")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        // Detach into its own session so a `lp daemon start` from a
+        // terminal that later exits doesn't drag the daemon with it.
+        unsafe {
+            cmd.pre_exec(|| {
+                libc::setsid();
+                Ok(())
+            });
+        }
+        let _child = cmd
+            .spawn()
+            .with_context(|| format!("spawning {}", exec.display()))?;
+        Ok(())
+    }
+
+    /// Poll the IPC socket until either (a) it stops answering — when we
+    /// want to confirm a stop — or (b) it starts answering — when we
+    /// want to confirm a start. Returns `Ok(())` on success, error after
+    /// `timeout`.
+    pub fn wait_for_socket(target_alive: bool, timeout: Duration) -> Result<()> {
+        let endpoint = default_endpoint();
+        let started = Instant::now();
+        while started.elapsed() < timeout {
+            let alive = matches!(
+                client::send(
+                    &endpoint,
+                    Request::StatePing {
+                        request_id: "lp-daemon-wait".into()
+                    }
+                ),
+                Ok(Response::Pong { .. })
+            );
+            if alive == target_alive {
+                return Ok(());
+            }
+            std::thread::sleep(Duration::from_millis(150));
+        }
+        Err(anyhow!(
+            "timed out after {:?} waiting for socket to {}",
+            timeout,
+            if target_alive { "open" } else { "close" }
+        ))
+    }
+
+    /// SIGTERM the PID written by the running daemon. Returns Ok if the
+    /// PID file is missing (already stopped) or if the kill succeeded.
+    pub fn terminate_daemon(pid: u32) -> Result<()> {
+        // libc::pid_t is i32; PIDs fit.
+        let res = unsafe { libc::kill(pid as i32, libc::SIGTERM) };
+        if res == 0 {
+            return Ok(());
+        }
+        let err = std::io::Error::last_os_error();
+        // ESRCH = process already gone. That's fine for our intent.
+        if err.raw_os_error() == Some(libc::ESRCH) {
+            return Ok(());
+        }
+        Err(anyhow!("SIGTERM to pid {pid} failed: {err}"))
+    }
+
+    pub fn log_paths() -> Result<(PathBuf, PathBuf)> {
+        let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME not set"))?;
+        let dir = PathBuf::from(home)
+            .join("Library")
+            .join("Logs")
+            .join("LinkPilot");
+        Ok((dir.join("daemon.out.log"), dir.join("daemon.err.log")))
+    }
+
+    pub fn pretty_status(snap: &DaemonSnapshot) {
+        println!(
+            "daemon:       {}",
+            if snap.running { "running" } else { "stopped" }
+        );
+        if let Some(v) = &snap.version {
+            println!("version:      {v}");
+        }
+        match snap.pid {
+            Some(p) => println!("pid:          {p} (from {})", snap.pid_file.display()),
+            None => println!("pid:          —"),
+        }
+        println!("socket:       {}", snap.socket);
+        println!(
+            "launchagent:  plist {} | loaded {} | label {DAEMON_LABEL}",
+            if snap.agent.plist_exists { "yes" } else { "no" },
+            if snap.agent.loaded { "yes" } else { "no" }
+        );
+        if let Some(exec) = &snap.agent.exec_path {
+            println!("              exec {}", exec.display());
+        }
+        if let Some(p) = snap.agent.pid {
+            println!("              launchd pid {p}");
+        }
+    }
+
+    pub fn json_status(snap: &DaemonSnapshot) -> serde_json::Value {
+        serde_json::json!({
+            "running": snap.running,
+            "version": snap.version,
+            "pid": snap.pid,
+            "socket": snap.socket,
+            "pid_file": snap.pid_file.display().to_string(),
+            "launch_agent": {
+                "plist_exists": snap.agent.plist_exists,
+                "loaded": snap.agent.loaded,
+                "pid": snap.agent.pid,
+                "exec_path": snap.agent.exec_path.as_ref().map(|p| p.display().to_string()),
+                "label": DAEMON_LABEL,
+            }
+        })
+    }
+
+    /// Stream `path` to stdout, optionally following the tail. Falls back
+    /// to a friendly message rather than hard-failing on missing log files
+    /// (a freshly-installed daemon hasn't written anything yet).
+    pub fn tail_log(path: &Path, lines: usize, follow: bool) -> Result<()> {
+        use std::io::{Read, Seek, SeekFrom};
+        if !path.exists() {
+            println!(
+                "{}: no log file yet (daemon hasn't started under launchd, or just installed)",
+                path.display()
+            );
+            return Ok(());
+        }
+        let body =
+            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
+        let kept: Vec<&str> = body.lines().rev().take(lines).collect();
+        for line in kept.iter().rev() {
+            println!("{line}");
+        }
+        if !follow {
+            return Ok(());
+        }
+        // Naive follow: poll size every 250ms; print new chunk.
+        let mut file = std::fs::File::open(path)
+            .with_context(|| format!("opening {} for follow", path.display()))?;
+        file.seek(SeekFrom::End(0))?;
+        loop {
+            let mut buf = Vec::new();
+            let n = file
+                .by_ref()
+                .take(64 * 1024)
+                .read_to_end(&mut buf)
+                .unwrap_or(0);
+            if n > 0 {
+                print!("{}", String::from_utf8_lossy(&buf));
+                use std::io::Write;
+                let _ = std::io::stdout().flush();
+            } else {
+                std::thread::sleep(Duration::from_millis(250));
+            }
+        }
+    }
+
+    /// Remove the PID file. Logged at the call site since callers want to
+    /// know whether the daemon was already orphaned vs. cleanly stopped.
+    pub fn clear_pid_file() {
+        if let Ok(p) = pid_file_path() {
+            let _ = remove_pid_file(&p);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_start() -> Result<()> {
+    use daemon_cli::*;
+    let snap = snapshot()?;
+    if snap.running {
+        println!("daemon already running (pid {})", snap.pid.unwrap_or(0));
+        return Ok(());
+    }
+    let exec = locate_daemon_binary()?;
+    spawn_daemon(&exec)?;
+    wait_for_socket(true, std::time::Duration::from_secs(5))
+        .context("daemon spawned but socket never came up; check ~/Library/Logs/LinkPilot/")?;
+    let after = snapshot()?;
+    println!(
+        "daemon started (pid {}, version {})",
+        after.pid.unwrap_or(0),
+        after.version.as_deref().unwrap_or("?")
+    );
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_stop() -> Result<()> {
+    use daemon_cli::*;
+    let snap = snapshot()?;
+    if snap.agent.loaded {
+        return Err(anyhow!(
+            "daemon is managed by launchd — run `lp daemon uninstall` first \
+             (otherwise launchd would re-spawn it immediately)"
+        ));
+    }
+    let Some(pid) = snap.pid else {
+        if snap.running {
+            return Err(anyhow!(
+                "daemon socket responds but no PID file at {} — can't safely SIGTERM. \
+                 Find the process manually with `pgrep -fl linkpilot-daemon` and `kill` it.",
+                snap.pid_file.display()
+            ));
+        }
+        println!("daemon not running.");
+        clear_pid_file();
+        return Ok(());
+    };
+    terminate_daemon(pid)?;
+    wait_for_socket(false, std::time::Duration::from_secs(5))
+        .context("SIGTERM sent but daemon didn't release the socket")?;
+    clear_pid_file();
+    println!("daemon stopped (was pid {pid})");
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_restart() -> Result<()> {
+    run_daemon_stop()?;
+    run_daemon_start()
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_status(json: bool) -> Result<()> {
+    let snap = daemon_cli::snapshot()?;
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&daemon_cli::json_status(&snap))?
+        );
+    } else {
+        daemon_cli::pretty_status(&snap);
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_install() -> Result<()> {
+    use daemon_cli::*;
+    let exec = locate_daemon_binary()?;
+    linkpilot_platform_mac::launch_agent::install_daemon(&exec)
+        .map_err(|e| anyhow!("install LaunchAgent: {e}"))?;
+    // launchctl load -w with RunAtLoad=true triggers an immediate start —
+    // give it a moment to come up so `lp daemon status` right after this
+    // shows running=true.
+    let _ = wait_for_socket(true, std::time::Duration::from_secs(5));
+    let snap = snapshot()?;
+    println!(
+        "daemon LaunchAgent installed (exec {}; running: {})",
+        exec.display(),
+        snap.running
+    );
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_uninstall() -> Result<()> {
+    use daemon_cli::*;
+    let snap = snapshot()?;
+    linkpilot_platform_mac::launch_agent::uninstall_daemon()
+        .map_err(|e| anyhow!("uninstall LaunchAgent: {e}"))?;
+    // launchctl unload normally SIGTERMs the daemon. Belt-and-suspenders:
+    // if a PID file still exists and the process is still alive, signal it.
+    if let Some(pid) = snap.pid {
+        let _ = terminate_daemon(pid);
+    }
+    let _ = wait_for_socket(false, std::time::Duration::from_secs(3));
+    clear_pid_file();
+    println!("daemon LaunchAgent uninstalled");
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_logs(follow: bool, lines: usize) -> Result<()> {
+    let (out, err) = daemon_cli::log_paths()?;
+    println!("=== {} ===", out.display());
+    daemon_cli::tail_log(&out, lines, false)?;
+    println!();
+    println!("=== {} ===", err.display());
+    daemon_cli::tail_log(&err, lines, follow)?;
+    Ok(())
 }
