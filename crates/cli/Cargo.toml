@@ -26,3 +26,6 @@ linkpilot-platform-mac = { workspace = true }
 # setsid() to detach the spawned daemon. Both are POSIX-only, so libc
 # is target-scoped (we'd rather not pull it on the Windows stub path).
 libc = "0.2"
+
+[dev-dependencies]
+serde_json = { workspace = true }
