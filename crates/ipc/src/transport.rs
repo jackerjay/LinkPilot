@@ -55,6 +55,47 @@ where
     decode(&buf)
 }
 
+/// Like [`read_frame`] but returns the raw JSON bytes without decoding,
+/// plus a peek at the parsed `request_id` (if present) as a serde_json
+/// `Value`. Used by the IPC server to recover from unknown-verb decode
+/// failures: it still wants to echo the request_id back in the error
+/// response so the client can match the response to its in-flight
+/// request, but the strongly-typed [`Request`] decode just failed.
+///
+/// Returns `Err(TransportError::Closed)` on EOF — same contract as
+/// `read_frame`. Returns the raw bytes on success; the caller is
+/// responsible for any further parsing.
+pub async fn read_raw_frame<R>(reader: &mut R) -> Result<Vec<u8>, TransportError>
+where
+    R: AsyncReadExt + Unpin,
+{
+    let mut len_buf = [0u8; 4];
+    if let Err(err) = reader.read_exact(&mut len_buf).await {
+        if err.kind() == std::io::ErrorKind::UnexpectedEof {
+            return Err(TransportError::Closed);
+        }
+        return Err(TransportError::Io(err));
+    }
+    let len = u32::from_be_bytes(len_buf) as usize;
+    if len > MAX_FRAME_BYTES {
+        return Err(TransportError::FrameTooLarge(len));
+    }
+    let mut buf = vec![0u8; len];
+    reader.read_exact(&mut buf).await?;
+    Ok(buf)
+}
+
+/// Best-effort extraction of `request_id` from a raw JSON frame whose
+/// strongly-typed parse failed. The wire format is always an object with
+/// a top-level `request_id` string, so we shallow-parse to grab it.
+/// Returns `None` if the payload isn't JSON, isn't an object, or has no
+/// string `request_id`. The caller pairs this with the unknown-verb
+/// error reply.
+pub fn peek_request_id(raw: &[u8]) -> Option<String> {
+    let v: serde_json::Value = serde_json::from_slice(raw).ok()?;
+    v.get("request_id")?.as_str().map(|s| s.to_string())
+}
+
 /// Write one length-prefixed JSON message to an async stream.
 pub async fn write_frame<W, T>(writer: &mut W, msg: &T) -> Result<(), TransportError>
 where

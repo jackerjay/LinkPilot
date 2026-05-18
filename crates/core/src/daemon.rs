@@ -218,6 +218,17 @@ impl RequestHandler for DaemonRuntime {
                 request_id,
                 daemon_version: self.version.clone(),
             },
+
+            Request::RouteHistory { request_id, limit } => {
+                // Default to 100 records — matches design §14.2.2 and
+                // is comfortably below the buffer's 1000-entry cap.
+                let n = limit.unwrap_or(100);
+                let records = self.history.recent(n);
+                Response::RouteHistorySnapshot {
+                    request_id,
+                    records,
+                }
+            }
         }
     }
 }
@@ -499,6 +510,71 @@ mod tests {
     fn remove_pid_missing_is_ok() {
         let path = tmp_pid_path();
         assert!(remove_pid_file(&path).is_ok());
+    }
+
+    fn ctx(url: &str) -> RoutingContext {
+        RoutingContext {
+            url: url.into(),
+            source: crate::routing::Source {
+                kind: crate::routing::SourceKind::Cli,
+                app_name: None,
+                bundle_id: None,
+                browser: None,
+                profile: None,
+            },
+            navigation: None,
+            environment: None,
+        }
+    }
+
+    #[test]
+    fn route_history_verb_returns_newest_first() {
+        let rt = fixture();
+        // Log three records so we can spot ordering.
+        for url in [
+            "https://a.example.com",
+            "https://b.example.com",
+            "https://c.example.com",
+        ] {
+            let _ = rt.evaluate_and_log(ctx(url));
+        }
+        let resp = rt.handle(Request::RouteHistory {
+            request_id: "h".into(),
+            limit: Some(10),
+        });
+        match resp {
+            Response::RouteHistorySnapshot {
+                request_id,
+                records,
+            } => {
+                assert_eq!(request_id, "h");
+                assert_eq!(records.len(), 3);
+                // Newest first — `c` was logged last.
+                assert_eq!(records[0].context.url, "https://c.example.com");
+                assert_eq!(records[2].context.url, "https://a.example.com");
+            }
+            other => panic!("unexpected response: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn route_history_default_limit_is_finite() {
+        // Verb without a limit must not return an unbounded snapshot;
+        // protocol contract is "daemon picks 100 by default" (design §14.2.2).
+        let rt = fixture();
+        for _ in 0..150 {
+            let _ = rt.evaluate_and_log(ctx("https://example.com"));
+        }
+        let resp = rt.handle(Request::RouteHistory {
+            request_id: "h".into(),
+            limit: None,
+        });
+        match resp {
+            Response::RouteHistorySnapshot { records, .. } => {
+                assert_eq!(records.len(), 100, "default cap");
+            }
+            other => panic!("unexpected: {other:?}"),
+        }
     }
 
     #[test]
