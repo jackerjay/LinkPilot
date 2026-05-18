@@ -17,12 +17,14 @@ use linkpilot_core::browser::{
 use linkpilot_core::config::{
     default_config_path, ConfigDocument, ConfigStore, Workspace, WriterId,
 };
+use linkpilot_core::history::RouteRecord;
 use linkpilot_core::platform::{PlatformProvider, SetDefaultOutcome};
-use linkpilot_core::protocol::{DoctorReport, Request, Response};
+use linkpilot_core::protocol::{DoctorReport, Request, Response, ERROR_UNKNOWN_VERB};
 use linkpilot_core::routing::{Router, RoutingContext, RoutingDecision, Source, SourceKind};
 use linkpilot_core::rules::{Action, MatcherTree, Rule, RuleId, RuleSource};
 use linkpilot_ipc::client::{self, ClientError};
 use linkpilot_ipc::path::default_endpoint;
+use linkpilot_ipc::transport::TransportError;
 
 // ---------------------------------------------------------------------------
 // Clap structures
@@ -115,6 +117,20 @@ enum Command {
     Daemon {
         #[command(subcommand)]
         action: DaemonAction,
+    },
+
+    /// Show recent routing decisions from the daemon's in-memory history.
+    /// Requires a running daemon (protocol v2+); v0.1 daemons can't
+    /// answer this and the CLI prints an upgrade hint.
+    #[command(alias = "hist")]
+    History {
+        /// Cap on records returned (default: 50). The daemon's buffer
+        /// holds up to 1000 entries.
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+        /// Emit each record as a single JSON object per line (jq-friendly).
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -549,6 +565,7 @@ fn main() -> Result<()> {
             DaemonAction::Uninstall => run_daemon_uninstall(),
             DaemonAction::Logs { follow, lines } => run_daemon_logs(follow, lines),
         },
+        Command::History { limit, json } => run_history(limit, json),
     }
 }
 
@@ -1264,6 +1281,49 @@ fn try_daemon_config_get() -> std::result::Result<ConfigDocument, IpcError> {
     }
 }
 
+/// Distinguishes "daemon doesn't speak this verb" from generic IPC
+/// errors. `lp history` uses this to print an upgrade hint instead of
+/// a low-level "unknown-verb" code dump when talking to an old daemon.
+enum HistoryError {
+    Offline,
+    UnknownVerb,
+    Other(String),
+}
+
+fn try_daemon_route_history(limit: usize) -> std::result::Result<Vec<RouteRecord>, HistoryError> {
+    let request = Request::RouteHistory {
+        request_id: new_request_id(),
+        limit: Some(limit),
+    };
+    let response = client::send(&default_endpoint(), request).map_err(|e| match e {
+        ClientError::Offline(_) | ClientError::Timeout(_) => HistoryError::Offline,
+        // A v0.1 daemon (or any pre-M3.2 v0.2 daemon) drops the
+        // connection on a route-history frame — its serde decode fails
+        // and the old server path returned Err(...). From the client
+        // side that surfaces as Transport(Closed) or Transport(Serde).
+        // Both mean "daemon accepted the request but couldn't speak v2".
+        ClientError::Transport(TransportError::Closed)
+        | ClientError::Transport(TransportError::Serde(_)) => HistoryError::UnknownVerb,
+        other => HistoryError::Other(other.to_string()),
+    })?;
+    match response {
+        Response::RouteHistorySnapshot { records, .. } => Ok(records),
+        Response::Error { code, message, .. } if code == ERROR_UNKNOWN_VERB => {
+            // v0.2-post-M3.2 daemons send this when they don't know the
+            // verb. Same human-facing hint as the connection-closed
+            // case above.
+            tracing::debug!(code = %code, message = %message, "daemon rejected route-history");
+            Err(HistoryError::UnknownVerb)
+        }
+        Response::Error { code, message, .. } => {
+            Err(HistoryError::Other(format!("{code}: {message}")))
+        }
+        other => Err(HistoryError::Other(format!(
+            "unexpected response: {other:?}"
+        ))),
+    }
+}
+
 // ===========================================================================
 // Local config store helpers
 
@@ -1880,4 +1940,113 @@ fn run_daemon_logs(follow: bool, lines: usize) -> Result<()> {
     println!("=== {} ===", err.display());
     daemon_cli::tail_log(&err, lines, follow)?;
     Ok(())
+}
+
+// ===========================================================================
+// `lp history` (M3)
+
+fn run_history(limit: usize, json: bool) -> Result<()> {
+    let records = match try_daemon_route_history(limit) {
+        Ok(records) => records,
+        Err(HistoryError::Offline) => {
+            return Err(anyhow!(
+                "history requires a running daemon — try `lp daemon start`"
+            ));
+        }
+        Err(HistoryError::UnknownVerb) => {
+            return Err(anyhow!(
+                "the running daemon doesn't speak protocol v2; upgrade it to v0.2+ to use `lp history`"
+            ));
+        }
+        Err(HistoryError::Other(msg)) => return Err(anyhow!("daemon: {msg}")),
+    };
+
+    if records.is_empty() {
+        println!("no routes recorded yet");
+        return Ok(());
+    }
+
+    if json {
+        for rec in &records {
+            // One RouteRecord per line so `lp history --json | jq` works
+            // line-at-a-time, same shape the daemon stores in memory.
+            println!("{}", serde_json::to_string(rec)?);
+        }
+        return Ok(());
+    }
+
+    // Human table — matches the column ordering of `lp rules list` so a
+    // user moving between the two sees the same shape.
+    println!(
+        "{:<10}  {:<20}  {:<8}  {}",
+        "time", "host", "rule", "decision"
+    );
+    for rec in &records {
+        let when = format_relative(rec.timestamp_ms);
+        let host = url_host(&rec.context.url);
+        let rule = rec
+            .matched_rule
+            .as_ref()
+            .map(|r| short_id(&r.0.to_string()))
+            .unwrap_or_else(|| "—".into());
+        let decision = format_decision(&rec.decision);
+        println!(
+            "{:<10}  {:<20}  {:<8}  {}",
+            when,
+            truncate(&host, 20),
+            rule,
+            decision,
+        );
+    }
+    Ok(())
+}
+
+fn url_host(url: &str) -> String {
+    match url::Url::parse(url) {
+        Ok(u) => u.host_str().unwrap_or(url).to_string(),
+        Err(_) => url.to_string(),
+    }
+}
+
+fn truncate(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        s.to_string()
+    } else {
+        let kept: String = s.chars().take(max.saturating_sub(1)).collect();
+        format!("{kept}…")
+    }
+}
+
+fn format_relative(ts_ms: u64) -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(ts_ms);
+    let delta = now_ms.saturating_sub(ts_ms) / 1000;
+    if delta < 60 {
+        format!("{delta}s ago")
+    } else if delta < 3600 {
+        format!("{}m ago", delta / 60)
+    } else if delta < 86_400 {
+        format!("{}h ago", delta / 3600)
+    } else {
+        format!("{}d ago", delta / 86_400)
+    }
+}
+
+fn format_decision(d: &RoutingDecision) -> String {
+    match d {
+        RoutingDecision::Open { target, .. } => {
+            let profile = target
+                .profile
+                .as_deref()
+                .map(|p| format!("/{p}"))
+                .unwrap_or_default();
+            format!("open → {}{profile}", target.browser)
+        }
+        RoutingDecision::Allow { .. } => "allow".into(),
+        RoutingDecision::Block { .. } => "block".into(),
+        RoutingDecision::Ask { .. } => "ask".into(),
+    }
 }
