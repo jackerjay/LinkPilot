@@ -48,7 +48,11 @@ fn dsl_demo_round_trips_through_daemon_config_document() {
     };
 
     let demo = workspace_root().join("packages/config-dsl/examples/v0.1-demo.ts");
-    assert!(demo.exists(), "demo file moved? expected {}", demo.display());
+    assert!(
+        demo.exists(),
+        "demo file moved? expected {}",
+        demo.display()
+    );
 
     let out = Command::new(&bun)
         .arg("run")
