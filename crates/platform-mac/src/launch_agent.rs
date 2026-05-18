@@ -26,6 +26,11 @@ pub struct LaunchAgentStatus {
     pub loaded: bool,
     /// PID of the running daemon process when launchd has it active.
     pub pid: Option<i32>,
+    /// Resolved `ProgramArguments[0]` from the installed plist — the
+    /// daemon binary launchd will exec. None if the plist is missing or
+    /// malformed. Read by `lp daemon status` so users can tell which
+    /// build of the daemon they're running against.
+    pub exec_path: Option<PathBuf>,
 }
 
 /// Write the daemon's plist and try to `launchctl load -w` it.
@@ -116,6 +121,7 @@ pub fn daemon_status() -> Result<LaunchAgentStatus> {
     if !plist_exists {
         return Ok(LaunchAgentStatus::default());
     }
+    let exec_path = read_exec_path_from_plist(&plist).ok().flatten();
     // `launchctl list <label>` exits 0 + prints a plist-like dict when
     // the agent is loaded, exits non-zero otherwise. We grep the `PID`
     // key — present only when the daemon is actively running.
@@ -128,19 +134,56 @@ pub fn daemon_status() -> Result<LaunchAgentStatus> {
             plist_exists: true,
             loaded: false,
             pid: None,
+            exec_path,
         });
     }
-    let text = String::from_utf8_lossy(&out.stdout);
-    let pid = text
-        .lines()
-        .find(|l| l.trim_start().starts_with("\"PID\""))
-        .and_then(|l| l.split('=').nth(1))
-        .and_then(|p| p.trim().trim_end_matches(';').parse::<i32>().ok());
+    let pid = parse_pid_from_launchctl_output(&String::from_utf8_lossy(&out.stdout));
     Ok(LaunchAgentStatus {
         plist_exists: true,
         loaded: true,
         pid,
+        exec_path,
     })
+}
+
+/// Pull `ProgramArguments[0]` out of an installed daemon plist. Pure
+/// string parsing — Apple's plist format here is small and stable, and
+/// we want zero plist-crate deps in platform-mac. Returns `Ok(None)`
+/// for any structural mismatch (older / malformed file).
+pub(crate) fn read_exec_path_from_plist(path: &Path) -> std::io::Result<Option<PathBuf>> {
+    let body = std::fs::read_to_string(path)?;
+    // Find `<key>ProgramArguments</key>` then the first `<string>` after
+    // it before the closing `</array>`.
+    let Some(idx) = body.find("<key>ProgramArguments</key>") else {
+        return Ok(None);
+    };
+    let tail = &body[idx..];
+    let Some(arr_end) = tail.find("</array>") else {
+        return Ok(None);
+    };
+    let arr = &tail[..arr_end];
+    let Some(start) = arr.find("<string>") else {
+        return Ok(None);
+    };
+    let after = &arr[start + "<string>".len()..];
+    let Some(end) = after.find("</string>") else {
+        return Ok(None);
+    };
+    let raw = &after[..end];
+    if raw.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(PathBuf::from(raw)))
+}
+
+/// Parse the `PID = NNNN;` line out of `launchctl list <label>` stdout.
+/// Returns None if the agent is loaded but not currently running, or
+/// the format changed in a future macOS.
+pub(crate) fn parse_pid_from_launchctl_output(text: &str) -> Option<i32> {
+    text.lines()
+        .find(|l| l.trim_start().starts_with("\"PID\""))
+        .and_then(|l| l.split('=').nth(1))
+        .and_then(|p| p.trim().trim_end_matches(';').parse::<i32>().ok())
 }
 
 pub fn daemon_plist_path() -> Result<PathBuf> {
@@ -159,4 +202,112 @@ fn log_dir() -> Result<PathBuf> {
         .join("Library")
         .join("Logs")
         .join("LinkPilot"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+
+    fn tmp_plist() -> PathBuf {
+        std::env::temp_dir().join(format!("linkpilot-plist-test-{}.plist", Uuid::new_v4()))
+    }
+
+    fn sample_plist(exec_path: &str) -> String {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{label}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{exec_path}</string>
+        <string>--serve</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+"#,
+            label = DAEMON_LABEL,
+        )
+    }
+
+    #[test]
+    fn read_exec_path_picks_first_program_argument() {
+        let path = tmp_plist();
+        std::fs::write(
+            &path,
+            sample_plist("/Applications/LinkPilot.app/Contents/MacOS/linkpilot-daemon"),
+        )
+        .unwrap();
+        let exec = read_exec_path_from_plist(&path).unwrap().unwrap();
+        assert_eq!(
+            exec,
+            PathBuf::from("/Applications/LinkPilot.app/Contents/MacOS/linkpilot-daemon")
+        );
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn read_exec_path_missing_program_arguments_is_none() {
+        let path = tmp_plist();
+        std::fs::write(
+            &path,
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>app.linkpilot.daemon</string>
+</dict>
+</plist>
+"#,
+        )
+        .unwrap();
+        assert!(read_exec_path_from_plist(&path).unwrap().is_none());
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn read_exec_path_io_error_propagates() {
+        let path = tmp_plist();
+        // Path doesn't exist — NotFound bubbles up as Err.
+        assert!(read_exec_path_from_plist(&path).is_err());
+    }
+
+    #[test]
+    fn parse_pid_extracts_integer() {
+        // Sample shape of `launchctl list app.linkpilot.daemon` stdout.
+        let out = r#"{
+	"LimitLoadToSessionType" = "Aqua";
+	"Label" = "app.linkpilot.daemon";
+	"OnDemand" = false;
+	"LastExitStatus" = 0;
+	"PID" = 41721;
+	"Program" = "/Applications/LinkPilot.app/Contents/MacOS/linkpilot-daemon";
+};"#;
+        assert_eq!(parse_pid_from_launchctl_output(out), Some(41721));
+    }
+
+    #[test]
+    fn parse_pid_none_when_not_running() {
+        // Loaded-but-not-running output has no PID key.
+        let out = r#"{
+	"Label" = "app.linkpilot.daemon";
+	"OnDemand" = false;
+	"LastExitStatus" = 0;
+};"#;
+        assert_eq!(parse_pid_from_launchctl_output(out), None);
+    }
+
+    #[test]
+    fn parse_pid_ignores_garbage() {
+        assert_eq!(
+            parse_pid_from_launchctl_output("totally not launchctl"),
+            None
+        );
+        assert_eq!(parse_pid_from_launchctl_output(""), None);
+    }
 }

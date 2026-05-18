@@ -14,9 +14,8 @@ use linkpilot_ipc::server::ServerHandle;
 /// (`External`) and skips its own IPC server bind. Otherwise the GUI
 /// hosts the daemon itself (`InProcess`), matching v0.1 behaviour.
 ///
-/// Surfaced to the frontend through the `cli_install_status`-style
-/// Tauri command (TODO M2: add a `daemon_status` command for the
-/// Settings "Background service" card).
+/// Surfaced to the frontend via `daemon_service_status` (Settings
+/// "Background service" card) — see commands/mod.rs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DaemonMode {
     #[default]

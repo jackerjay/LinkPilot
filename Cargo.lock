@@ -2282,6 +2282,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tracing",
  "url",
+ "uuid",
 ]
 
 [[package]]
