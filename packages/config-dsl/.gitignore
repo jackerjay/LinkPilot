@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Bun: lock file is kept in source so deterministic builds reproduce the
+# `tsc` version users get from npm install. Comment out if you'd rather
+# `bun install` always pick the latest.
+# bun.lock

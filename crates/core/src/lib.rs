@@ -6,6 +6,8 @@
 
 pub mod browser;
 pub mod config;
+pub mod daemon;
+pub mod endpoint;
 pub mod history;
 pub mod inventory;
 pub mod platform;

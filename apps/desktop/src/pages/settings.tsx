@@ -17,7 +17,7 @@ import type {
   InstalledBrowser,
   SetDefaultOutcome,
 } from "@/lib/types";
-import type { CliInstallStatus } from "@/lib/ipc";
+import type { CliInstallStatus, DaemonServiceStatus } from "@/lib/ipc";
 import brandIcon from "@/assets/brand.png";
 
 interface Props {
@@ -34,22 +34,27 @@ export function SettingsPage({ configEpoch }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cliStatus, setCliStatus] = useState<CliInstallStatus | null>(null);
+  const [daemonStatus, setDaemonStatus] = useState<DaemonServiceStatus | null>(
+    null,
+  );
   const { mode: themeMode, active: themeActive, setMode: setThemeMode } =
     useTheme();
 
   const refresh = useCallback(async () => {
     try {
-      const [d, c, b, cli] = await Promise.all([
+      const [d, c, b, cli, daemon] = await Promise.all([
         ipc.doctor(),
         ipc.configGet(),
         ipc.listBrowsers().catch(() => [] as InstalledBrowser[]),
         ipc.cliInstallStatus().catch(() => null),
+        ipc.daemonServiceStatus().catch(() => null),
       ]);
       setConfigPath(d.config_path ?? null);
       setIsDefault(d.is_default_browser);
       setDoc(c);
       setBrowsers(b);
       setCliStatus(cli);
+      setDaemonStatus(daemon);
     } catch (err) {
       setError(String(err));
     }
@@ -137,6 +142,34 @@ export function SettingsPage({ configEpoch }: Props) {
         `Installed: ${installed}. Add ~/.local/bin to your PATH if it isn't already.`,
       );
       await refresh();
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const installDaemonService = async () => {
+    setError(null);
+    setMessage(null);
+    try {
+      const next = await ipc.daemonServiceInstall();
+      setDaemonStatus(next);
+      setMessage(
+        "Background service installed. The daemon will start now and on every login.",
+      );
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const uninstallDaemonService = async () => {
+    setError(null);
+    setMessage(null);
+    try {
+      const next = await ipc.daemonServiceUninstall();
+      setDaemonStatus(next);
+      setMessage(
+        "Background service removed. The daemon won't auto-start anymore.",
+      );
     } catch (err) {
       setError(String(err));
     }
@@ -287,12 +320,73 @@ export function SettingsPage({ configEpoch }: Props) {
         </div>
       </div>
 
+      <div className="mac-card-title">Background service</div>
+      <div className="mac-card">
+        <div className="mac-row" style={{ alignItems: "flex-start" }}>
+          <div className="grow">
+            <div className="mac-row-label">
+              <span className="mac-mono">linkpilot-daemon</span>
+              {daemonStatus?.loaded && (
+                <span className="mac-tag ok" style={{ marginLeft: 8 }}>
+                  running
+                  {daemonStatus.pid ? ` · pid ${daemonStatus.pid}` : ""}
+                </span>
+              )}
+              {daemonStatus?.plist_exists && !daemonStatus.loaded && (
+                <span className="mac-tag" style={{ marginLeft: 8 }}>
+                  installed · not loaded
+                </span>
+              )}
+            </div>
+            <div
+              className="mac-muted"
+              style={{ fontSize: 11.5, marginTop: 2 }}
+            >
+              {daemonStatus?.bundled_path
+                ? daemonStatus.plist_exists
+                  ? `LaunchAgent loads at every login. GUI runs in "${daemonStatus.gui_mode}" mode.`
+                  : "Install the LaunchAgent so the router keeps working when LinkPilot.app is closed."
+                : "No bundled daemon found — you're on a dev build. Releases ship the daemon embedded in the .app."}
+            </div>
+          </div>
+          {daemonStatus?.plist_exists ? (
+            <button
+              type="button"
+              className="mac-tbtn"
+              onClick={uninstallDaemonService}
+            >
+              Uninstall
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="mac-tbtn primary"
+              onClick={installDaemonService}
+              disabled={!daemonStatus?.bundled_path}
+            >
+              Install background service
+            </button>
+          )}
+        </div>
+        {daemonStatus?.bundled_path && (
+          <div className="mac-row">
+            <span className="grow mac-row-label">Bundled at</span>
+            <span
+              className="select-text mac-mono mac-muted"
+              style={{ fontSize: 11 }}
+            >
+              {daemonStatus.bundled_path}
+            </span>
+          </div>
+        )}
+      </div>
+
       <div className="mac-card-title">Command-line tool</div>
       <div className="mac-card">
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
           <div className="grow">
             <div className="mac-row-label">
-              <span className="mac-mono">lp</span> CLI
+              <span className="mac-mono">lpt</span> CLI
               {cliStatus?.already_installed && (
                 <span className="mac-tag ok" style={{ marginLeft: 8 }}>
                   installed
@@ -304,8 +398,8 @@ export function SettingsPage({ configEpoch }: Props) {
               style={{ fontSize: 11.5, marginTop: 2 }}
             >
               {cliStatus?.bundled_path
-                ? "The bundled binary lives inside this .app. Installing creates a symlink at ~/.local/bin/lp so `lp` works from any shell."
-                : "No bundled `lp` found — you're on a dev build. Releases ship the CLI embedded in the .app."}
+                ? "The bundled binary lives inside this .app. Installing creates a symlink at ~/.local/bin/lpt so `lpt` works from any shell."
+                : "No bundled `lpt` found — you're on a dev build. Releases ship the CLI embedded in the .app."}
             </div>
           </div>
           <button

@@ -20,7 +20,7 @@ each link to the browser + profile that matches your rules.
 
 **v0.1 — feature-complete.** Workspace, Tauri shell with menu-bar tray,
 fsnotify-backed config store, route history, all five GUI pages, and an
-end-to-end macOS `lp open` flow. Real brand artwork shipped (full icon
+end-to-end macOS `lpt open` flow. Real brand artwork shipped (full icon
 matrix from `docs/brand/icon.png` + a single-color menu-bar template from
 `docs/brand/tray-template.svg`); structured rule editor replaces the
 JSON-textarea fallback (still available under “Advanced: raw JSON”).
@@ -36,24 +36,24 @@ Two install paths from the same release. Pick whichever (or both).
 ### CLI only
 
 Headless — useful for terminal workflows, scripts, or alongside the
-GUI from a different release. The `lp` binary is a single static-ish
-executable; no daemon required (`lp open` does local routing when no
+GUI from a different release. The `lpt` binary is a single static-ish
+executable; no daemon required (`lpt open` does local routing when no
 daemon is running, and talks to the GUI's daemon over Unix socket
 when both are installed).
 
 ```sh
 # From a release artifact:
-curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/lp-macos.tar.gz \
+curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/lpt-macos.tar.gz \
   | tar -xz -C ~/.local/bin
-chmod +x ~/.local/bin/lp
+chmod +x ~/.local/bin/lpt
 # Add ~/.local/bin to PATH if it isn't already.
 ```
 
 ### GUI + CLI
 
-Install the `.app` and the bundled `lp` binary comes along. After
+Install the `.app` and the bundled `lpt` binary comes along. After
 launching LinkPilot, open Settings → Command-line tool and click
-**Install to ~/.local/bin** to symlink `lp` onto your PATH (idempotent;
+**Install to ~/.local/bin** to symlink `lpt` onto your PATH (idempotent;
 re-run after a version upgrade). The bundled binary lives at
 `/Applications/LinkPilot.app/Contents/MacOS/lp` — you can also add
 that directory to PATH directly instead of symlinking.
@@ -80,7 +80,7 @@ cargo build -p linkpilot-cli
 ./target/debug/lp open https://github.com --from-app Slack
 ```
 
-`lp` talks to the running daemon over a Unix socket
+`lpt` talks to the running daemon over a Unix socket
 (`~/Library/Application Support/LinkPilot/linkpilot.sock`) when one is up,
 and falls back to local execution otherwise. Force the local path with
 `--local`. Writes always go through the local file; the daemon's fsnotify
@@ -91,46 +91,46 @@ First run writes a starter config to
 `~/Library/Application Support/LinkPilot/linkpilot.config.json` (PRD §22 demo:
 github / notion → Chrome Default, figma / youtube → Arc). Edit and re-run.
 
-The CLI mirrors everything the GUI can configure — see `lp <command> --help`
+The CLI mirrors everything the GUI can configure — see `lpt <command> --help`
 for the full surface:
 
 ```sh
 # Rules
-lp rules add --host "*.figma.com" --target arc --priority 20
-lp rules add --host github.com --path "/oauth/*" --keep-source --priority 50
-lp rules add --from-app Slack --ask
-lp rules list --all                      # include disabled rules
-lp rules disable <id-prefix>             # 8-char prefix is enough
-lp rules set-priority <id-prefix> 99
-lp rules delete <id-prefix>
-lp rules add --when-json '{"op":"any","of":[...]}' --then-json '{"kind":"block"}'
+lpt rules add --host "*.figma.com" --target arc --priority 20
+lpt rules add --host github.com --path "/oauth/*" --keep-source --priority 50
+lpt rules add --from-app Slack --ask
+lpt rules list --all                      # include disabled rules
+lpt rules disable <id-prefix>             # 8-char prefix is enough
+lpt rules set-priority <id-prefix> 99
+lpt rules delete <id-prefix>
+lpt rules add --when-json '{"op":"any","of":[...]}' --then-json '{"kind":"block"}'
 
 # Workspaces (batch on/off groups of rules)
-lp workspaces add work --name Work
-lp workspaces disable work               # all `workspace_id=work` rules skipped
+lpt workspaces add work --name Work
+lpt workspaces disable work               # all `workspace_id=work` rules skipped
 
 # Config inspection + import/export
-lp config show                           # whole document as JSON
-lp config path
-lp config set-default-target arc --profile Personal
-lp config export ./backup.json
-lp config import ./backup.json
+lpt config show                           # whole document as JSON
+lpt config path
+lpt config set-default-target arc --profile Personal
+lpt config export ./backup.json
+lpt config import ./backup.json
 
 # Settings
-lp settings show
-lp settings smart-routing off            # master kill-switch
-lp settings launch-at-login on
-lp settings history-retention 30         # or `clear` for unlimited
+lpt settings show
+lpt settings smart-routing off            # master kill-switch
+lpt settings launch-at-login on
+lpt settings history-retention 30         # or `clear` for unlimited
 
 # Browsers
-lp browsers list                         # auto-detected + custom, merged
-lp browsers profiles chrome
-lp browsers custom add --id devbuild --name "Chrome Canary" \
+lpt browsers list                         # auto-detected + custom, merged
+lpt browsers profiles chrome
+lpt browsers custom add --id devbuild --name "Chrome Canary" \
     --kind chromium --exec /Applications/Google\ Chrome\ Canary.app
 
 # Default-browser registration
-lp default-browser status
-lp default-browser set                   # triggers the macOS confirm prompt
+lpt default-browser status
+lpt default-browser set                   # triggers the macOS confirm prompt
 ```
 
 ### Desktop app
@@ -188,7 +188,7 @@ crates/
   ipc/                 # length-prefixed JSON over Unix socket / Named pipe
                        #   (transport ready; server lands in a later slice)
   native-host/         # NMH stdio bridge (v0.3)
-  cli/                 # `lp` command-line client
+  cli/                 # `lpt` command-line client
   headless-daemon/     # reserved for a future GUI-less daemon binary
 apps/
   desktop/             # Tauri 2 app
@@ -246,7 +246,7 @@ git push origin v0.1.0
 
 The tag triggers `.github/workflows/release.yml`, which on `macos-latest`:
 
-1. Builds the `lp` CLI for both `x86_64-apple-darwin` and
+1. Builds the `lpt` CLI for both `x86_64-apple-darwin` and
    `aarch64-apple-darwin` and `lipo`s them into one universal binary.
 2. Builds the Tauri shell with `--target universal-apple-darwin --bundles app`
    so the `.app` is also a universal binary.
@@ -257,7 +257,7 @@ The tag triggers `.github/workflows/release.yml`, which on `macos-latest`:
 4. Wraps the patched `.app` in a vanilla `LinkPilot_<version>_universal.dmg`
    via `hdiutil` (a second `tauri build --bundles dmg` would re-bundle the
    `.app` and overwrite the plist patch).
-5. Uploads `lp-macos`, `lp-macos.tar.gz`, the DMG, and `checksums.txt`
+5. Uploads `lpt-macos`, `lpt-macos.tar.gz`, the DMG, and `checksums.txt`
    to a GitHub Release.
 
 A single universal DMG works on both Apple Silicon and Intel Macs.

@@ -192,7 +192,7 @@ export function MenuBarPage({ configEpoch }: Props) {
           >
             No routes yet. Try{" "}
             <span className="mac-mono" style={{ margin: "0 4px" }}>
-              lp open …
+              lpt open …
             </span>{" "}
             or click a link.
           </div>

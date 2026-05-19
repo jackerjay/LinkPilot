@@ -13,3 +13,10 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
+
+[dev-dependencies]
+# Integration tests spin up the server and a tokio runtime; need the
+# `macros` feature for #[tokio::test] which workspace tokio doesn't
+# pull in by default.
+tokio = { workspace = true, features = ["macros"] }
+uuid = { workspace = true }

@@ -1,45 +1,8 @@
-//! Default IPC endpoint per platform.
+//! IPC endpoint resolution.
+//!
+//! The actual logic moved to `linkpilot_core::endpoint` in v0.2 so that
+//! `linkpilot_core::daemon::DaemonRuntime` can use it without a circular
+//! crate dependency. This module re-exports the same types so existing
+//! call sites under `linkpilot_ipc::path::*` keep compiling unchanged.
 
-use std::path::PathBuf;
-
-/// Where the daemon listens by default.
-///
-/// - macOS:   `$HOME/Library/Application Support/LinkPilot/linkpilot.sock`
-/// - Linux:   `$XDG_RUNTIME_DIR/linkpilot.sock` (falls back to `$HOME`)
-/// - Windows: `\\.\pipe\linkpilot`
-pub fn default_endpoint() -> Endpoint {
-    #[cfg(target_os = "macos")]
-    {
-        let base = std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("/tmp"));
-        Endpoint::UnixSocket(
-            base.join("Library")
-                .join("Application Support")
-                .join("LinkPilot")
-                .join("linkpilot.sock"),
-        )
-    }
-    #[cfg(target_os = "linux")]
-    {
-        let base = std::env::var_os("XDG_RUNTIME_DIR")
-            .map(PathBuf::from)
-            .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
-            .unwrap_or_else(|| PathBuf::from("/tmp"));
-        Endpoint::UnixSocket(base.join("linkpilot.sock"))
-    }
-    #[cfg(target_os = "windows")]
-    {
-        Endpoint::NamedPipe(r"\\.\pipe\linkpilot".to_string())
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    {
-        Endpoint::UnixSocket(PathBuf::from("/tmp/linkpilot.sock"))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Endpoint {
-    UnixSocket(PathBuf),
-    NamedPipe(String),
-}
+pub use linkpilot_core::endpoint::{default_endpoint, Endpoint};

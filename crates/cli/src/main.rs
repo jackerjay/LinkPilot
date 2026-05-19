@@ -1,4 +1,4 @@
-//! `lp` — the LinkPilot command-line client.
+//! `lpt` — the LinkPilot command-line client.
 //!
 //! Read operations prefer the running daemon (via IPC) so they reflect the
 //! daemon's in-memory snapshot; on offline daemon they fall back to reading
@@ -17,18 +17,20 @@ use linkpilot_core::browser::{
 use linkpilot_core::config::{
     default_config_path, ConfigDocument, ConfigStore, Workspace, WriterId,
 };
+use linkpilot_core::history::RouteRecord;
 use linkpilot_core::platform::{PlatformProvider, SetDefaultOutcome};
-use linkpilot_core::protocol::{DoctorReport, Request, Response};
+use linkpilot_core::protocol::{DoctorReport, Request, Response, ERROR_UNKNOWN_VERB};
 use linkpilot_core::routing::{Router, RoutingContext, RoutingDecision, Source, SourceKind};
 use linkpilot_core::rules::{Action, MatcherTree, Rule, RuleId, RuleSource};
 use linkpilot_ipc::client::{self, ClientError};
 use linkpilot_ipc::path::default_endpoint;
+use linkpilot_ipc::transport::TransportError;
 
 // ---------------------------------------------------------------------------
 // Clap structures
 
 #[derive(Parser, Debug)]
-#[command(name = "lp", version, about = "LinkPilot command-line client")]
+#[command(name = "lpt", version, about = "LinkPilot command-line client")]
 struct Cli {
     /// Override the config file path (defaults to the platform location).
     #[arg(long, global = true)]
@@ -108,6 +110,27 @@ enum Command {
     DefaultBrowser {
         #[command(subcommand)]
         action: DefaultBrowserAction,
+    },
+
+    /// Manage the background `linkpilot-daemon` — start, stop, status,
+    /// install/uninstall the LaunchAgent, tail logs.
+    Daemon {
+        #[command(subcommand)]
+        action: DaemonAction,
+    },
+
+    /// Show recent routing decisions from the daemon's in-memory history.
+    /// Requires a running daemon (protocol v2+); v0.1 daemons can't
+    /// answer this and the CLI prints an upgrade hint.
+    #[command(alias = "hist")]
+    History {
+        /// Cap on records returned (default: 50). The daemon's buffer
+        /// holds up to 1000 entries.
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+        /// Emit each record as a single JSON object per line (jq-friendly).
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -257,6 +280,18 @@ enum ConfigAction {
         #[arg(long)]
         new_window: bool,
     },
+    /// Compile a `linkpilot.config.ts` (via @linkpilot/config DSL) into
+    /// the daemon's JSON config. Requires `bun` on PATH.
+    Compile {
+        /// Path to the `.ts` config file. Should `import { ... } from
+        /// "@linkpilot/config"` and call `printConfig(defineConfig({...}))`.
+        source: PathBuf,
+        /// Write the compiled JSON to this path instead of replacing the
+        /// daemon's active config. Useful for `git`-tracked outputs or
+        /// dry-runs.
+        #[arg(long)]
+        to: Option<PathBuf>,
+    },
 }
 
 // --- settings ---
@@ -375,6 +410,41 @@ enum DefaultBrowserAction {
     Set,
 }
 
+// --- daemon (M2) ---
+
+#[derive(Subcommand, Debug)]
+enum DaemonAction {
+    /// Spawn a background `linkpilot-daemon --serve` if none is running.
+    /// Idempotent — does nothing if a daemon already answers StatePing.
+    Start,
+    /// Send SIGTERM to the running daemon via the PID file. Refuses if
+    /// the daemon is managed by launchd (run `lpt daemon uninstall` instead).
+    Stop,
+    /// Stop, wait for the socket to close, then start again.
+    Restart,
+    /// Print daemon liveness, version, PID, socket path, and whether
+    /// the LaunchAgent is installed.
+    Status {
+        /// JSON output for scripting.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Install the LaunchAgent plist so the daemon runs at login.
+    /// Idempotent: re-installing overwrites the plist and reloads launchd.
+    Install,
+    /// Unload + delete the LaunchAgent plist, then SIGTERM the daemon.
+    Uninstall,
+    /// Tail `~/Library/Logs/LinkPilot/daemon.{out,err}.log`.
+    Logs {
+        /// Follow the log file as new lines are appended (Ctrl-C to exit).
+        #[arg(long, short = 'f')]
+        follow: bool,
+        /// Number of trailing lines to print before following.
+        #[arg(long, short = 'n', default_value = "50")]
+        lines: usize,
+    },
+}
+
 // ---------------------------------------------------------------------------
 // Platform glue + main
 
@@ -452,6 +522,7 @@ fn main() -> Result<()> {
                 incognito,
                 new_window,
             } => run_config_set_default_target(cli.config, browser, profile, incognito, new_window),
+            ConfigAction::Compile { source, to } => run_config_compile(cli.config, source, to),
         },
         Command::Settings { action } => match action {
             SettingsAction::Show => run_settings_show(cli.config, cli.local),
@@ -498,11 +569,21 @@ fn main() -> Result<()> {
             DefaultBrowserAction::Status { json } => run_default_browser_status(json),
             DefaultBrowserAction::Set => run_default_browser_set(),
         },
+        Command::Daemon { action } => match action {
+            DaemonAction::Start => run_daemon_start(),
+            DaemonAction::Stop => run_daemon_stop(),
+            DaemonAction::Restart => run_daemon_restart(),
+            DaemonAction::Status { json } => run_daemon_status(json),
+            DaemonAction::Install => run_daemon_install(),
+            DaemonAction::Uninstall => run_daemon_uninstall(),
+            DaemonAction::Logs { follow, lines } => run_daemon_logs(follow, lines),
+        },
+        Command::History { limit, json } => run_history(limit, json),
     }
 }
 
 // ===========================================================================
-// `lp open`
+// `lpt open`
 
 #[allow(clippy::too_many_arguments)]
 fn run_open(
@@ -566,7 +647,7 @@ fn run_open(
 }
 
 // ===========================================================================
-// `lp doctor`
+// `lpt doctor`
 
 fn run_doctor(config: Option<PathBuf>, local: bool, json: bool) -> Result<()> {
     if !local {
@@ -610,7 +691,7 @@ fn run_doctor(config: Option<PathBuf>, local: bool, json: bool) -> Result<()> {
 }
 
 // ===========================================================================
-// `lp rules ...`
+// `lpt rules ...`
 
 fn run_rules_list(config: Option<PathBuf>, local: bool, json: bool, all: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
@@ -783,7 +864,7 @@ fn find_rule<'a>(doc: &'a ConfigDocument, prefix: &str) -> Result<&'a Rule> {
 }
 
 // ===========================================================================
-// `lp workspaces ...`
+// `lpt workspaces ...`
 
 fn run_workspaces_list(config: Option<PathBuf>, local: bool, json: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
@@ -876,7 +957,7 @@ fn run_workspaces_set_enabled(config: Option<PathBuf>, id: &str, enabled: bool) 
 }
 
 // ===========================================================================
-// `lp config ...`
+// `lpt config ...`
 
 fn run_config_show(config: Option<PathBuf>, local: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
@@ -946,8 +1027,116 @@ fn run_config_set_default_target(
     })
 }
 
+/// `lpt config compile <source.ts> [--to PATH]`.
+///
+/// Pipeline:
+///   1. Locate `bun` on PATH; fail fast with an install hint if missing.
+///   2. `bun run <source>` — bun handles .ts natively (~30ms cold).
+///   3. Capture stdout, JSON-parse into ConfigDocument. The DSL's
+///      `printConfig` helper writes exactly that to stdout.
+///   4. Write: either `ConfigStore::replace(doc, WriterId::TsCompiled)`
+///      to the live config (default), or `--to PATH` to a file.
+///
+/// On TS compile error: bun's stderr is passed through verbatim, our
+/// own exit is 1, no file is touched.
+fn run_config_compile(config: Option<PathBuf>, source: PathBuf, to: Option<PathBuf>) -> Result<()> {
+    use std::process::Command;
+
+    if !source.exists() {
+        return Err(anyhow!("source file not found: {}", source.display()));
+    }
+
+    let bun = which_on_path("bun").ok_or_else(|| {
+        anyhow!(
+            "`bun` not found on PATH.\n\
+             Install with:\n    \
+                 brew install oven-sh/bun/bun\n\
+             or:\n    \
+                 curl -fsSL https://bun.sh/install | bash"
+        )
+    })?;
+
+    let out = Command::new(&bun)
+        .arg("run")
+        .arg(&source)
+        .output()
+        .with_context(|| format!("spawning {}", bun.display()))?;
+    if !out.status.success() {
+        // Bun's stderr is the user's TS compile error (or runtime
+        // error) — surfacing it verbatim is the actionable thing.
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        eprint!("{stderr}");
+        return Err(anyhow!(
+            "bun exited {} compiling {}",
+            out.status,
+            source.display()
+        ));
+    }
+
+    let stdout = String::from_utf8(out.stdout)
+        .with_context(|| format!("bun stdout from {} was not UTF-8", source.display()))?;
+    let doc: ConfigDocument = serde_json::from_str(&stdout).with_context(|| {
+        format!(
+            "DSL output is not a valid ConfigDocument.\n\
+             Make sure your config ends with `printConfig(defineConfig({{ ... }}))` \
+             — the helper from @linkpilot/config that emits the daemon's JSON shape.\n\
+             First 200 bytes of bun stdout: {}",
+            stdout.chars().take(200).collect::<String>()
+        )
+    })?;
+
+    if let Some(dest) = to {
+        // --to PATH: write the JSON verbatim, never touch the daemon's
+        // live config. Same atomic write semantics as `lpt config export`.
+        let json = serde_json::to_string_pretty(&doc)?;
+        if let Some(parent) = dest.parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent)
+                    .with_context(|| format!("creating {}", parent.display()))?;
+            }
+        }
+        std::fs::write(&dest, json).with_context(|| format!("writing {}", dest.display()))?;
+        eprintln!(
+            "linkpilot: compiled {} → {} ({} rules)",
+            source.display(),
+            dest.display(),
+            doc.rules.len()
+        );
+        return Ok(());
+    }
+
+    // Default path: replace the live daemon config. Tagged TsCompiled so
+    // the GUI knows to render these rules read-only (M4.4).
+    let (store, _) = load_store(config)?;
+    store
+        .replace(doc.clone(), WriterId::TsCompiled)
+        .map_err(|e| anyhow!("writing config: {e}"))?;
+    eprintln!(
+        "linkpilot: compiled {} → {} ({} rules)",
+        source.display(),
+        store.path().display(),
+        doc.rules.len()
+    );
+    Ok(())
+}
+
+/// Look up an executable on PATH. Returns the first match, or None if
+/// nothing on PATH has the given filename. Cheap enough to call once
+/// per invocation; we keep `daemon_cli::which_on_path` separate to
+/// avoid pulling the macOS-gated `mod` from outside its cfg.
+fn which_on_path(bin: &str) -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    for dir in std::env::split_paths(&path) {
+        let cand = dir.join(bin);
+        if cand.exists() {
+            return Some(cand);
+        }
+    }
+    None
+}
+
 // ===========================================================================
-// `lp settings ...`
+// `lpt settings ...`
 
 fn run_settings_show(config: Option<PathBuf>, local: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
@@ -970,7 +1159,7 @@ where
 }
 
 // ===========================================================================
-// `lp browsers ...`
+// `lpt browsers ...`
 
 fn run_browsers_list(
     config: Option<PathBuf>,
@@ -1094,7 +1283,7 @@ fn run_browsers_custom_remove(config: Option<PathBuf>, id: &str) -> Result<()> {
 }
 
 // ===========================================================================
-// `lp default-browser ...`
+// `lpt default-browser ...`
 
 fn run_default_browser_status(json: bool) -> Result<()> {
     let platform = make_platform();
@@ -1158,7 +1347,7 @@ fn new_request_id() -> String {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
-    format!("lp-{nanos}")
+    format!("lpt-{nanos}")
 }
 
 enum IpcError {
@@ -1210,6 +1399,49 @@ fn try_daemon_config_get() -> std::result::Result<ConfigDocument, IpcError> {
         Response::ConfigSnapshot { doc, .. } => Ok(doc),
         Response::Error { code, message, .. } => Err(IpcError::Other(format!("{code}: {message}"))),
         other => Err(IpcError::Other(format!("unexpected response: {other:?}"))),
+    }
+}
+
+/// Distinguishes "daemon doesn't speak this verb" from generic IPC
+/// errors. `lpt history` uses this to print an upgrade hint instead of
+/// a low-level "unknown-verb" code dump when talking to an old daemon.
+enum HistoryError {
+    Offline,
+    UnknownVerb,
+    Other(String),
+}
+
+fn try_daemon_route_history(limit: usize) -> std::result::Result<Vec<RouteRecord>, HistoryError> {
+    let request = Request::RouteHistory {
+        request_id: new_request_id(),
+        limit: Some(limit),
+    };
+    let response = client::send(&default_endpoint(), request).map_err(|e| match e {
+        ClientError::Offline(_) | ClientError::Timeout(_) => HistoryError::Offline,
+        // A v0.1 daemon (or any pre-M3.2 v0.2 daemon) drops the
+        // connection on a route-history frame — its serde decode fails
+        // and the old server path returned Err(...). From the client
+        // side that surfaces as Transport(Closed) or Transport(Serde).
+        // Both mean "daemon accepted the request but couldn't speak v2".
+        ClientError::Transport(TransportError::Closed)
+        | ClientError::Transport(TransportError::Serde(_)) => HistoryError::UnknownVerb,
+        other => HistoryError::Other(other.to_string()),
+    })?;
+    match response {
+        Response::RouteHistorySnapshot { records, .. } => Ok(records),
+        Response::Error { code, message, .. } if code == ERROR_UNKNOWN_VERB => {
+            // v0.2-post-M3.2 daemons send this when they don't know the
+            // verb. Same human-facing hint as the connection-closed
+            // case above.
+            tracing::debug!(code = %code, message = %message, "daemon rejected route-history");
+            Err(HistoryError::UnknownVerb)
+        }
+        Response::Error { code, message, .. } => {
+            Err(HistoryError::Other(format!("{code}: {message}")))
+        }
+        other => Err(HistoryError::Other(format!(
+            "unexpected response: {other:?}"
+        ))),
     }
 }
 
@@ -1400,4 +1632,539 @@ fn describe_action(action: &Action) -> String {
 
 fn short_id(uuid: &str) -> String {
     uuid.chars().take(8).collect()
+}
+
+// ===========================================================================
+// `lpt daemon <action>` (M2)
+//
+// All daemon-management subcommands are macOS-only in v0.2. The Linux /
+// Windows daemon ports land later; in the meantime non-macOS hosts get a
+// single friendly error rather than a half-working install path.
+
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_unsupported(action: &str) -> Result<()> {
+    Err(anyhow!(
+        "`lpt daemon {action}` is macOS-only in v0.2 (no daemon shipped on this platform yet)"
+    ))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_start() -> Result<()> {
+    run_daemon_unsupported("start")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_stop() -> Result<()> {
+    run_daemon_unsupported("stop")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_restart() -> Result<()> {
+    run_daemon_unsupported("restart")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_status(_json: bool) -> Result<()> {
+    run_daemon_unsupported("status")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_install() -> Result<()> {
+    run_daemon_unsupported("install")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_uninstall() -> Result<()> {
+    run_daemon_unsupported("uninstall")
+}
+#[cfg(not(target_os = "macos"))]
+fn run_daemon_logs(_follow: bool, _lines: usize) -> Result<()> {
+    run_daemon_unsupported("logs")
+}
+
+#[cfg(target_os = "macos")]
+mod daemon_cli {
+    use anyhow::{anyhow, Context, Result};
+    use linkpilot_core::daemon::{pid_file_path, read_pid_file, remove_pid_file};
+    use linkpilot_core::protocol::{Request, Response};
+    use linkpilot_ipc::client;
+    use linkpilot_ipc::path::default_endpoint;
+    use linkpilot_platform_mac::launch_agent::{self, LaunchAgentStatus, DAEMON_LABEL};
+    use std::path::{Path, PathBuf};
+    use std::time::{Duration, Instant};
+
+    /// Snapshot of every signal `lpt daemon status` cares about, gathered once
+    /// per invocation so JSON / human output stay consistent.
+    pub struct DaemonSnapshot {
+        pub running: bool,
+        pub version: Option<String>,
+        pub pid: Option<u32>,
+        pub socket: String,
+        pub agent: LaunchAgentStatus,
+        pub pid_file: PathBuf,
+    }
+
+    pub fn snapshot() -> Result<DaemonSnapshot> {
+        let endpoint = default_endpoint();
+        let socket = endpoint.display();
+        let ping = client::send(
+            &endpoint,
+            Request::StatePing {
+                request_id: "lpt-daemon-status".into(),
+            },
+        );
+        let (running, version) = match ping {
+            Ok(Response::Pong { daemon_version, .. }) => (true, Some(daemon_version)),
+            _ => (false, None),
+        };
+        let pid_file = pid_file_path().context("resolve pid file path")?;
+        let pid = read_pid_file(&pid_file).ok().flatten();
+        let agent = launch_agent::daemon_status().unwrap_or_default();
+        Ok(DaemonSnapshot {
+            running,
+            version,
+            pid,
+            socket,
+            agent,
+            pid_file,
+        })
+    }
+
+    /// Locate a `linkpilot-daemon` binary the CLI can spawn:
+    ///   1. `LINKPILOT_DAEMON` env override (for development).
+    ///   2. The installed .app at `/Applications/LinkPilot.app/Contents/MacOS/`.
+    ///   3. Sibling of the current `lpt` executable (CI-built `target/...`).
+    ///   4. `PATH` lookup of `linkpilot-daemon`.
+    pub fn locate_daemon_binary() -> Result<PathBuf> {
+        if let Some(p) = std::env::var_os("LINKPILOT_DAEMON") {
+            let path = PathBuf::from(p);
+            if path.exists() {
+                return Ok(path);
+            }
+        }
+        let installed =
+            PathBuf::from("/Applications/LinkPilot.app/Contents/MacOS/linkpilot-daemon");
+        if installed.exists() {
+            return Ok(installed);
+        }
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                let sibling = dir.join("linkpilot-daemon");
+                if sibling.exists() {
+                    return Ok(sibling);
+                }
+            }
+        }
+        if let Ok(path) = which_on_path("linkpilot-daemon") {
+            return Ok(path);
+        }
+        Err(anyhow!(
+            "no linkpilot-daemon binary found.\n\
+             Looked at: $LINKPILOT_DAEMON, /Applications/LinkPilot.app/Contents/MacOS/, \
+             alongside `lpt`, and $PATH.\n\
+             Install LinkPilot.app, or `cargo build -p linkpilot-headless-daemon` for dev."
+        ))
+    }
+
+    fn which_on_path(bin: &str) -> Result<PathBuf> {
+        let path = std::env::var_os("PATH").ok_or_else(|| anyhow!("PATH not set"))?;
+        for dir in std::env::split_paths(&path) {
+            let candidate = dir.join(bin);
+            if candidate.exists() {
+                return Ok(candidate);
+            }
+        }
+        Err(anyhow!("{bin} not on PATH"))
+    }
+
+    /// Spawn `linkpilot-daemon --serve` detached from this process. Stdout
+    /// and stderr go to /dev/null — if the user wants logs they install
+    /// the LaunchAgent (which writes to ~/Library/Logs/LinkPilot/).
+    pub fn spawn_daemon(exec: &Path) -> Result<()> {
+        use std::os::unix::process::CommandExt;
+        use std::process::{Command, Stdio};
+        let mut cmd = Command::new(exec);
+        cmd.arg("--serve")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        // Detach into its own session so a `lpt daemon start` from a
+        // terminal that later exits doesn't drag the daemon with it.
+        unsafe {
+            cmd.pre_exec(|| {
+                libc::setsid();
+                Ok(())
+            });
+        }
+        let _child = cmd
+            .spawn()
+            .with_context(|| format!("spawning {}", exec.display()))?;
+        Ok(())
+    }
+
+    /// Poll the IPC socket until either (a) it stops answering — when we
+    /// want to confirm a stop — or (b) it starts answering — when we
+    /// want to confirm a start. Returns `Ok(())` on success, error after
+    /// `timeout`.
+    pub fn wait_for_socket(target_alive: bool, timeout: Duration) -> Result<()> {
+        let endpoint = default_endpoint();
+        let started = Instant::now();
+        while started.elapsed() < timeout {
+            let alive = matches!(
+                client::send(
+                    &endpoint,
+                    Request::StatePing {
+                        request_id: "lpt-daemon-wait".into()
+                    }
+                ),
+                Ok(Response::Pong { .. })
+            );
+            if alive == target_alive {
+                return Ok(());
+            }
+            std::thread::sleep(Duration::from_millis(150));
+        }
+        Err(anyhow!(
+            "timed out after {:?} waiting for socket to {}",
+            timeout,
+            if target_alive { "open" } else { "close" }
+        ))
+    }
+
+    /// SIGTERM the PID written by the running daemon. Returns Ok if the
+    /// PID file is missing (already stopped) or if the kill succeeded.
+    pub fn terminate_daemon(pid: u32) -> Result<()> {
+        // libc::pid_t is i32; PIDs fit.
+        let res = unsafe { libc::kill(pid as i32, libc::SIGTERM) };
+        if res == 0 {
+            return Ok(());
+        }
+        let err = std::io::Error::last_os_error();
+        // ESRCH = process already gone. That's fine for our intent.
+        if err.raw_os_error() == Some(libc::ESRCH) {
+            return Ok(());
+        }
+        Err(anyhow!("SIGTERM to pid {pid} failed: {err}"))
+    }
+
+    pub fn log_paths() -> Result<(PathBuf, PathBuf)> {
+        let home = std::env::var_os("HOME").ok_or_else(|| anyhow!("HOME not set"))?;
+        let dir = PathBuf::from(home)
+            .join("Library")
+            .join("Logs")
+            .join("LinkPilot");
+        Ok((dir.join("daemon.out.log"), dir.join("daemon.err.log")))
+    }
+
+    pub fn pretty_status(snap: &DaemonSnapshot) {
+        println!(
+            "daemon:       {}",
+            if snap.running { "running" } else { "stopped" }
+        );
+        if let Some(v) = &snap.version {
+            println!("version:      {v}");
+        }
+        match snap.pid {
+            Some(p) => println!("pid:          {p} (from {})", snap.pid_file.display()),
+            None => println!("pid:          —"),
+        }
+        println!("socket:       {}", snap.socket);
+        println!(
+            "launchagent:  plist {} | loaded {} | label {DAEMON_LABEL}",
+            if snap.agent.plist_exists { "yes" } else { "no" },
+            if snap.agent.loaded { "yes" } else { "no" }
+        );
+        if let Some(exec) = &snap.agent.exec_path {
+            println!("              exec {}", exec.display());
+        }
+        if let Some(p) = snap.agent.pid {
+            println!("              launchd pid {p}");
+        }
+    }
+
+    pub fn json_status(snap: &DaemonSnapshot) -> serde_json::Value {
+        serde_json::json!({
+            "running": snap.running,
+            "version": snap.version,
+            "pid": snap.pid,
+            "socket": snap.socket,
+            "pid_file": snap.pid_file.display().to_string(),
+            "launch_agent": {
+                "plist_exists": snap.agent.plist_exists,
+                "loaded": snap.agent.loaded,
+                "pid": snap.agent.pid,
+                "exec_path": snap.agent.exec_path.as_ref().map(|p| p.display().to_string()),
+                "label": DAEMON_LABEL,
+            }
+        })
+    }
+
+    /// Stream `path` to stdout, optionally following the tail. Falls back
+    /// to a friendly message rather than hard-failing on missing log files
+    /// (a freshly-installed daemon hasn't written anything yet).
+    pub fn tail_log(path: &Path, lines: usize, follow: bool) -> Result<()> {
+        use std::io::{Read, Seek, SeekFrom};
+        if !path.exists() {
+            println!(
+                "{}: no log file yet (daemon hasn't started under launchd, or just installed)",
+                path.display()
+            );
+            return Ok(());
+        }
+        let body =
+            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
+        let kept: Vec<&str> = body.lines().rev().take(lines).collect();
+        for line in kept.iter().rev() {
+            println!("{line}");
+        }
+        if !follow {
+            return Ok(());
+        }
+        // Naive follow: poll size every 250ms; print new chunk.
+        let mut file = std::fs::File::open(path)
+            .with_context(|| format!("opening {} for follow", path.display()))?;
+        file.seek(SeekFrom::End(0))?;
+        loop {
+            let mut buf = Vec::new();
+            let n = file
+                .by_ref()
+                .take(64 * 1024)
+                .read_to_end(&mut buf)
+                .unwrap_or(0);
+            if n > 0 {
+                print!("{}", String::from_utf8_lossy(&buf));
+                use std::io::Write;
+                let _ = std::io::stdout().flush();
+            } else {
+                std::thread::sleep(Duration::from_millis(250));
+            }
+        }
+    }
+
+    /// Remove the PID file. Logged at the call site since callers want to
+    /// know whether the daemon was already orphaned vs. cleanly stopped.
+    pub fn clear_pid_file() {
+        if let Ok(p) = pid_file_path() {
+            let _ = remove_pid_file(&p);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_start() -> Result<()> {
+    use daemon_cli::*;
+    let snap = snapshot()?;
+    if snap.running {
+        println!("daemon already running (pid {})", snap.pid.unwrap_or(0));
+        return Ok(());
+    }
+    let exec = locate_daemon_binary()?;
+    spawn_daemon(&exec)?;
+    wait_for_socket(true, std::time::Duration::from_secs(5))
+        .context("daemon spawned but socket never came up; check ~/Library/Logs/LinkPilot/")?;
+    let after = snapshot()?;
+    println!(
+        "daemon started (pid {}, version {})",
+        after.pid.unwrap_or(0),
+        after.version.as_deref().unwrap_or("?")
+    );
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_stop() -> Result<()> {
+    use daemon_cli::*;
+    let snap = snapshot()?;
+    if snap.agent.loaded {
+        return Err(anyhow!(
+            "daemon is managed by launchd — run `lpt daemon uninstall` first \
+             (otherwise launchd would re-spawn it immediately)"
+        ));
+    }
+    let Some(pid) = snap.pid else {
+        if snap.running {
+            return Err(anyhow!(
+                "daemon socket responds but no PID file at {} — can't safely SIGTERM. \
+                 Find the process manually with `pgrep -fl linkpilot-daemon` and `kill` it.",
+                snap.pid_file.display()
+            ));
+        }
+        println!("daemon not running.");
+        clear_pid_file();
+        return Ok(());
+    };
+    terminate_daemon(pid)?;
+    wait_for_socket(false, std::time::Duration::from_secs(5))
+        .context("SIGTERM sent but daemon didn't release the socket")?;
+    clear_pid_file();
+    println!("daemon stopped (was pid {pid})");
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_restart() -> Result<()> {
+    run_daemon_stop()?;
+    run_daemon_start()
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_status(json: bool) -> Result<()> {
+    let snap = daemon_cli::snapshot()?;
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&daemon_cli::json_status(&snap))?
+        );
+    } else {
+        daemon_cli::pretty_status(&snap);
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_install() -> Result<()> {
+    use daemon_cli::*;
+    let exec = locate_daemon_binary()?;
+    linkpilot_platform_mac::launch_agent::install_daemon(&exec)
+        .map_err(|e| anyhow!("install LaunchAgent: {e}"))?;
+    // launchctl load -w with RunAtLoad=true triggers an immediate start —
+    // give it a moment to come up so `lpt daemon status` right after this
+    // shows running=true.
+    let _ = wait_for_socket(true, std::time::Duration::from_secs(5));
+    let snap = snapshot()?;
+    println!(
+        "daemon LaunchAgent installed (exec {}; running: {})",
+        exec.display(),
+        snap.running
+    );
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_uninstall() -> Result<()> {
+    use daemon_cli::*;
+    let snap = snapshot()?;
+    linkpilot_platform_mac::launch_agent::uninstall_daemon()
+        .map_err(|e| anyhow!("uninstall LaunchAgent: {e}"))?;
+    // launchctl unload normally SIGTERMs the daemon. Belt-and-suspenders:
+    // if a PID file still exists and the process is still alive, signal it.
+    if let Some(pid) = snap.pid {
+        let _ = terminate_daemon(pid);
+    }
+    let _ = wait_for_socket(false, std::time::Duration::from_secs(3));
+    clear_pid_file();
+    println!("daemon LaunchAgent uninstalled");
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn run_daemon_logs(follow: bool, lines: usize) -> Result<()> {
+    let (out, err) = daemon_cli::log_paths()?;
+    println!("=== {} ===", out.display());
+    daemon_cli::tail_log(&out, lines, false)?;
+    println!();
+    println!("=== {} ===", err.display());
+    daemon_cli::tail_log(&err, lines, follow)?;
+    Ok(())
+}
+
+// ===========================================================================
+// `lpt history` (M3)
+
+fn run_history(limit: usize, json: bool) -> Result<()> {
+    let records = match try_daemon_route_history(limit) {
+        Ok(records) => records,
+        Err(HistoryError::Offline) => {
+            return Err(anyhow!(
+                "history requires a running daemon — try `lpt daemon start`"
+            ));
+        }
+        Err(HistoryError::UnknownVerb) => {
+            return Err(anyhow!(
+                "the running daemon doesn't speak protocol v2; upgrade it to v0.2+ to use `lpt history`"
+            ));
+        }
+        Err(HistoryError::Other(msg)) => return Err(anyhow!("daemon: {msg}")),
+    };
+
+    if records.is_empty() {
+        println!("no routes recorded yet");
+        return Ok(());
+    }
+
+    if json {
+        for rec in &records {
+            // One RouteRecord per line so `lpt history --json | jq` works
+            // line-at-a-time, same shape the daemon stores in memory.
+            println!("{}", serde_json::to_string(rec)?);
+        }
+        return Ok(());
+    }
+
+    // Human table — matches the column ordering of `lpt rules list` so a
+    // user moving between the two sees the same shape.
+    println!("{:<10}  {:<20}  {:<8}  decision", "time", "host", "rule");
+    for rec in &records {
+        let when = format_relative(rec.timestamp_ms);
+        let host = url_host(&rec.context.url);
+        let rule = rec
+            .matched_rule
+            .as_ref()
+            .map(|r| short_id(&r.0.to_string()))
+            .unwrap_or_else(|| "—".into());
+        let decision = format_decision(&rec.decision);
+        println!(
+            "{:<10}  {:<20}  {:<8}  {}",
+            when,
+            truncate(&host, 20),
+            rule,
+            decision,
+        );
+    }
+    Ok(())
+}
+
+fn url_host(url: &str) -> String {
+    match url::Url::parse(url) {
+        Ok(u) => u.host_str().unwrap_or(url).to_string(),
+        Err(_) => url.to_string(),
+    }
+}
+
+fn truncate(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        s.to_string()
+    } else {
+        let kept: String = s.chars().take(max.saturating_sub(1)).collect();
+        format!("{kept}…")
+    }
+}
+
+fn format_relative(ts_ms: u64) -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(ts_ms);
+    let delta = now_ms.saturating_sub(ts_ms) / 1000;
+    if delta < 60 {
+        format!("{delta}s ago")
+    } else if delta < 3600 {
+        format!("{}m ago", delta / 60)
+    } else if delta < 86_400 {
+        format!("{}h ago", delta / 3600)
+    } else {
+        format!("{}d ago", delta / 86_400)
+    }
+}
+
+fn format_decision(d: &RoutingDecision) -> String {
+    match d {
+        RoutingDecision::Open { target, .. } => {
+            let profile = target
+                .profile
+                .as_deref()
+                .map(|p| format!("/{p}"))
+                .unwrap_or_default();
+            format!("open → {}{profile}", target.browser)
+        }
+        RoutingDecision::Allow { .. } => "allow".into(),
+        RoutingDecision::Block { .. } => "block".into(),
+        RoutingDecision::Ask { .. } => "ask".into(),
+    }
 }

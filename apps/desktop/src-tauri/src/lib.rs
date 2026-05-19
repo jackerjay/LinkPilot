@@ -21,7 +21,15 @@ use linkpilot_core::platform::PlatformProvider;
 use tauri::{Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt;
 
-pub use state::AppState;
+pub use state::{AppState, DaemonMode};
+
+fn probe_existing_daemon(endpoint: &linkpilot_core::endpoint::Endpoint) -> bool {
+    use linkpilot_core::protocol::Request;
+    let req = Request::StatePing {
+        request_id: "gui-startup-probe".into(),
+    };
+    linkpilot_ipc::client::send(endpoint, req).is_ok()
+}
 
 #[cfg(target_os = "macos")]
 fn make_platform(bundle_id: String) -> Arc<dyn PlatformProvider> {
@@ -46,6 +54,22 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            // Menubar-only behaviour (Raycast / Alfred style). The Dock
+            // icon and Cmd+Tab presence go away; the tray icon + main
+            // window are the only UI surface. Set early so the policy
+            // takes hold BEFORE any window is shown — otherwise a Dock
+            // icon flickers in for a frame at first launch.
+            //
+            // Info.plist also carries LSUIElement=true (set by
+            // apps/desktop/scripts/patch-info-plist.sh) so the OS knows
+            // before exec that we're an agent app. This runtime call is
+            // the redundant belt-and-suspenders for dev builds (where
+            // patch-info-plist.sh hasn't run on the Tauri-dev binary).
+            #[cfg(target_os = "macos")]
+            {
+                let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
+
             let config_path =
                 default_config_path().map_err(|e| anyhow::anyhow!("resolve config path: {e}"))?;
             let (config_store, created) = ConfigStore::load_or_init(config_path.clone())
@@ -58,7 +82,22 @@ pub fn run() {
             let bundle_id = app.config().identifier.clone();
             let platform = make_platform(bundle_id);
 
-            let state = AppState::new(config_store.clone(), Arc::clone(&history), platform);
+            // DaemonRuntime is the in-process daemon's state — same logic the
+            // headless `linkpilot-daemon` binary uses. Shared via Arc so the
+            // ipc_host handler (below) and AppState's Tauri commands both see
+            // identical config/history snapshots.
+            let runtime = Arc::new(linkpilot_core::daemon::DaemonRuntime::new(
+                config_store.clone(),
+                Arc::clone(&history),
+                Arc::clone(&platform),
+                env!("CARGO_PKG_VERSION"),
+            ));
+
+            let state = AppState::new(
+                config_store.clone(),
+                Arc::clone(&history),
+                Arc::clone(&platform),
+            );
 
             // fsnotify: rebroadcast every config change to the front-end.
             //
@@ -92,14 +131,75 @@ pub fn run() {
                 }
             });
 
-            // IPC server: `lp` and (future) Native Host attach here.
-            let handler = std::sync::Arc::new(ipc_host::DaemonHandler::new(
-                state.clone(),
-                app.handle().clone(),
-            ));
-            match linkpilot_ipc::server::serve(linkpilot_ipc::path::default_endpoint(), handler) {
-                Ok(ipc) => state.attach_ipc(ipc),
-                Err(err) => tracing::warn!(?err, "ipc server failed to start; GUI still works"),
+            // v0.2 daemon coexistence:
+            //   - If `linkpilot-daemon` is already running on the socket, the
+            //     GUI runs in "client mode": skip the IPC server bind so we
+            //     don't fight the daemon for the socket. The GUI's local
+            //     ConfigStore + fsnotify still work — they read/write the
+            //     same on-disk config file the daemon does, and the anti-echo
+            //     token keeps both sides in sync.
+            //   - Otherwise (no external daemon) we behave like v0.1: the
+            //     GUI itself hosts the daemon (route_open from `lpt`, ipc-host
+            //     handler, etc.).
+            // Inspector history is degraded in client mode (we don't see the
+            // daemon's in-memory history); M3 wires `lpt history` through to
+            // the daemon and the GUI can call the same path.
+            let endpoint = linkpilot_ipc::path::default_endpoint();
+            let daemon_mode = if probe_existing_daemon(&endpoint) {
+                tracing::info!(
+                    endpoint = %endpoint.display(),
+                    "external linkpilot-daemon detected; GUI running in client mode"
+                );
+                DaemonMode::External
+            } else {
+                let handler = std::sync::Arc::new(ipc_host::DaemonHandler::new(
+                    Arc::clone(&runtime),
+                    state.clone(),
+                    app.handle().clone(),
+                ));
+                match linkpilot_ipc::server::serve(endpoint, handler) {
+                    Ok(ipc) => {
+                        state.attach_ipc(ipc);
+                        DaemonMode::InProcess
+                    }
+                    Err(err) => {
+                        tracing::warn!(?err, "ipc server failed to start; GUI still works");
+                        DaemonMode::InProcess
+                    }
+                }
+            };
+            state.set_daemon_mode(daemon_mode);
+
+            // First-run auto-install of the daemon LaunchAgent (production
+            // builds only; dev builds skip so iterating doesn't pollute
+            // the developer's LaunchAgents dir). When a bundled
+            // `linkpilot-daemon` sits next to this binary and the plist
+            // doesn't exist yet, write it + launchctl-load so users get a
+            // backgrounded daemon without any CLI ceremony. Idempotent —
+            // re-runs are no-ops because the plist will already exist.
+            #[cfg(all(target_os = "macos", not(debug_assertions)))]
+            {
+                if let Ok(false) =
+                    linkpilot_platform_mac::launch_agent::daemon_plist_path().map(|p| p.exists())
+                {
+                    if let Some(exe) = std::env::current_exe()
+                        .ok()
+                        .and_then(|p| p.parent().map(|d| d.join("linkpilot-daemon")))
+                    {
+                        if exe.is_file() {
+                            if let Err(err) =
+                                linkpilot_platform_mac::launch_agent::install_daemon(&exe)
+                            {
+                                tracing::warn!(?err, "first-run LaunchAgent install failed");
+                            } else {
+                                tracing::info!(
+                                    plist = %exe.display(),
+                                    "installed daemon LaunchAgent on first run"
+                                );
+                            }
+                        }
+                    }
+                }
             }
 
             tray::install(&app.handle())?;
@@ -167,6 +267,9 @@ pub fn run() {
             commands::pick_app,
             commands::cli_install_status,
             commands::cli_install_to_path,
+            commands::daemon_service_status,
+            commands::daemon_service_install,
+            commands::daemon_service_uninstall,
             picker::picker_session,
             picker::picker_resolve,
             tray::tray_open_main,

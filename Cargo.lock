@@ -2165,10 +2165,11 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
+ "libc",
  "linkpilot-core",
  "linkpilot-ipc",
  "linkpilot-platform-mac",
@@ -2180,8 +2181,9 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
+ "libc",
  "notify",
  "serde",
  "serde_json",
@@ -2193,7 +2195,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-desktop"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2217,25 +2219,28 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-headless-daemon"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
+ "clap",
  "linkpilot-core",
  "linkpilot-ipc",
+ "linkpilot-platform-mac",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
 
 [[package]]
 name = "linkpilot-icon-padder"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "image",
 ]
 
 [[package]]
 name = "linkpilot-ipc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "linkpilot-core",
  "serde",
@@ -2243,11 +2248,12 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
 name = "linkpilot-native-host"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "linkpilot-core",
@@ -2258,14 +2264,14 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-platform-linux"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "linkpilot-core",
 ]
 
 [[package]]
 name = "linkpilot-platform-mac"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "core-foundation",
  "core-foundation-sys",
@@ -2278,11 +2284,12 @@ dependencies = [
  "thiserror 1.0.69",
  "tracing",
  "url",
+ "uuid",
 ]
 
 [[package]]
 name = "linkpilot-platform-win"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "linkpilot-core",
 ]
@@ -4278,6 +4285,7 @@ dependencies = [
  "libc",
  "mio 1.2.0",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

@@ -1,0 +1,44 @@
+{
+  "name": "@linkpilot/config",
+  "version": "0.2.0",
+  "description": "TypeScript DSL for authoring linkpilot.config.ts — compiles to the JSON the LinkPilot daemon reads.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jackerjay/LinkPilot.git",
+    "directory": "packages/config-dsl"
+  },
+  "keywords": [
+    "linkpilot",
+    "browser",
+    "router",
+    "config",
+    "dsl"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "typescript": "^5.5.0"
+  }
+}
