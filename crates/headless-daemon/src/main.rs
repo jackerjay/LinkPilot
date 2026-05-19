@@ -102,6 +102,27 @@ fn main() -> Result<()> {
         tracing::warn!(?err, path = %pid_path.display(), "writing pid file failed; continuing");
     }
 
+    // Stale-socket cleanup: probe just confirmed no daemon is answering
+    // (returned false above), so any leftover socket file at the endpoint
+    // path is stale — from a daemon that was SIGKILL'd or crashed before
+    // its ServerHandle Drop could unlink. The IPC server's bind path
+    // (linkpilot_ipc::server::run) also calls remove_file as a fallback,
+    // but doing it here means the cleanup shows up in the daemon's
+    // startup log (matching the PID-file pattern just above) so a future
+    // debug session can tell at a glance whether a stale socket was
+    // around. Errors are non-fatal — bind will retry the unlink anyway.
+    if let linkpilot_core::endpoint::Endpoint::UnixSocket(ref path) = endpoint {
+        match std::fs::remove_file(path) {
+            Ok(()) => {
+                tracing::info!(path = %path.display(), "cleaned up stale socket file")
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => {
+                tracing::warn!(?err, path = %path.display(), "stale socket cleanup failed; continuing")
+            }
+        }
+    }
+
     tracing::info!(
         endpoint = %endpoint.display(),
         version = env!("CARGO_PKG_VERSION"),

@@ -157,7 +157,7 @@ CI gates(`.github/workflows/ci.yml`):`cargo fmt --check` + `cargo clippy --works
 
 ## 已知 follow-up / 未来 work
 
-1. **Daemon 启动 socket cleanup**:bind 前应 unlink 残留 socket 文件(当前依赖前一个 daemon 的 graceful shutdown 清理,被 SIGKILL 后会 EADDRINUSE)。M5 之前应修。
+1. ~~**Daemon 启动 socket cleanup**:bind 前应 unlink 残留 socket 文件~~ ✅ 完成(2026-05-19)。`crates/ipc/src/server.rs` 一直就有 belt-and-suspenders `let _ = remove_file(...)` 在 bind 前;为了可观测性,在 `crates/headless-daemon/src/main.rs` 也加了显式 cleanup + 日志(`cleaned up stale socket file`),与 M2.1 PID cleanup 排版一致。新增 `crates/ipc/tests/stale_socket_cleanup.rs` 集成测试:预先写入"stale" regular file → 调 `serve()` → 验证 bind 后真的换成 socket 类型且能响应 Ping。
 2. **GUI 在 M4.4 之前** 仍然能编辑 TsCompiled rule(只是源码标签会被覆盖),没有数据丢失风险但用户体验不闭环。M4.4 完成后才闭环。
 3. **`lp history --follow`**:design §14.2.6 明确不做(IPC server push 是单独议题,待 v0.3+)。
 4. **GUI 试用版本**:本机 `/Applications/LinkPilot.app` 是 M2 之前 build 的 alpha.3,不含 M2/M3 daemon 端改动。要试用 M2/M3 完整行为需重 build .app(参考 M2 本地构建步骤)。
@@ -172,5 +172,5 @@ CI gates(`.github/workflows/ci.yml`):`cargo fmt --check` + `cargo clippy --works
 
 - **A. 顺序推进 M4.4** — 修 GUI rules.tsx,完成 M4 闭环
 - **B. 先做 M4.5 本地 e2e** — 当前 M4.1-M4.3 已经能 DSL → daemon JSON 端到端跑通,M4.5 是把 design §14.3.6 验收表全部跑一遍并把结果写回 PROGRESS;M4.4 可以稍后再做
-- **C. 修 daemon socket cleanup** — 把"已知 follow-up #1"提前到 M5 之前
+- ~~**C. 修 daemon socket cleanup**~~ ✅ 已完成,见 follow-up #1
 - **D. 直接进 M5 本地 Homebrew 起草** — 跳过 M4.4(承担"GUI 显示 ts-compiled 标签但仍可编辑"短期不一致)
