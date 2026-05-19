@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { DragEvent, MouseEvent as ReactMouseEvent } from "react";
 import {
   Check,
+  CopyPlus,
   FolderInput,
   GripVertical,
   Pencil,
@@ -141,6 +142,34 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
   const removeRule = async (rule: Rule) => {
     try {
       await ipc.ruleDelete(rule.id);
+      await refresh();
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  // Escape hatch for `source: "ts-compiled"` rules. The next `lp config
+  // compile` run will rewrite every TsCompiled rule from .ts, but a
+  // GUI-source copy survives untouched — so a user who needs to tweak
+  // one rule without re-editing their .ts file can `Copy` it here and
+  // then `Edit` the copy normally.
+  //
+  // The copy keeps the original rule intact (next compile still rewrites
+  // it). Both rules then live side-by-side until the user either deletes
+  // the original from .ts or deletes the GUI copy from here. Priorities
+  // are preserved to keep router behaviour unchanged after copy.
+  const copyRuleToGui = async (rule: Rule) => {
+    if (rule.source !== "ts-compiled") return;
+    const copy: Rule = {
+      ...rule,
+      id: crypto.randomUUID(),
+      source: "gui",
+      note: rule.note
+        ? `${rule.note} (copied from ts-compiled)`
+        : "copied from ts-compiled",
+    };
+    try {
+      await ipc.ruleUpsert(copy);
       await refresh();
     } catch (e) {
       setError(String(e));
@@ -291,6 +320,7 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
                     isDropAfter={isDropAfter}
                     onEdit={() => setEditor({ kind: "edit", rule: r })}
                     onDelete={() => removeRule(r)}
+                    onCopyToGui={() => copyRuleToGui(r)}
                     onBadgeClick={() =>
                       setFilter(r.workspace_id ?? "ungrouped")
                     }
@@ -433,6 +463,11 @@ interface RuleRowProps {
   isDropAfter: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  /** Clone a ts-compiled rule as a new GUI-editable rule. The original
+   *  stays put (next `lp config compile` keeps overwriting it); the copy
+   *  is the user's editable handle. Only invoked from rows whose
+   *  `rule.source === "ts-compiled"`. */
+  onCopyToGui: () => void;
   onBadgeClick: () => void;
   onMoveToWorkspace: (workspaceId: string | null) => void;
   onDragStart: (e: DragEvent<HTMLDivElement>) => void;
@@ -453,6 +488,7 @@ function RuleRow({
   isDropAfter,
   onEdit,
   onDelete,
+  onCopyToGui,
   onBadgeClick,
   onMoveToWorkspace,
   onDragStart,
@@ -464,6 +500,11 @@ function RuleRow({
   // Visually mute rules that won't fire — either explicitly disabled or
   // sitting in a turned-off workspace. The router treats both the same.
   const muted = !rule.enabled || workspaceDisabled;
+  // ts-compiled rules are authored in `linkpilot.config.ts` and rewritten
+  // every `lp config compile`. Direct edits / deletes from the GUI would
+  // be silently undone on the next compile — make that obvious by
+  // disabling the controls and offering the Copy-to-GUI escape hatch.
+  const isCompiled = rule.source === "ts-compiled";
   return (
     <div
       draggable={reorderEnabled}
@@ -535,33 +576,102 @@ function RuleRow({
         </Tooltip>
       )}
       {!rule.enabled && <Badge variant="destructive">disabled</Badge>}
-      {rule.source === "ts-compiled" && <Badge variant="secondary">ts</Badge>}
+      {isCompiled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="secondary" className="cursor-help">
+              compiled
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            Authored in <code>linkpilot.config.ts</code>. Edit there and
+            re-run <code>lp config compile</code> to update, or use the
+            copy button to fork an editable GUI copy.
+          </TooltipContent>
+        </Tooltip>
+      )}
       <QuickMoveButton
         currentWorkspaceId={rule.workspace_id ?? null}
         workspaces={workspaces}
         onSelect={onMoveToWorkspace}
       />
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" onClick={onEdit}>
-            <Pencil />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Edit rule</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onDelete}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Delete rule</TooltipContent>
-      </Tooltip>
+      {isCompiled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* Wrap the disabled button in a span so the tooltip still
+                fires — disabled buttons don't emit pointer events. */}
+            <span tabIndex={0}>
+              <Button variant="ghost" size="icon" disabled>
+                <Pencil />
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            Compiled rules are read-only. Edit{" "}
+            <code>linkpilot.config.ts</code> and re-run{" "}
+            <code>lp config compile</code>.
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {!isCompiled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onEdit}>
+              <Pencil />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Edit rule</TooltipContent>
+        </Tooltip>
+      )}
+      {isCompiled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onCopyToGui}>
+              <CopyPlus />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Copy as GUI-editable rule. The original stays compiled and
+            will be overwritten on the next <code>lp config compile</code>.
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {isCompiled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span tabIndex={0}>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled
+                className="text-muted-foreground"
+              >
+                <Trash2 />
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            Compiled rules can't be deleted from the GUI — remove the
+            entry from <code>linkpilot.config.ts</code> and re-run{" "}
+            <code>lp config compile</code>.
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {!isCompiled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Delete rule</TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 }
