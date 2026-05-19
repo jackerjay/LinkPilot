@@ -15,7 +15,7 @@
 | **M1** | A · headless daemon binary 跑通 | ✅ 完成(云端 PR #10 合入) |
 | **M2** | A 完成 + C · daemon 管理命令 | ✅ 完成 |
 | **M3** | C 剩余 · `lp history` + 协议升 v2 | ✅ 完成 |
-| **M4** | B · `@linkpilot/config` DSL + `lp config compile`(实现 + **本地** e2e) | 🟡 M4.1-M4.3 完成,M4.4 / M4.5 待做 |
+| **M4** | B · `@linkpilot/config` DSL + `lp config compile`(实现 + **本地** e2e) | ✅ 后端完成(M4.1-M4.5,backend 6/6 自动化通过),GUI 行为留 manual checklist |
 | **M5** | Homebrew formula / cask 起草 + **本地** `brew install --build-from-source` 验证(**不** push tap repo) | ⏳ 未开始 |
 | **M6** | **公开发布** · v0.2.0 tag + Release notes + npm publish workflow + push homebrew-linkpilot tap + 升级路径文档 | ⏳ 未开始 |
 
@@ -67,22 +67,38 @@ CLI-only 用户可以全程不打开 GUI 管理 daemon。共 4 个 commit:
 
 ---
 
-## M4 — TypeScript DSL `@linkpilot/config`(进行中)
+## M4 — TypeScript DSL `@linkpilot/config`(完成,等 GUI 手动确认)
 
-`packages/config-dsl/` 是个独立的 npm publishable 包(包元数据就绪 — 等 M6 才推到 npm registry)。M4.1-M4.3 完成,M4.4 / M4.5 待做。
-
-### 完成的子任务
+`packages/config-dsl/` 是个独立的 npm publishable 包(包元数据就绪 — 等 M6 才推到 npm registry)。
 
 | 子任务 | Commit | 关键交付 |
 |---|---|---|
 | M4.1 包骨架 + builders | `36ece85` | `@linkpilot/config@0.2.0-rc.1`(ESM/strict TS 5.5);`src/{index,types,targets,matchers,compile}.ts`;`defineConfig` + `browser.{chrome,arc,firefox,safari,edge,brave,vivaldi,custom}`(callable & chainable)+ `route.{host,path,fromApp,fromBrowser,fromProfile,all,any,not,always,fromJson}` + `printConfig` 助手;`examples/v0.1-demo.ts` 复刻 PRD §22 demo |
 | M4.2 编译器 + 双语测试 | `100e378` + `71ad235` | **Bun 12 tests** 覆盖 wire shape(snake_case)、所有 MatcherTree / Action 变体、settings/workspace 默认值、modifiers、escape hatch、v0.1 demo 等价性;**Rust 1 test** (`crates/core/tests/dsl_roundtrip.rs`)实际 spawn `bun run`,parse stdout 进 `ConfigDocument` 验证;`@types/bun` devDep 解 IDE diagnostic |
-| M4.3 CLI `lp config compile` | `4eb9fda` | `ConfigAction::Compile{source, to}`;bun 探测 + brew/curl 安装提示;TS 错误 stderr 直通;`--to PATH` 写文件或默认 `ConfigStore::replace(doc, WriterId::TsCompiled)`;端到端验证 6-rule 输出 + bun 缺失 / TS 报错三类错误路径 |
+| M4.3 CLI `lp config compile` | `4eb9fda` | `ConfigAction::Compile{source, to}`;bun 探测 + brew/curl 安装提示;TS 错误 stderr 直通;`--to PATH` 写文件或默认 `ConfigStore::replace(doc, WriterId::TsCompiled)` |
+| M4.4 GUI ts-compiled 只读化 | `251655f` | `apps/desktop/src/pages/rules.tsx`:`compiled` badge + tooltip;Edit/Delete 控件禁用(`<span tabIndex>` 包装以让 tooltip 可触发);新增 `CopyPlus` 按钮,克隆 rule 为新 UUID + `source: "gui"` + note 加 audit trail |
+| M4.5 本地 e2e 验证 | `scripts/m4-verify.sh` | 6/6 后端场景自动化通过(见下)。GUI 行为留 manual checklist |
 
-### 待做(本地验证为主,不发布)
+### M4.5 自动化验收结果(design §14.3.6,跑 `./scripts/m4-verify.sh`)
 
-- **M4.4 GUI TsCompiled 只读化** — `apps/desktop/src/pages/rules.tsx` 检测 `source: ts-compiled`,渲染只读标签 + 禁用编辑控件 + "Copy as GUI-editable" 应急出口
-- **M4.5 本地 e2e 验证** — 用 DSL 重写 v0.1 demo 配置,跑 `lp config compile`,确认 daemon 接受 + GUI 显示 ts-compiled 标签;走通 design §14.3.6 的验收表。**不** 包含 npm publish(已挪到 M6)
+```
+✓ 1) compile DSL → isolated config; verify rule count + tags
+    (7 rules,所有 source: ts-compiled)
+✓ 2) --to PATH wrote 7 rules to file; live config untouched
+    (binary-diff $CFG before vs after,确认未触碰)
+✓ 3) compile is idempotent in shape but re-issues UUIDs
+    (跑两次 compile,rule[0].id 不同,内容一致)
+✓ 4) route.fromJson({op:'url-host',...}) matcher 原样落进 config
+✓ 5) bun missing → exit 1 with brew + curl install hints
+    (用 stripped PATH 模拟)
+✓ 6) bad TS exits 1 with bun stderr surfaced
+```
+
+**Manual GUI checklist**(M4.4 改动需 `npx tauri dev` 或重 build .app 后逐项核对):
+- [ ] Rules 页:ts-compiled rule 显示 `compiled` badge,hover 出 tooltip
+- [ ] Edit pencil + Delete trash 在 ts-compiled rule 上禁用,hover 提示去 `lp config compile`
+- [ ] `CopyPlus` 按钮存在并工作,克隆出的 rule `source: gui` + note 追加 `(copied from ts-compiled)`
+- [ ] 改 `linkpilot.config.ts` 后再 compile,GUI 在 ~1s 内自动刷新(fsnotify)
 
 ---
 
