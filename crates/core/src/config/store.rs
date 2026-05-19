@@ -229,9 +229,11 @@ fn parse_with_priority_migration(raw: &str) -> Result<(ConfigDocument, bool)> {
     let mut value: serde_json::Value = serde_json::from_str(raw)?;
     let mut migrated = false;
     if let Some(rules) = value.get_mut("rules").and_then(|v| v.as_array_mut()) {
-        let any_priority = rules
-            .iter()
-            .any(|r| r.as_object().map(|o| o.contains_key("priority")).unwrap_or(false));
+        let any_priority = rules.iter().any(|r| {
+            r.as_object()
+                .map(|o| o.contains_key("priority"))
+                .unwrap_or(false)
+        });
         if any_priority {
             migrated = true;
             // Stable sort by `priority` desc; missing → 0.
@@ -354,13 +356,22 @@ mod tests {
         let doc = store.document();
         assert_eq!(doc.rules.len(), 2);
         // Lark (was prio 100) now comes first.
-        assert_eq!(doc.rules[0].id.0.to_string(), "22222222-2222-2222-2222-222222222222");
-        assert_eq!(doc.rules[1].id.0.to_string(), "11111111-1111-1111-1111-111111111111");
+        assert_eq!(
+            doc.rules[0].id.0.to_string(),
+            "22222222-2222-2222-2222-222222222222"
+        );
+        assert_eq!(
+            doc.rules[1].id.0.to_string(),
+            "11111111-1111-1111-1111-111111111111"
+        );
 
         // And `priority` is gone from disk — second load is a no-op
         // (no migration, identical doc).
         let on_disk = std::fs::read_to_string(&path).unwrap();
-        assert!(!on_disk.contains("\"priority\""), "priority field must be stripped");
+        assert!(
+            !on_disk.contains("\"priority\""),
+            "priority field must be stripped"
+        );
         std::fs::remove_file(path).ok();
     }
 
