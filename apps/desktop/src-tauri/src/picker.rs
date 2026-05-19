@@ -99,17 +99,15 @@ pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -
         let _ = existing.close();
     }
 
-    // Critical for full-screen Space overlay: temporarily flip the
-    // NSApplication activation policy to Accessory. In Regular mode
-    // (the default — LinkPilot has a Dock icon and a main window
-    // that lives in some "home" Space), activating the app to show
-    // the picker triggers a Space-switch back to that home Space.
-    // Accessory apps have no home Space; their windows materialize
-    // in whatever Space is currently active (i.e. the user's
-    // fullscreen Lark / Safari Space), which combined with the
-    // FullScreenAuxiliary collection bit is exactly what Spotlight,
-    // Raycast, and Alfred do. Restored to Regular below so the Dock
-    // icon comes back as soon as the user picks or cancels.
+    // Belt-and-suspenders: LinkPilot runs permanently in Accessory
+    // mode since M5.5 (LSUIElement=true + setup-time set_activation_
+    // policy), so this is a no-op for normal startups. Kept as a
+    // safety net for unusual launch paths (e.g. tauri dev before the
+    // setup() callback runs). Accessory apps have no home Space:
+    // their windows materialize in whatever Space is currently active
+    // (the user's fullscreen Lark / Safari Space), which combined
+    // with the FullScreenAuxiliary collection bit is exactly what
+    // Spotlight, Raycast, and Alfred do.
     let _ = app.set_activation_policy(ActivationPolicy::Accessory);
 
     // Center on the monitor the cursor is on, not always the primary
@@ -141,9 +139,8 @@ pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -
         Ok(w) => w,
         Err(err) => {
             tracing::warn!(?err, "picker: window build failed");
-            // Don't leave the app stuck without a Dock icon when the
-            // picker never even materialised.
-            let _ = app.set_activation_policy(ActivationPolicy::Regular);
+            // App stays in Accessory mode (M5.5) — no Dock icon to
+            // restore. Just bail.
             return None;
         }
     };
@@ -181,23 +178,20 @@ pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -
         *p = None;
     }
 
-    // Restore the Dock icon + hand off foreground. The "how" depends
-    // on whether the user picked a browser or cancelled:
+    // Hand off foreground to the browser that's about to open the URL.
+    // We stay in Accessory mode — no Dock icon to restore, no main
+    // menu to put back. Behaviour depends on whether the user picked
+    // a browser or cancelled:
     //
     // PICKED (result.is_some()):
     //   Call NSApp.hide:nil — equivalent of ⌘H. Hides ALL of
     //   LinkPilot's windows AND deactivates in one atomic AppKit
     //   call. Why this and not plain deactivate: deactivate drops
     //   foreground but leaves visible windows on screen; AppKit's
-    //   "this app still has visible content" heuristic then
-    //   re-promotes us in the next event-loop tick, beating the
-    //   browser's own NSApp.activate. Result the user saw: Chrome
-    //   opens the URL, focus snaps back to LinkPilot's config
-    //   window. Minimised LinkPilot didn't show the bug because
-    //   minimised windows don't trigger the heuristic. Trade-off:
-    //   main window goes away after every Ask resolve — Spotlight /
-    //   Raycast model; the Dock icon + tray icon are both still
-    //   present, one click brings the main window back.
+    //   "this app still has visible content" heuristic can then
+    //   re-promote us in the next event-loop tick, beating the
+    //   browser's own NSApp.activate. (Less of an issue in Accessory
+    //   mode since M5.5, but we keep the explicit hide to be safe.)
     //
     // CANCELLED (result.is_none()):
     //   Plain NSApp.deactivate. Nothing's competing for foreground
@@ -207,7 +201,8 @@ pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -
     let app_for_main = app.clone();
     let picked = result.is_some();
     let _ = app.run_on_main_thread(move || {
-        let _ = app_for_main.set_activation_policy(ActivationPolicy::Regular);
+        // Policy already Accessory (M5.5) — no toggle needed.
+        let _ = &app_for_main;
         #[cfg(target_os = "macos")]
         unsafe {
             use objc2::msg_send;

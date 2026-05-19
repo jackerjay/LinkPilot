@@ -54,6 +54,22 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            // Menubar-only behaviour (Raycast / Alfred style). The Dock
+            // icon and Cmd+Tab presence go away; the tray icon + main
+            // window are the only UI surface. Set early so the policy
+            // takes hold BEFORE any window is shown — otherwise a Dock
+            // icon flickers in for a frame at first launch.
+            //
+            // Info.plist also carries LSUIElement=true (set by
+            // apps/desktop/scripts/patch-info-plist.sh) so the OS knows
+            // before exec that we're an agent app. This runtime call is
+            // the redundant belt-and-suspenders for dev builds (where
+            // patch-info-plist.sh hasn't run on the Tauri-dev binary).
+            #[cfg(target_os = "macos")]
+            {
+                let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
+
             let config_path =
                 default_config_path().map_err(|e| anyhow::anyhow!("resolve config path: {e}"))?;
             let (config_store, created) = ConfigStore::load_or_init(config_path.clone())

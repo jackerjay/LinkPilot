@@ -113,7 +113,8 @@ CLI-only 用户可以全程不打开 GUI 管理 daemon。共 4 个 commit:
 |---|---|---|
 | M5.1 + M5.2 formula + cask | `17e77ac` | `packaging/homebrew/{Formula/linkpilot-cli.rb, Casks/linkpilot.rb, README.md}`。Formula 装 `lpt` + `linkpilot-daemon`(两个 universal binary),cask 装 `LinkPilot.app`(DMG),uninstall/zap 钩子完整 |
 | M5.3 本地 brew install 验证 | `c969a1a` | 通过临时 tap `jackerjay/linkpilot-local` 验证 |
-| M5.4 binary rename `lp` → `lpt` | `(this commit)` | 与 macOS 系统 `/usr/bin/lp`(CUPS)的 PATH 冲突规避;sweep 整个仓库的 binary name / help text / release.yml / brew formula / Tauri Settings / m4-verify / tests / docs |
+| M5.4 binary rename `lp` → `lpt` | `0e577ba` | 与 macOS 系统 `/usr/bin/lp`(CUPS)的 PATH 冲突规避;sweep 整个仓库的 binary name / help text / release.yml / brew formula / Tauri Settings / m4-verify / tests / docs |
+| M5.5 menubar-only(LSUIElement)| `(this commit)` | Raycast/Alfred 风格:无 Dock icon、无 Cmd+Tab、无菜单条。`lib.rs` setup 早期 `ActivationPolicy::Accessory` + `patch-info-plist.sh` 注入 `LSUIElement=true`;`picker.rs` 删掉切回 Regular 的逻辑(永久 Accessory)。规避 alpha.3 偶尔抢焦点 + 关窗后 Dock 残留的问题 |
 
 ### M5.3 验证结果
 

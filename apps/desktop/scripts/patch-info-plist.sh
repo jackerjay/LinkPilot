@@ -68,4 +68,20 @@ plutil -replace NSUserActivityTypes -json '["NSUserActivityTypeBrowsingWeb"]' "$
 # / Spotlight metadata and matches what other browsers use.
 plutil -replace LSApplicationCategoryType -string "public.app-category.utilities" "$PLIST"
 
+# Menubar-only ("agent") mode, added in M5.5. With LSUIElement=true,
+# macOS knows BEFORE exec that LinkPilot doesn't want a Dock icon, a
+# Cmd+Tab presence, or a main menu at the top of the screen. The tray
+# icon + main window are the only UI surfaces. Same model as Raycast,
+# Alfred, Bartender. Without this Info.plist key, the .app would
+# briefly flash a Dock icon at launch before lib.rs's
+# set_activation_policy(Accessory) takes hold.
+#
+# Side effects to be aware of:
+# - No menu bar at the top of the screen when LinkPilot is "focused".
+# - Cmd+Q on a LinkPilot window only closes that window (default tauri
+#   behaviour). Quit happens via the tray menu's "Quit" item.
+# - System Settings → Default web browser STILL lists LinkPilot — the
+#   picker reads CFBundleDocumentTypes/LSHandlerRank, which we keep.
+plutil -replace LSUIElement -bool true "$PLIST"
+
 echo "patch-info-plist: patched $PLIST"
