@@ -68,7 +68,6 @@ export type MatcherEval =
 
 export interface Rule {
   id: string;
-  priority: number;
   enabled: boolean;
   when: MatcherTree;
   then: Action;

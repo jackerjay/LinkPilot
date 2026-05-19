@@ -117,6 +117,10 @@ export function TestUrlPage({ configEpoch }: Props) {
     if (!id) return null;
     return config.rules.find((r) => r.id === id) ?? null;
   }, [result, config]);
+  const matchedPosition = useMemo<number | null>(() => {
+    if (!matchedRule || !config) return null;
+    return config.rules.findIndex((r) => r.id === matchedRule.id) + 1;
+  }, [matchedRule, config]);
 
   return (
     <div className="space-y-4">
@@ -225,8 +229,11 @@ export function TestUrlPage({ configEpoch }: Props) {
             <ResultRow label="Rule">
               {matchedRule ? (
                 <>
-                  <span className="font-mono text-xs">
-                    #{matchedRule.priority}
+                  <span
+                    className="font-mono text-xs"
+                    title="Priority position — top of list wins"
+                  >
+                    #{matchedPosition}
                   </span>{" "}
                   {matchedRule.note ? (
                     <span className="text-sm">{matchedRule.note}</span>

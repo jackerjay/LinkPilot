@@ -42,10 +42,11 @@ export type ActionJson =
 
 export type RuleSourceJson = "gui" | "file" | "ts-compiled";
 
-/** A single rule as the daemon reads it. */
+/** A single rule as the daemon reads it. List order in the
+ *  surrounding `rules: RuleJson[]` IS priority — top wins. There is
+ *  no numeric priority field; ties are structurally impossible. */
 export interface RuleJson {
   id: string;
-  priority: number;
   enabled: boolean;
   when: MatcherTreeJson;
   then: ActionJson;

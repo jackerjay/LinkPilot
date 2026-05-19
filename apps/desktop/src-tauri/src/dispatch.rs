@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 
 use linkpilot_core::browser::BrowserTarget;
+use linkpilot_core::platform::UrlLauncher;
 use linkpilot_core::routing::RoutingDecision;
 use tauri::AppHandle;
 use url::Url;
@@ -42,11 +43,18 @@ pub fn execute(
         Err(err) => return LaunchOutcome::Failed(format!("bad URL {raw_url}: {err}")),
     };
 
+    let default_target = state.config.document().default_target;
+
     match decision {
         RoutingDecision::Open { target, .. } => {
-            match state.platform.url_launcher().open(target, &parsed) {
-                Ok(()) => LaunchOutcome::Launched(target.clone()),
-                Err(err) => LaunchOutcome::Failed(err.to_string()),
+            match open_with_default_fallback(
+                state.platform.url_launcher(),
+                target,
+                &default_target,
+                &parsed,
+            ) {
+                Ok(launched) => LaunchOutcome::Launched(launched),
+                Err(err) => LaunchOutcome::Failed(err),
             }
         }
 
@@ -82,14 +90,59 @@ pub fn execute(
                     }
                 };
                 tracing::info!(?target, "dispatch: ask resolved — launching");
-                if let Err(err) = state.platform.url_launcher().open(&target, &parsed) {
-                    tracing::error!(?err, "ask: launcher failed");
+                if let Err(err) = open_with_default_fallback(
+                    state.platform.url_launcher(),
+                    &target,
+                    &default_target,
+                    &parsed,
+                ) {
+                    tracing::error!(err, "ask: launcher failed (default fallback exhausted)");
                 }
             });
             LaunchOutcome::Pending
         }
 
         RoutingDecision::Allow { .. } | RoutingDecision::Block { .. } => LaunchOutcome::Skipped,
+    }
+}
+
+/// Try `primary`; on failure (e.g. the rule references a browser the
+/// user uninstalled or mistyped) retry with the config's
+/// `default_target`. Returns the [`BrowserTarget`] that actually
+/// opened, or a combined error string when both attempts fail.
+///
+/// The retry is skipped when the primary and the default share a
+/// browser id — there's nothing to gain from launching the same
+/// missing binary twice, and skipping avoids an infinite loop if the
+/// user's default is itself broken.
+fn open_with_default_fallback(
+    launcher: &dyn UrlLauncher,
+    primary: &BrowserTarget,
+    default_target: &BrowserTarget,
+    url: &Url,
+) -> std::result::Result<BrowserTarget, String> {
+    match launcher.open(primary, url) {
+        Ok(()) => Ok(primary.clone()),
+        Err(primary_err) => {
+            if primary.browser == default_target.browser {
+                return Err(format!(
+                    "launch failed: {primary_err} (no fallback — primary already matches default browser '{}')",
+                    primary.browser
+                ));
+            }
+            tracing::warn!(
+                primary = ?primary,
+                default = ?default_target,
+                error = %primary_err,
+                "dispatch: primary launch failed — falling back to default browser"
+            );
+            match launcher.open(default_target, url) {
+                Ok(()) => Ok(default_target.clone()),
+                Err(default_err) => Err(format!(
+                    "primary launch failed ({primary_err}); default fallback also failed ({default_err})"
+                )),
+            }
+        }
     }
 }
 
@@ -156,5 +209,118 @@ fn app_path_from_executable(exe: &std::path::Path) -> String {
     match s.rfind(".app/") {
         Some(idx) => s[..idx + 4].to_string(),
         None => s.into_owned(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use linkpilot_core::browser::BrowserId;
+    use linkpilot_core::platform::{PlatformError, Result as PlatformResult};
+    use std::sync::Mutex;
+
+    /// Test double: each `open` call pops the next scripted result off
+    /// `script` and records the target it was called with.
+    struct ScriptedLauncher {
+        script: Mutex<Vec<PlatformResult<()>>>,
+        calls: Mutex<Vec<BrowserTarget>>,
+    }
+
+    impl ScriptedLauncher {
+        fn new(script: Vec<PlatformResult<()>>) -> Self {
+            Self {
+                script: Mutex::new(script),
+                calls: Mutex::new(Vec::new()),
+            }
+        }
+        fn calls(&self) -> Vec<BrowserTarget> {
+            self.calls.lock().unwrap().clone()
+        }
+    }
+
+    impl UrlLauncher for ScriptedLauncher {
+        fn open(&self, target: &BrowserTarget, _url: &Url) -> PlatformResult<()> {
+            self.calls.lock().unwrap().push(target.clone());
+            self.script
+                .lock()
+                .unwrap()
+                .pop()
+                .unwrap_or(Err(PlatformError::Other("script exhausted".into())))
+        }
+    }
+
+    fn url() -> Url {
+        Url::parse("https://example.com/").unwrap()
+    }
+
+    #[test]
+    fn falls_back_to_default_when_primary_launcher_errors() {
+        // User configured a rule that targets a browser they later
+        // uninstalled / mistyped. Primary fails → default catches it.
+        let launcher = ScriptedLauncher::new(vec![
+            Ok(()),                                            // 2nd call (default)
+            Err(PlatformError::Other("not installed".into())), // 1st call (primary)
+        ]);
+        let primary = BrowserTarget::new(BrowserId::new("ghost-browser"));
+        let default_target = BrowserTarget::new(BrowserId::new("safari"));
+
+        let launched = open_with_default_fallback(&launcher, &primary, &default_target, &url())
+            .expect("default fallback should succeed");
+
+        assert_eq!(launched.browser.0, "safari");
+        let calls = launcher.calls();
+        assert_eq!(calls.len(), 2, "should have tried primary then default");
+        assert_eq!(calls[0].browser.0, "ghost-browser");
+        assert_eq!(calls[1].browser.0, "safari");
+    }
+
+    #[test]
+    fn no_fallback_when_primary_already_is_default() {
+        // Default itself is broken — no point re-trying the same thing.
+        let launcher =
+            ScriptedLauncher::new(vec![Err(PlatformError::Other("not installed".into()))]);
+        let same = BrowserTarget::new(BrowserId::new("ghost-browser"));
+
+        let err = open_with_default_fallback(&launcher, &same, &same, &url())
+            .expect_err("should not retry when primary == default");
+        assert!(
+            err.contains("no fallback"),
+            "msg should explain skip: {err}"
+        );
+        assert_eq!(launcher.calls().len(), 1, "exactly one launch attempt");
+    }
+
+    #[test]
+    fn both_failures_reported_when_default_also_breaks() {
+        let launcher = ScriptedLauncher::new(vec![
+            Err(PlatformError::Other("default broken too".into())),
+            Err(PlatformError::Other("primary broken".into())),
+        ]);
+        let primary = BrowserTarget::new(BrowserId::new("ghost-browser"));
+        let default_target = BrowserTarget::new(BrowserId::new("safari"));
+
+        let err = open_with_default_fallback(&launcher, &primary, &default_target, &url())
+            .expect_err("both failures should bubble up");
+        assert!(
+            err.contains("primary broken"),
+            "msg missing primary err: {err}"
+        );
+        assert!(
+            err.contains("default broken too"),
+            "msg missing default err: {err}"
+        );
+        assert_eq!(launcher.calls().len(), 2);
+    }
+
+    #[test]
+    fn primary_success_does_not_trigger_fallback() {
+        let launcher = ScriptedLauncher::new(vec![Ok(())]);
+        let primary = BrowserTarget::new(BrowserId::new("chrome"));
+        let default_target = BrowserTarget::new(BrowserId::new("safari"));
+
+        let launched = open_with_default_fallback(&launcher, &primary, &default_target, &url())
+            .expect("primary success should pass through");
+        assert_eq!(launched.browser.0, "chrome");
+        assert_eq!(launcher.calls().len(), 1, "default should not be tried");
     }
 }

@@ -93,18 +93,28 @@ impl ConfigStore {
     pub fn load_or_init(path: PathBuf) -> Result<(Self, bool)> {
         if path.exists() {
             let raw = std::fs::read_to_string(&path)?;
-            let doc: ConfigDocument = serde_json::from_str(&raw)?;
-            let token = doc.meta.last_writer_token;
-            Ok((
-                Self {
-                    path,
-                    state: Arc::new(Mutex::new(State {
-                        doc,
-                        last_writer_token: token,
-                    })),
-                },
-                false,
-            ))
+            // v0.2 removed `Rule.priority`; list order is now the single
+            // source of priority truth. If we're loading a pre-v0.2
+            // config that still has `priority` on its rules, honor the
+            // user's intent by reordering rules by priority desc
+            // (stable), then strip the field. Migration is one-shot —
+            // the migrated doc gets persisted below.
+            let (doc, migrated) = parse_with_priority_migration(&raw)?;
+            let store = Self {
+                path,
+                state: Arc::new(Mutex::new(State {
+                    doc: doc.clone(),
+                    last_writer_token: doc.meta.last_writer_token,
+                })),
+            };
+            if migrated {
+                tracing::info!(
+                    "config: migrated legacy `priority` field — list order is now authoritative"
+                );
+                // Stamp a fresh writer token + drop priority from disk.
+                store.persist(WriterId::Cli)?;
+            }
+            Ok((store, false))
         } else {
             let store = Self {
                 path,
@@ -205,6 +215,44 @@ impl ConfigStore {
     }
 }
 
+/// Parse a config JSON string, applying the v0.2 list-order priority
+/// migration when needed. Returns `(doc, migrated)` where `migrated`
+/// is `true` iff at least one rule carried a legacy `priority` field
+/// (meaning the caller should persist the cleaned doc back to disk).
+///
+/// The migration walks the raw JSON's `rules` array, reads each
+/// rule's `priority` (defaulting to 0), reorders the array by
+/// priority descending using a stable sort (so equal-priority rules
+/// keep their relative on-disk order), strips the field, then parses
+/// the cleaned JSON into a `ConfigDocument`.
+fn parse_with_priority_migration(raw: &str) -> Result<(ConfigDocument, bool)> {
+    let mut value: serde_json::Value = serde_json::from_str(raw)?;
+    let mut migrated = false;
+    if let Some(rules) = value.get_mut("rules").and_then(|v| v.as_array_mut()) {
+        let any_priority = rules.iter().any(|r| {
+            r.as_object()
+                .map(|o| o.contains_key("priority"))
+                .unwrap_or(false)
+        });
+        if any_priority {
+            migrated = true;
+            // Stable sort by `priority` desc; missing → 0.
+            rules.sort_by(|a, b| {
+                let pa = a.get("priority").and_then(|v| v.as_i64()).unwrap_or(0);
+                let pb = b.get("priority").and_then(|v| v.as_i64()).unwrap_or(0);
+                pb.cmp(&pa)
+            });
+            for r in rules.iter_mut() {
+                if let Some(obj) = r.as_object_mut() {
+                    obj.remove("priority");
+                }
+            }
+        }
+    }
+    let doc: ConfigDocument = serde_json::from_value(value)?;
+    Ok((doc, migrated))
+}
+
 fn handle_disk_change<F>(path: &Path, state: &Arc<Mutex<State>>, on_change: &F)
 where
     F: Fn(ChangeOrigin),
@@ -216,8 +264,8 @@ where
             return;
         }
     };
-    let parsed: ConfigDocument = match serde_json::from_str(&raw) {
-        Ok(d) => d,
+    let (parsed, _migrated) = match parse_with_priority_migration(&raw) {
+        Ok(p) => p,
         Err(err) => {
             tracing::warn!(?err, "config watcher: parse failed");
             return;
@@ -272,6 +320,58 @@ mod tests {
         let (second, created) = ConfigStore::load_or_init(path.clone()).unwrap();
         assert!(!created);
         assert!(!second.document().rules.is_empty());
+        std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn migrates_legacy_priority_to_list_order() {
+        // Hand-written legacy config: two rules, the SECOND one has the
+        // higher numeric priority. After migration the order should
+        // flip and both `priority` fields should be gone from disk.
+        let path = tmp_path();
+        let legacy = serde_json::json!({
+            "version": 1,
+            "default_target": { "browser": "arc" },
+            "rules": [
+                {
+                    "id": "11111111-1111-1111-1111-111111111111",
+                    "priority": 10,
+                    "enabled": true,
+                    "when": { "op": "url-host", "pattern": "github.com" },
+                    "then": { "kind": "open", "target": { "browser": "chrome" } }
+                },
+                {
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "priority": 100,
+                    "enabled": true,
+                    "when": { "op": "source-app", "name": "Lark" },
+                    "then": { "kind": "ask" }
+                }
+            ]
+        });
+        std::fs::write(&path, serde_json::to_string_pretty(&legacy).unwrap()).unwrap();
+
+        let (store, created) = ConfigStore::load_or_init(path.clone()).unwrap();
+        assert!(!created);
+        let doc = store.document();
+        assert_eq!(doc.rules.len(), 2);
+        // Lark (was prio 100) now comes first.
+        assert_eq!(
+            doc.rules[0].id.0.to_string(),
+            "22222222-2222-2222-2222-222222222222"
+        );
+        assert_eq!(
+            doc.rules[1].id.0.to_string(),
+            "11111111-1111-1111-1111-111111111111"
+        );
+
+        // And `priority` is gone from disk — second load is a no-op
+        // (no migration, identical doc).
+        let on_disk = std::fs::read_to_string(&path).unwrap();
+        assert!(
+            !on_disk.contains("\"priority\""),
+            "priority field must be stripped"
+        );
         std::fs::remove_file(path).ok();
     }
 

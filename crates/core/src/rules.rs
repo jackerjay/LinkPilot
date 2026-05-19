@@ -37,11 +37,16 @@ pub enum RuleSource {
 }
 
 /// A single routing rule.
+///
+/// Priority is determined entirely by the rule's position in
+/// `ConfigDocument::rules`: top of the list wins. There is no numeric
+/// priority field — list order is the single source of truth, so
+/// duplicates are structurally impossible. Legacy on-disk `priority`
+/// values are honored once at load time (see `ConfigStore`'s
+/// migration) and then dropped.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
     pub id: RuleId,
-    /// Higher priority wins; ties broken by list order.
-    pub priority: i32,
     #[serde(default = "default_enabled")]
     pub enabled: bool,
     pub when: MatcherTree,

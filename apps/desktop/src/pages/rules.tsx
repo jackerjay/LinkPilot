@@ -186,15 +186,12 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
     clearVisuals();
   };
 
-  // Restamp priorities N*10, (N-1)*10, … so the new top wins.
+  // List order IS priority. Drag-reorder just rewrites the rules
+  // array in the new order — no numeric priority field to maintain.
   const commitReorder = async (orderedIds: string[]) => {
     if (!doc) return;
     const byId = new Map(doc.rules.map((r) => [r.id, r] as const));
-    const total = orderedIds.length;
-    const next: Rule[] = orderedIds.map((id, idx) => ({
-      ...byId.get(id)!,
-      priority: (total - idx) * 10,
-    }));
+    const next: Rule[] = orderedIds.map((id) => byId.get(id)!);
     try {
       await ipc.configReplace({ ...doc, rules: next });
       await refresh();
@@ -203,9 +200,7 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
     }
   };
 
-  const sorted = doc
-    ? [...doc.rules].sort((a, b) => b.priority - a.priority)
-    : [];
+  const sorted = doc ? doc.rules : [];
 
   const visibleRules = sorted.filter((r) => {
     if (filter === "all") return true;
@@ -307,10 +302,15 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
                   ? doc.workspaces.find((w) => w.id === r.workspace_id) ?? null
                   : null;
                 const wsDisabled = ws ? !ws.enabled : false;
+                // Position in the global priority list (1 = top). Even
+                // when a filter narrows what's shown, the number we
+                // render is the rule's slot in `doc.rules`.
+                const position = doc.rules.findIndex((x) => x.id === r.id) + 1;
                 return (
                   <RuleRow
                     key={r.id}
                     rule={r}
+                    position={position}
                     workspace={ws}
                     workspaceDisabled={wsDisabled}
                     workspaces={doc.workspaces}
@@ -454,6 +454,8 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
 
 interface RuleRowProps {
   rule: Rule;
+  /** 1-based position in the global priority list (1 = top wins). */
+  position: number;
   workspace: Workspace | null;
   workspaceDisabled: boolean;
   workspaces: Workspace[];
@@ -479,6 +481,7 @@ interface RuleRowProps {
 
 function RuleRow({
   rule,
+  position,
   workspace,
   workspaceDisabled,
   workspaces,
@@ -540,8 +543,11 @@ function RuleRow({
           </TooltipContent>
         )}
       </Tooltip>
-      <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">
-        #{rule.priority}
+      <span
+        className="w-10 shrink-0 font-mono text-xs text-muted-foreground"
+        title="Priority position — top of list wins. Drag to reorder."
+      >
+        #{position}
       </span>
       <span
         className="flex-1 min-w-0 truncate text-xs"

@@ -201,16 +201,35 @@ describe("compile()", () => {
       defineConfig({
         defaultTarget: browser.arc(),
         rules: [
-          route.host("a.com").priority(99).disabled().note("hot").workspace("work").to(browser.chrome()),
+          route.host("a.com").disabled().note("hot").workspace("work").to(browser.chrome()),
         ],
       }),
     );
     expect(out.rules[0]).toMatchObject({
-      priority: 99,
       enabled: false,
       note: "hot",
       workspace_id: "work",
     });
+    // List order IS priority — no numeric priority field on the wire.
+    expect(out.rules[0]).not.toHaveProperty("priority");
+  });
+
+  test("rule array order is preserved (list-order priority)", () => {
+    const out = compile(
+      defineConfig({
+        defaultTarget: browser.arc(),
+        rules: [
+          route.host("first.example.com").to(browser.chrome()),
+          route.host("second.example.com").to(browser.chrome()),
+          route.host("third.example.com").to(browser.chrome()),
+        ],
+      }),
+    );
+    expect(out.rules.map((r) => (r.when as { pattern: string }).pattern)).toEqual([
+      "first.example.com",
+      "second.example.com",
+      "third.example.com",
+    ]);
   });
 
   test("route.fromJson escape hatch passes raw matcher", () => {

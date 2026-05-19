@@ -44,6 +44,10 @@ export function InspectorPage() {
     selected && selected.matched_rule
       ? config?.rules.find((r) => r.id === selected.matched_rule) ?? null
       : null;
+  const matchedPosition =
+    matchedRule && config
+      ? config.rules.findIndex((r) => r.id === matchedRule.id) + 1
+      : null;
 
   return (
     <div className="space-y-4">
@@ -137,8 +141,11 @@ export function InspectorPage() {
             <SummaryRow label="Rule">
               {matchedRule ? (
                 <>
-                  <span className="font-mono text-xs">
-                    #{matchedRule.priority}
+                  <span
+                    className="font-mono text-xs"
+                    title="Priority position — top of list wins"
+                  >
+                    #{matchedPosition}
                   </span>{" "}
                   {matchedRule.note ? (
                     <span className="text-sm">{matchedRule.note}</span>
