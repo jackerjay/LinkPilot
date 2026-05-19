@@ -22,10 +22,23 @@ cask "linkpilot" do
   desc "Route every link to the right browser, profile, and workspace"
   homepage "https://github.com/jackerjay/LinkPilot"
 
-  # Unsigned build for v0.2-alpha; Gatekeeper would otherwise quarantine
-  # the .app on first launch. Cask flips the quarantine flag at install.
+  # `livecheck` lets `brew livecheck` and the autobumper notice new
+  # releases. The regex strips the `v` prefix on tags so it matches
+  # the `version` stanza format. `strategy :github_latest` would
+  # ignore pre-releases — we want them while still on alpha/beta, so
+  # do the regex extract manually.
+  livecheck do
+    url :url
+    regex(/v?(\d+(?:\.\d+)+(?:-(?:alpha|beta|rc)(?:\.\d+)?)?)/i)
+    strategy :github_releases
+  end
+
+  # Unsigned build for v0.2-alpha; Gatekeeper prompts on first launch
+  # unless the user strips the quarantine flag (see caveats below).
   auto_updates false
-  depends_on macos: ">= :ventura"
+  # Matches Info.plist LSMinimumSystemVersion (12.0 = Monterey). Cask's
+  # idiomatic form is the symbol alone — implicitly "this or newer".
+  depends_on macos: :monterey
 
   app "LinkPilot.app"
 
@@ -38,8 +51,8 @@ cask "linkpilot" do
   # and routing logs.
   zap trash: [
     "~/Library/Application Support/LinkPilot",
-    "~/Library/Logs/LinkPilot",
     "~/Library/Caches/app.linkpilot.desktop",
+    "~/Library/Logs/LinkPilot",
     "~/Library/Preferences/app.linkpilot.desktop.plist",
     "~/Library/Saved Application State/app.linkpilot.desktop.savedState",
   ]

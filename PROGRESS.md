@@ -16,7 +16,7 @@
 | **M2** | A 完成 + C · daemon 管理命令 | ✅ 完成 |
 | **M3** | C 剩余 · `lp history` + 协议升 v2 | ✅ 完成 |
 | **M4** | B · `@linkpilot/config` DSL + `lp config compile`(实现 + **本地** e2e) | ✅ 后端完成(M4.1-M4.5,backend 6/6 自动化通过),GUI 行为留 manual checklist |
-| **M5** | Homebrew formula / cask 起草 + **本地** `brew install --build-from-source` 验证(**不** push tap repo) | ⏳ 未开始 |
+| **M5** | Homebrew formula / cask 起草 + **本地** `brew install` 验证(**不** push tap repo) | ✅ 完成,见下 |
 | **M6** | **公开发布** · v0.2.0 tag + Release notes + npm publish workflow + push homebrew-linkpilot tap + 升级路径文档 | ⏳ 未开始 |
 
 测试基线:**Rust 47 passed**,**Bun 12 passed**(M3 起 + M4 新增)
@@ -105,13 +105,35 @@ CLI-only 用户可以全程不打开 GUI 管理 daemon。共 4 个 commit:
 
 ---
 
-## M5 — Homebrew formula 本地起草(未开始)
+## M5 — Homebrew formula 本地起草(完成)
 
-只做本地 implementation + `brew install --build-from-source <local-formula>` 验证,**不** push 到 `jackerjay/homebrew-linkpilot` tap repo。完整 tap 发布动作在 M6。
+只做本地 implementation + `brew install` 试装,**不** push 到 `jackerjay/homebrew-linkpilot` tap repo。完整 tap 发布动作在 M6。
 
-- **M5.1** 写 formula `linkpilot-cli.rb`(从 v0.2.0-alpha.3 release artifacts 拿 sha256 占位,M6 真发布时再换成 v0.2.0 sha)
-- **M5.2** 写 cask `linkpilot.rb`(指向 DMG)
-- **M5.3** 本地 `brew install --formula ./linkpilot-cli.rb` / `brew install --cask ./linkpilot.rb` 验证装出来能跑 `lp doctor`
+| 子任务 | Commit | 关键交付 |
+|---|---|---|
+| M5.1 + M5.2 formula + cask | `17e77ac` | `packaging/homebrew/{Formula/linkpilot-cli.rb, Casks/linkpilot.rb, README.md}`。Formula 装 `lp` + `linkpilot-daemon`(两个 universal binary),cask 装 `LinkPilot.app`(DMG),uninstall/zap 钩子完整 |
+| M5.3 本地 brew install 验证 | `(this commit)` | 通过临时 tap `jackerjay/linkpilot-local` 验证 |
+
+### M5.3 验证结果
+
+跑 `brew tap-new jackerjay/linkpilot-local --no-git` 建临时 tap,把 .rb cp 进去,然后逐项验证:
+
+| 检查 | 结果 |
+|---|---|
+| `brew style packaging/homebrew/Formula/linkpilot-cli.rb` | ✅ 0 offenses(修了 component order + license SPDX 数组写法) |
+| `brew style packaging/homebrew/Casks/linkpilot.rb` | ✅ 0 offenses(修了 zap 数组字母序、`depends_on macos: :monterey` 习惯写法) |
+| `brew install jackerjay/linkpilot-local/linkpilot-cli` | ✅ 11.2MB 装入 `/opt/homebrew/Cellar/linkpilot-cli/0.2.0-alpha.3/`,`lp` + `linkpilot-daemon` 在 `/opt/homebrew/bin/`(注意 macOS 内置 `/usr/bin/lp` 会 shadow,brew 启动时已警告)|
+| `brew test linkpilot-cli` | ✅ 两条 `--version` assertion 全过 |
+| `brew audit --strict --new jackerjay/linkpilot-local/linkpilot-cli` | ✅ 0 problems |
+| `brew audit --strict --new --cask jackerjay/linkpilot-local/linkpilot` | 🟡 4 warning,M6 才能消化 |
+
+**cask 4 个 M5 阶段无法消化的 warning**(M6 final tag 上 tap 时再处理):
+- `Signature verification failed`:unsigned build → 真发布需要 Apple Developer cert 签名 + notarize,或在 cask 加 `:disable_quarantine` workaround
+- `v0.2.0-alpha.3 is a GitHub pre-release`:M6 用 v0.2.0 stable tag 后自动消失
+- `Version differs from livecheck`:同上,prerelease detection 在 stable tag 上正常
+- `GitHub repository not notable enough (<30 stars)`:tap 不强制,核心 Homebrew core 才要;tap repo 不受影响
+
+清理:`brew uninstall linkpilot-cli && brew untap jackerjay/linkpilot-local` 全部还原。
 
 ## M6 — 公开发布(未开始)
 

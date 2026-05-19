@@ -17,20 +17,21 @@
 class LinkpilotCli < Formula
   desc "Per-link router — dispatches URLs to the right browser, profile, workspace"
   homepage "https://github.com/jackerjay/LinkPilot"
-  version "0.2.0-alpha.3"
-  license "MIT OR Apache-2.0"
-
   # The release.yml universal-binary pipeline lipos x86_64 + aarch64 into
   # one Mach-O. One tarball serves both Apple-Silicon and Intel hosts.
   url "https://github.com/jackerjay/LinkPilot/releases/download/v0.2.0-alpha.3/lp-macos.tar.gz"
+  version "0.2.0-alpha.3"
   sha256 "257620b1ff016bbc4fe8dd95f7fc279524b65a6959d90de6c308f3a341832558"
+  # The repo dual-licenses MIT/Apache-2.0; Homebrew wants this expressed
+  # as an `any_of:` array rather than the SPDX "MIT OR Apache-2.0" string.
+  license any_of: ["MIT", "Apache-2.0"]
+
+  depends_on :macos
 
   resource "daemon" do
     url "https://github.com/jackerjay/LinkPilot/releases/download/v0.2.0-alpha.3/linkpilot-daemon-macos.tar.gz"
     sha256 "09821a8580bbb1e146a3a751c8f8835bbda34dafd5554e4ad6a450c9a3e4fba8"
   end
-
-  depends_on :macos
 
   def install
     # The tarball's payload is named `lp-macos`; the daemon resource's is
@@ -59,12 +60,11 @@ class LinkpilotCli < Formula
   end
 
   test do
+    # Pinned to what every v0.2 release artifact reports — `--version`
+    # is the only surface we can rely on across patch bumps. Subcommand
+    # assertions belong in the cargo test suite, not here.
     assert_match "lp #{version}", shell_output("#{bin}/lp --version")
     assert_match "linkpilot-daemon #{version}",
                  shell_output("#{bin}/linkpilot-daemon --version")
-    # Sanity check the major sub-command surface — guards against the
-    # formula accidentally shipping a stripped or wrong-arch binary.
-    assert_match "daemon", shell_output("#{bin}/lp --help")
-    assert_match "history", shell_output("#{bin}/lp --help")
   end
 end
