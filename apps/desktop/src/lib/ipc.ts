@@ -75,10 +75,10 @@ export const ipc = {
 };
 
 export interface CliInstallStatus {
-  /** Absolute path of `lp` inside the running .app bundle, or `null` for
+  /** Absolute path of `lpt` inside the running .app bundle, or `null` for
    *  dev builds where the embed step hasn't run. */
   bundled_path: string | null;
-  /** `~/.local/bin/lp` — what `cliInstallToPath()` writes by default. */
+  /** `~/.local/bin/lpt` — what `cliInstallToPath()` writes by default. */
   default_target: string;
   /** True iff `default_target` already points at `bundled_path`. */
   already_installed: boolean;

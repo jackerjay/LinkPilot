@@ -1,4 +1,4 @@
-//! CLI-surface smoke test for `lp daemon`.
+//! CLI-surface smoke test for `lpt daemon`.
 //!
 //! v0.2 (M2) introduced a 7-action subcommand group; this test guards
 //! the clap structure (help renders, every action parses, status emits
@@ -15,13 +15,13 @@
 
 use std::process::Command;
 
-fn lp() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_lp"))
+fn lpt() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_lpt"))
 }
 
 #[test]
 fn daemon_top_help_lists_every_action() {
-    let out = lp().args(["daemon", "--help"]).output().expect("run lp");
+    let out = lpt().args(["daemon", "--help"]).output().expect("run lpt");
     assert!(out.status.success(), "help exit: {}", out.status);
     let stdout = String::from_utf8_lossy(&out.stdout);
     for action in [
@@ -42,10 +42,10 @@ fn daemon_top_help_lists_every_action() {
 
 #[test]
 fn daemon_status_help_documents_json_flag() {
-    let out = lp()
+    let out = lpt()
         .args(["daemon", "status", "--help"])
         .output()
-        .expect("run lp");
+        .expect("run lpt");
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("--json"));
@@ -53,10 +53,10 @@ fn daemon_status_help_documents_json_flag() {
 
 #[test]
 fn daemon_logs_help_exposes_follow_and_lines() {
-    let out = lp()
+    let out = lpt()
         .args(["daemon", "logs", "--help"])
         .output()
-        .expect("run lp");
+        .expect("run lpt");
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("--follow"), "missing --follow flag");
@@ -70,10 +70,10 @@ fn daemon_status_json_has_expected_keys() {
     // never spawns anything, so it's safe to run in CI / locally even
     // when nothing is installed. We only assert the schema; the
     // values depend on the host environment.
-    let out = lp()
+    let out = lpt()
         .args(["daemon", "status", "--json"])
         .output()
-        .expect("run lp");
+        .expect("run lpt");
     assert!(
         out.status.success(),
         "status --json exited {}\nstderr: {}",
@@ -110,7 +110,7 @@ fn daemon_status_json_has_expected_keys() {
 #[cfg(not(target_os = "macos"))]
 #[test]
 fn daemon_actions_friendly_error_off_macos() {
-    let out = lp().args(["daemon", "status"]).output().expect("run lp");
+    let out = lpt().args(["daemon", "status"]).output().expect("run lpt");
     assert!(!out.status.success(), "expected non-zero exit off-macos");
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(

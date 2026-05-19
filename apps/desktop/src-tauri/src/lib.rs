@@ -123,10 +123,10 @@ pub fn run() {
             //     same on-disk config file the daemon does, and the anti-echo
             //     token keeps both sides in sync.
             //   - Otherwise (no external daemon) we behave like v0.1: the
-            //     GUI itself hosts the daemon (route_open from `lp`, ipc-host
+            //     GUI itself hosts the daemon (route_open from `lpt`, ipc-host
             //     handler, etc.).
             // Inspector history is degraded in client mode (we don't see the
-            // daemon's in-memory history); M3 wires `lp history` through to
+            // daemon's in-memory history); M3 wires `lpt history` through to
             // the daemon and the GUI can call the same path.
             let endpoint = linkpilot_ipc::path::default_endpoint();
             let daemon_mode = if probe_existing_daemon(&endpoint) {

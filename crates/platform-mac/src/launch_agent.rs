@@ -3,7 +3,7 @@
 //! Owns the daemon LaunchAgent's lifecycle: write the plist, load it via
 //! `launchctl`, query its run state, and (on uninstall) unload + delete.
 //! The GUI auto-installs this on first run so users get a background
-//! daemon without any CLI ceremony; `lp daemon install` / `uninstall`
+//! daemon without any CLI ceremony; `lpt daemon install` / `uninstall`
 //! (M2) call the same functions for symmetry.
 //!
 //! Separate from `autostart.rs` (which manages the GUI's own launch-at-
@@ -28,7 +28,7 @@ pub struct LaunchAgentStatus {
     pub pid: Option<i32>,
     /// Resolved `ProgramArguments[0]` from the installed plist — the
     /// daemon binary launchd will exec. None if the plist is missing or
-    /// malformed. Read by `lp daemon status` so users can tell which
+    /// malformed. Read by `lpt daemon status` so users can tell which
     /// build of the daemon they're running against.
     pub exec_path: Option<PathBuf>,
 }

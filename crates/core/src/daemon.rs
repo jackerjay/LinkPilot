@@ -237,7 +237,7 @@ impl RequestHandler for DaemonRuntime {
 // PID file management
 //
 // Shared between the standalone `linkpilot-daemon` binary (writes/cleans
-// on startup + shutdown) and the `lp daemon ...` CLI (reads for status /
+// on startup + shutdown) and the `lpt daemon ...` CLI (reads for status /
 // stop). The socket remains the source of truth for "is the daemon
 // alive?" — a successful StatePing is canonical — but the PID file is
 // what the CLI uses to *signal* a running daemon, and what reveals a
@@ -299,7 +299,7 @@ pub fn remove_pid_file(path: &Path) -> std::io::Result<()> {
 /// file is also `Ok(false)`.
 ///
 /// Call this before [`write_pid_file`] on daemon startup so a
-/// previously-crashed daemon's PID doesn't keep a `lp daemon status`
+/// previously-crashed daemon's PID doesn't keep a `lpt daemon status`
 /// thinking we're "running" forever.
 pub fn cleanup_stale_pid_file(path: &Path) -> std::io::Result<bool> {
     let Some(pid) = read_pid_file(path)? else {

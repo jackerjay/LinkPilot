@@ -67,7 +67,7 @@ fn main() -> Result<()> {
             "linkpilot-daemon: another daemon is already listening on {}",
             endpoint.display()
         );
-        eprintln!("                 stop it first (`lp daemon stop`) or kill the process.");
+        eprintln!("                 stop it first (`lpt daemon stop`) or kill the process.");
         std::process::exit(1);
     }
 
@@ -86,8 +86,8 @@ fn main() -> Result<()> {
     }
 
     // PID file: clean up any leftover from a previously-crashed daemon
-    // before stamping our own PID. This is read by `lp daemon status`
-    // and `lp daemon stop`; without the stale-cleanup, a hard kill of
+    // before stamping our own PID. This is read by `lpt daemon status`
+    // and `lpt daemon stop`; without the stale-cleanup, a hard kill of
     // the previous daemon would leave a PID file that the CLI keeps
     // reporting as "running" forever.
     let pid_path = pid_file_path().context("resolve pid file path")?;
@@ -152,7 +152,7 @@ fn main() -> Result<()> {
     drop(handle);
 
     // PID file cleanup happens AFTER the socket is gone so a racing
-    // `lp daemon status` doesn't see "PID file missing but socket
+    // `lpt daemon status` doesn't see "PID file missing but socket
     // present" and infer a half-dead daemon.
     if let Err(err) = remove_pid_file(&pid_path) {
         tracing::warn!(?err, path = %pid_path.display(), "removing pid file on shutdown failed");

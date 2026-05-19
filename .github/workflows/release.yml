@@ -54,10 +54,10 @@ jobs:
       - name: Lipo CLI + daemon into universal binaries
         run: |
           mkdir -p target/universal-apple-darwin/release
-          lipo -create -output target/universal-apple-darwin/release/lp \
-            target/x86_64-apple-darwin/release/lp \
-            target/aarch64-apple-darwin/release/lp
-          lipo -info target/universal-apple-darwin/release/lp
+          lipo -create -output target/universal-apple-darwin/release/lpt \
+            target/x86_64-apple-darwin/release/lpt \
+            target/aarch64-apple-darwin/release/lpt
+          lipo -info target/universal-apple-darwin/release/lpt
           lipo -create -output target/universal-apple-darwin/release/linkpilot-daemon \
             target/x86_64-apple-darwin/release/linkpilot-daemon \
             target/aarch64-apple-darwin/release/linkpilot-daemon
@@ -67,20 +67,20 @@ jobs:
         working-directory: apps/desktop
         run: corepack yarn run tauri build --target universal-apple-darwin --bundles app
 
-      # Ship the `lp` CLI inside the .app so installing the DMG gives
+      # Ship the `lpt` CLI inside the .app so installing the DMG gives
       # users both a GUI and a CLI. The Settings page exposes a
       # one-click symlink-to-PATH installer (`cli_install_to_path`)
-      # that targets ~/.local/bin/lp from this bundled binary.
+      # that targets ~/.local/bin/lpt from this bundled binary.
       #
       # Same trick for `linkpilot-daemon`: the GUI's first-run hook
       # writes the LaunchAgent plist pointing at Contents/MacOS/
-      # linkpilot-daemon, and `lp daemon install` (M2) will too.
-      - name: Embed lp CLI and daemon inside the .app
+      # linkpilot-daemon, and `lpt daemon install` (M2) will too.
+      - name: Embed lpt CLI and daemon inside the .app
         run: |
           set -euo pipefail
           APP=target/universal-apple-darwin/release/bundle/macos/LinkPilot.app
-          cp target/universal-apple-darwin/release/lp "$APP/Contents/MacOS/lp"
-          chmod +x "$APP/Contents/MacOS/lp"
+          cp target/universal-apple-darwin/release/lpt "$APP/Contents/MacOS/lpt"
+          chmod +x "$APP/Contents/MacOS/lpt"
           cp target/universal-apple-darwin/release/linkpilot-daemon \
              "$APP/Contents/MacOS/linkpilot-daemon"
           chmod +x "$APP/Contents/MacOS/linkpilot-daemon"
@@ -125,8 +125,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp target/universal-apple-darwin/release/lp dist/release/lp-macos
-          tar -C dist/release -czf dist/release/lp-macos.tar.gz lp-macos
+          # Tarball renamed `lp-macos.tar.gz` → `lpt-macos.tar.gz` in M5.4
+          # (binary collision with macOS-bundled /usr/bin/lp). Homebrew
+          # tap recipes pinned to v0.2.0-alpha.3 still reference the
+          # old name; M6 final-tag bumps the formula to track this.
+          cp target/universal-apple-darwin/release/lpt dist/release/lpt-macos
+          tar -C dist/release -czf dist/release/lpt-macos.tar.gz lpt-macos
           # Standalone daemon tarball — for CLI-only users who want a
           # background service without installing the .app. Inside the
           # tarball the binary is named `linkpilot-daemon` so a user can

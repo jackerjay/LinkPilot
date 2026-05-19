@@ -4,10 +4,13 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "The `lp` command-line client for LinkPilot."
+description = "The `lpt` command-line client for LinkPilot."
 
 [[bin]]
-name = "lp"
+# Renamed from `lp` to `lpt` in M5.4 to avoid PATH collision with the
+# macOS-bundled `lp` (CUPS line-printer). The brand is still "LinkPilot";
+# `lpt` reads as "lp-tap"/"LinkPilot tool" and ships everywhere `lp` did.
+name = "lpt"
 path = "src/main.rs"
 
 [dependencies]
@@ -22,7 +25,7 @@ url = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 linkpilot-platform-mac = { workspace = true }
-# `lp daemon stop` SIGTERMs the PID file's process; `lp daemon start`
+# `lpt daemon stop` SIGTERMs the PID file's process; `lpt daemon start`
 # setsid() to detach the spawned daemon. Both are POSIX-only, so libc
 # is target-scoped (we'd rather not pull it on the Windows stub path).
 libc = "0.2"

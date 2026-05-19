@@ -386,7 +386,7 @@ export function SettingsPage({ configEpoch }: Props) {
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
           <div className="grow">
             <div className="mac-row-label">
-              <span className="mac-mono">lp</span> CLI
+              <span className="mac-mono">lpt</span> CLI
               {cliStatus?.already_installed && (
                 <span className="mac-tag ok" style={{ marginLeft: 8 }}>
                   installed
@@ -398,8 +398,8 @@ export function SettingsPage({ configEpoch }: Props) {
               style={{ fontSize: 11.5, marginTop: 2 }}
             >
               {cliStatus?.bundled_path
-                ? "The bundled binary lives inside this .app. Installing creates a symlink at ~/.local/bin/lp so `lp` works from any shell."
-                : "No bundled `lp` found — you're on a dev build. Releases ship the CLI embedded in the .app."}
+                ? "The bundled binary lives inside this .app. Installing creates a symlink at ~/.local/bin/lpt so `lpt` works from any shell."
+                : "No bundled `lpt` found — you're on a dev build. Releases ship the CLI embedded in the .app."}
             </div>
           </div>
           <button

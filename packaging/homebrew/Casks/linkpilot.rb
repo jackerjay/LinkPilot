@@ -6,11 +6,11 @@
 # Public install (after M6 pushes this file to jackerjay/homebrew-linkpilot):
 #   brew install --cask jackerjay/linkpilot/linkpilot
 #
-# Ships the .app bundle from the release DMG. The .app carries `lp` and
+# Ships the .app bundle from the release DMG. The .app carries `lpt` and
 # `linkpilot-daemon` embedded in Contents/MacOS — the GUI's first-run
 # hook writes the LaunchAgent plist pointing into the bundle, and the
-# Settings "Install lp on PATH" button symlinks the embedded `lp` to
-# ~/.local/bin. Users who want `lp` on PATH without the GUI install the
+# Settings "Install lpt on PATH" button symlinks the embedded `lpt` to
+# ~/.local/bin. Users who want `lpt` on PATH without the GUI install the
 # separate `linkpilot-cli` formula instead.
 
 cask "linkpilot" do
@@ -65,11 +65,11 @@ cask "linkpilot" do
 
     On first launch the GUI writes ~/Library/LaunchAgents/
     app.linkpilot.daemon.plist pointing at the daemon binary bundled
-    inside the .app. From then on, `lp open <url>` works system-wide
+    inside the .app. From then on, `lpt open <url>` works system-wide
     (even from headless contexts) through that LaunchAgent.
 
     To uninstall the LaunchAgent (and stop the daemon) without removing
     the .app itself:
-      lp daemon uninstall
+      lpt daemon uninstall
   EOS
 end

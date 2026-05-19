@@ -424,17 +424,17 @@ pub fn app_icon(request: AppIconRequest) -> Option<AppIcon> {
 }
 
 // ----------------------------------------------------------------------------
-// command-line tool — the `lp` binary is bundled inside the .app under
+// command-line tool — the `lpt` binary is bundled inside the .app under
 // `Contents/MacOS/lp` (see release.yml). These commands let the Settings page
 // surface its location and create a user-PATH symlink so users get a
 // "GUI + CLI" install with one click.
 
 #[derive(serde::Serialize)]
 pub struct CliInstallStatus {
-    /// Absolute path of `lp` inside the running .app bundle, or `null`
+    /// Absolute path of `lpt` inside the running .app bundle, or `null`
     /// when running from a dev build (where the embed step hasn't run).
     pub bundled_path: Option<String>,
-    /// Where `cli_install_to_path` would symlink by default: `~/.local/bin/lp`.
+    /// Where `cli_install_to_path` would symlink by default: `~/.local/bin/lpt`.
     pub default_target: String,
     /// True iff `default_target` already symlinks to `bundled_path`.
     pub already_installed: bool,
@@ -462,7 +462,7 @@ pub fn cli_install_to_path(target: Option<String>) -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
         let bundled = locate_bundled_lp().ok_or_else(|| {
-            "bundled `lp` not found — this only works on the packaged .app, \
+            "bundled `lpt` not found — this only works on the packaged .app, \
              not dev builds (`npx tauri dev`)"
                 .to_string()
         })?;
@@ -475,7 +475,7 @@ pub fn cli_install_to_path(target: Option<String>) -> Result<String, String> {
                 .map_err(|e| format!("creating {}: {e}", parent.display()))?;
         }
         // Idempotency: if the existing entry already points at the bundled
-        // `lp`, treat the call as a no-op success. Otherwise replace it.
+        // `lpt`, treat the call as a no-op success. Otherwise replace it.
         if target_path.symlink_metadata().is_ok() {
             if let Ok(existing) = std::fs::read_link(&target_path) {
                 if existing == PathBuf::from(&bundled) {
@@ -500,10 +500,10 @@ pub fn cli_install_to_path(target: Option<String>) -> Result<String, String> {
 fn locate_bundled_lp() -> Option<String> {
     // `current_exe()` inside a .app bundle returns
     // `…/LinkPilot.app/Contents/MacOS/linkpilot-desktop`, so the sibling
-    // `lp` is what release.yml embeds. In `tauri dev` the exe lives in
-    // `target/debug/` with no `lp` next to it — we return None there.
+    // `lpt` is what release.yml embeds. In `tauri dev` the exe lives in
+    // `target/debug/` with no `lpt` next to it — we return None there.
     let exe = std::env::current_exe().ok()?;
-    let candidate = exe.parent()?.join("lp");
+    let candidate = exe.parent()?.join("lpt");
     candidate.is_file().then(|| candidate.display().to_string())
 }
 
@@ -513,12 +513,12 @@ fn locate_bundled_lp() -> Option<String> {
 }
 
 fn default_install_target() -> PathBuf {
-    // ~/.local/bin/lp — user-writable, no admin auth needed. The XDG
+    // ~/.local/bin/lpt — user-writable, no admin auth needed. The XDG
     // user-binary convention; users add it to PATH in their shell rc.
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("/"));
-    home.join(".local").join("bin").join("lp")
+    home.join(".local").join("bin").join("lpt")
 }
 
 // ----------------------------------------------------------------------------
@@ -629,7 +629,7 @@ fn refresh_daemon_status(bundled: String) -> DaemonServiceStatus {
 
 #[cfg(target_os = "macos")]
 fn locate_bundled_daemon() -> Option<String> {
-    // Sibling of the running .app's main binary, mirroring the lp embed
+    // Sibling of the running .app's main binary, mirroring the lpt embed
     // pattern. In dev (`npx tauri dev`) the daemon isn't sitting in
     // target/debug next to the desktop binary unless the user ran
     // `cargo build -p linkpilot-headless-daemon` first.

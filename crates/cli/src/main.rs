@@ -1,4 +1,4 @@
-//! `lp` — the LinkPilot command-line client.
+//! `lpt` — the LinkPilot command-line client.
 //!
 //! Read operations prefer the running daemon (via IPC) so they reflect the
 //! daemon's in-memory snapshot; on offline daemon they fall back to reading
@@ -30,7 +30,7 @@ use linkpilot_ipc::transport::TransportError;
 // Clap structures
 
 #[derive(Parser, Debug)]
-#[command(name = "lp", version, about = "LinkPilot command-line client")]
+#[command(name = "lpt", version, about = "LinkPilot command-line client")]
 struct Cli {
     /// Override the config file path (defaults to the platform location).
     #[arg(long, global = true)]
@@ -418,7 +418,7 @@ enum DaemonAction {
     /// Idempotent — does nothing if a daemon already answers StatePing.
     Start,
     /// Send SIGTERM to the running daemon via the PID file. Refuses if
-    /// the daemon is managed by launchd (run `lp daemon uninstall` instead).
+    /// the daemon is managed by launchd (run `lpt daemon uninstall` instead).
     Stop,
     /// Stop, wait for the socket to close, then start again.
     Restart,
@@ -583,7 +583,7 @@ fn main() -> Result<()> {
 }
 
 // ===========================================================================
-// `lp open`
+// `lpt open`
 
 #[allow(clippy::too_many_arguments)]
 fn run_open(
@@ -647,7 +647,7 @@ fn run_open(
 }
 
 // ===========================================================================
-// `lp doctor`
+// `lpt doctor`
 
 fn run_doctor(config: Option<PathBuf>, local: bool, json: bool) -> Result<()> {
     if !local {
@@ -691,7 +691,7 @@ fn run_doctor(config: Option<PathBuf>, local: bool, json: bool) -> Result<()> {
 }
 
 // ===========================================================================
-// `lp rules ...`
+// `lpt rules ...`
 
 fn run_rules_list(config: Option<PathBuf>, local: bool, json: bool, all: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
@@ -864,7 +864,7 @@ fn find_rule<'a>(doc: &'a ConfigDocument, prefix: &str) -> Result<&'a Rule> {
 }
 
 // ===========================================================================
-// `lp workspaces ...`
+// `lpt workspaces ...`
 
 fn run_workspaces_list(config: Option<PathBuf>, local: bool, json: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
@@ -957,7 +957,7 @@ fn run_workspaces_set_enabled(config: Option<PathBuf>, id: &str, enabled: bool) 
 }
 
 // ===========================================================================
-// `lp config ...`
+// `lpt config ...`
 
 fn run_config_show(config: Option<PathBuf>, local: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
@@ -1027,7 +1027,7 @@ fn run_config_set_default_target(
     })
 }
 
-/// `lp config compile <source.ts> [--to PATH]`.
+/// `lpt config compile <source.ts> [--to PATH]`.
 ///
 /// Pipeline:
 ///   1. Locate `bun` on PATH; fail fast with an install hint if missing.
@@ -1087,7 +1087,7 @@ fn run_config_compile(config: Option<PathBuf>, source: PathBuf, to: Option<PathB
 
     if let Some(dest) = to {
         // --to PATH: write the JSON verbatim, never touch the daemon's
-        // live config. Same atomic write semantics as `lp config export`.
+        // live config. Same atomic write semantics as `lpt config export`.
         let json = serde_json::to_string_pretty(&doc)?;
         if let Some(parent) = dest.parent() {
             if !parent.as_os_str().is_empty() {
@@ -1136,7 +1136,7 @@ fn which_on_path(bin: &str) -> Option<PathBuf> {
 }
 
 // ===========================================================================
-// `lp settings ...`
+// `lpt settings ...`
 
 fn run_settings_show(config: Option<PathBuf>, local: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
@@ -1159,7 +1159,7 @@ where
 }
 
 // ===========================================================================
-// `lp browsers ...`
+// `lpt browsers ...`
 
 fn run_browsers_list(
     config: Option<PathBuf>,
@@ -1283,7 +1283,7 @@ fn run_browsers_custom_remove(config: Option<PathBuf>, id: &str) -> Result<()> {
 }
 
 // ===========================================================================
-// `lp default-browser ...`
+// `lpt default-browser ...`
 
 fn run_default_browser_status(json: bool) -> Result<()> {
     let platform = make_platform();
@@ -1347,7 +1347,7 @@ fn new_request_id() -> String {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
-    format!("lp-{nanos}")
+    format!("lpt-{nanos}")
 }
 
 enum IpcError {
@@ -1403,7 +1403,7 @@ fn try_daemon_config_get() -> std::result::Result<ConfigDocument, IpcError> {
 }
 
 /// Distinguishes "daemon doesn't speak this verb" from generic IPC
-/// errors. `lp history` uses this to print an upgrade hint instead of
+/// errors. `lpt history` uses this to print an upgrade hint instead of
 /// a low-level "unknown-verb" code dump when talking to an old daemon.
 enum HistoryError {
     Offline,
@@ -1635,7 +1635,7 @@ fn short_id(uuid: &str) -> String {
 }
 
 // ===========================================================================
-// `lp daemon <action>` (M2)
+// `lpt daemon <action>` (M2)
 //
 // All daemon-management subcommands are macOS-only in v0.2. The Linux /
 // Windows daemon ports land later; in the meantime non-macOS hosts get a
@@ -1644,7 +1644,7 @@ fn short_id(uuid: &str) -> String {
 #[cfg(not(target_os = "macos"))]
 fn run_daemon_unsupported(action: &str) -> Result<()> {
     Err(anyhow!(
-        "`lp daemon {action}` is macOS-only in v0.2 (no daemon shipped on this platform yet)"
+        "`lpt daemon {action}` is macOS-only in v0.2 (no daemon shipped on this platform yet)"
     ))
 }
 
@@ -1688,7 +1688,7 @@ mod daemon_cli {
     use std::path::{Path, PathBuf};
     use std::time::{Duration, Instant};
 
-    /// Snapshot of every signal `lp daemon status` cares about, gathered once
+    /// Snapshot of every signal `lpt daemon status` cares about, gathered once
     /// per invocation so JSON / human output stay consistent.
     pub struct DaemonSnapshot {
         pub running: bool,
@@ -1705,7 +1705,7 @@ mod daemon_cli {
         let ping = client::send(
             &endpoint,
             Request::StatePing {
-                request_id: "lp-daemon-status".into(),
+                request_id: "lpt-daemon-status".into(),
             },
         );
         let (running, version) = match ping {
@@ -1728,7 +1728,7 @@ mod daemon_cli {
     /// Locate a `linkpilot-daemon` binary the CLI can spawn:
     ///   1. `LINKPILOT_DAEMON` env override (for development).
     ///   2. The installed .app at `/Applications/LinkPilot.app/Contents/MacOS/`.
-    ///   3. Sibling of the current `lp` executable (CI-built `target/...`).
+    ///   3. Sibling of the current `lpt` executable (CI-built `target/...`).
     ///   4. `PATH` lookup of `linkpilot-daemon`.
     pub fn locate_daemon_binary() -> Result<PathBuf> {
         if let Some(p) = std::env::var_os("LINKPILOT_DAEMON") {
@@ -1756,7 +1756,7 @@ mod daemon_cli {
         Err(anyhow!(
             "no linkpilot-daemon binary found.\n\
              Looked at: $LINKPILOT_DAEMON, /Applications/LinkPilot.app/Contents/MacOS/, \
-             alongside `lp`, and $PATH.\n\
+             alongside `lpt`, and $PATH.\n\
              Install LinkPilot.app, or `cargo build -p linkpilot-headless-daemon` for dev."
         ))
     }
@@ -1783,7 +1783,7 @@ mod daemon_cli {
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null());
-        // Detach into its own session so a `lp daemon start` from a
+        // Detach into its own session so a `lpt daemon start` from a
         // terminal that later exits doesn't drag the daemon with it.
         unsafe {
             cmd.pre_exec(|| {
@@ -1809,7 +1809,7 @@ mod daemon_cli {
                 client::send(
                     &endpoint,
                     Request::StatePing {
-                        request_id: "lp-daemon-wait".into()
+                        request_id: "lpt-daemon-wait".into()
                     }
                 ),
                 Ok(Response::Pong { .. })
@@ -1972,7 +1972,7 @@ fn run_daemon_stop() -> Result<()> {
     let snap = snapshot()?;
     if snap.agent.loaded {
         return Err(anyhow!(
-            "daemon is managed by launchd — run `lp daemon uninstall` first \
+            "daemon is managed by launchd — run `lpt daemon uninstall` first \
              (otherwise launchd would re-spawn it immediately)"
         ));
     }
@@ -2023,7 +2023,7 @@ fn run_daemon_install() -> Result<()> {
     linkpilot_platform_mac::launch_agent::install_daemon(&exec)
         .map_err(|e| anyhow!("install LaunchAgent: {e}"))?;
     // launchctl load -w with RunAtLoad=true triggers an immediate start —
-    // give it a moment to come up so `lp daemon status` right after this
+    // give it a moment to come up so `lpt daemon status` right after this
     // shows running=true.
     let _ = wait_for_socket(true, std::time::Duration::from_secs(5));
     let snap = snapshot()?;
@@ -2064,19 +2064,19 @@ fn run_daemon_logs(follow: bool, lines: usize) -> Result<()> {
 }
 
 // ===========================================================================
-// `lp history` (M3)
+// `lpt history` (M3)
 
 fn run_history(limit: usize, json: bool) -> Result<()> {
     let records = match try_daemon_route_history(limit) {
         Ok(records) => records,
         Err(HistoryError::Offline) => {
             return Err(anyhow!(
-                "history requires a running daemon — try `lp daemon start`"
+                "history requires a running daemon — try `lpt daemon start`"
             ));
         }
         Err(HistoryError::UnknownVerb) => {
             return Err(anyhow!(
-                "the running daemon doesn't speak protocol v2; upgrade it to v0.2+ to use `lp history`"
+                "the running daemon doesn't speak protocol v2; upgrade it to v0.2+ to use `lpt history`"
             ));
         }
         Err(HistoryError::Other(msg)) => return Err(anyhow!("daemon: {msg}")),
@@ -2089,14 +2089,14 @@ fn run_history(limit: usize, json: bool) -> Result<()> {
 
     if json {
         for rec in &records {
-            // One RouteRecord per line so `lp history --json | jq` works
+            // One RouteRecord per line so `lpt history --json | jq` works
             // line-at-a-time, same shape the daemon stores in memory.
             println!("{}", serde_json::to_string(rec)?);
         }
         return Ok(());
     }
 
-    // Human table — matches the column ordering of `lp rules list` so a
+    // Human table — matches the column ordering of `lpt rules list` so a
     // user moving between the two sees the same shape.
     println!("{:<10}  {:<20}  {:<8}  decision", "time", "host", "rule");
     for rec in &records {

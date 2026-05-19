@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # M4 acceptance harness — walks every row of design §14.3.6 against the
-# release-mode `lp` binary. All writes target an isolated temp config
+# release-mode `lpt` binary. All writes target an isolated temp config
 # (via `--config`), so this script is safe to run on a developer machine
 # where a real daemon is serving `$HOME/Library/Application Support/
 # LinkPilot/linkpilot.config.json`.
@@ -33,8 +33,8 @@ fail() { echo "${RED}✗${RESET} $1" >&2; exit 1; }
 note() { echo "${YELLOW}…${RESET} $1"; }
 
 ROOT=$(git rev-parse --show-toplevel)
-LP="$ROOT/target/release/lp"
-[ -x "$LP" ] || fail "lp binary not found at $LP; run \`cargo build --release -p linkpilot-cli\` first"
+LP="$ROOT/target/release/lpt"
+[ -x "$LP" ] || fail "lpt binary not found at $LP; run \`cargo build --release -p linkpilot-cli\` first"
 
 CFG=$(mktemp -t lp-m4-cfg.XXXXXX.json)
 COMPILED=$(mktemp -t lp-m4-compiled.XXXXXX.json)
@@ -45,7 +45,7 @@ trap 'rm -f "$CFG" "$COMPILED" "$SAMPLE" "$BAD_TS"' EXIT
 DSL_REL="$ROOT/packages/config-dsl/src/index.ts"
 
 # Seed an empty-ish config so subsequent --config flag has something to
-# point at. `lp config import` insists on a real file.
+# point at. `lpt config import` insists on a real file.
 cat > "$CFG" <<'JSON'
 {
   "version": 1,
@@ -89,9 +89,9 @@ echo
 # -----------------------------------------------------------------
 note "1) compile DSL → isolated config; verify rule count + tags"
 "$LP" --config "$CFG" config compile "$SAMPLE" >/dev/null 2>&1 \
-  || fail "lp config compile failed"
+  || fail "lpt config compile failed"
 
-# `lp config show` prefers the daemon's in-memory snapshot when one is
+# `lpt config show` prefers the daemon's in-memory snapshot when one is
 # running. We want the *isolated* config file we just wrote, so pass
 # --local to skip the daemon and read $CFG directly.
 SHOW=$("$LP" --config "$CFG" --local config show)
@@ -108,7 +108,7 @@ pass "compiled 7 rules; all tagged source: ts-compiled"
 note "2) --to PATH dry-run output"
 BEFORE_HASH=$(shasum "$CFG" | awk '{print $1}')
 "$LP" --config "$CFG" config compile "$SAMPLE" --to "$COMPILED" >/dev/null 2>&1 \
-  || fail "lp config compile --to failed"
+  || fail "lpt config compile --to failed"
 AFTER_HASH=$(shasum "$CFG" | awk '{print $1}')
 [ "$BEFORE_HASH" = "$AFTER_HASH" ] \
   || fail "config file was modified despite --to flag"
@@ -185,6 +185,6 @@ echo "${BOLD}Manual GUI checks${RESET} (run after \`npx tauri dev\` or fresh \`t
 echo "  □ open Rules page; rules show 'compiled' badge with tooltip"
 echo "  □ edit pencil + delete trash are disabled with explanatory tooltips"
 echo "  □ Copy-to-GUI button (CopyPlus icon) clones the rule, source: 'gui'"
-echo "  □ edit linkpilot.config.ts, re-run \`lp config compile\`; GUI refreshes within ~1s"
+echo "  □ edit linkpilot.config.ts, re-run \`lpt config compile\`; GUI refreshes within ~1s"
 echo
 echo "${GREEN}${BOLD}M4 backend acceptance: PASS${RESET}"

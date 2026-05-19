@@ -12,7 +12,7 @@ M6 release step can do nothing more than a `cp -R`:
 ```
 packaging/homebrew/
 ├── Formula/
-│   └── linkpilot-cli.rb        # CLI only — ships `lp` + `linkpilot-daemon`
+│   └── linkpilot-cli.rb        # CLI only — ships `lpt` + `linkpilot-daemon`
 └── Casks/
     └── linkpilot.rb            # GUI .app from the release DMG
 ```
@@ -24,7 +24,7 @@ That's how M5.3 verification runs — never publishes anything, just
 exercises the on-disk recipe against a real Homebrew prefix.
 
 ```sh
-# CLI (lp + linkpilot-daemon under $(brew --prefix)/bin)
+# CLI (lpt + linkpilot-daemon under $(brew --prefix)/bin)
 brew install --formula ./packaging/homebrew/Formula/linkpilot-cli.rb
 
 # GUI (.app dropped into /Applications via DMG)
@@ -56,7 +56,7 @@ helper to automate this lands as part of M6.
 ## Why two recipes?
 
 Splits the audience that doesn't need 80MB of bundled Tauri WebKit from
-the audience that does. Both ship the same `lp` binary; the formula is
-the headless path (CLI + `lp daemon install` for a LaunchAgent), the
-cask is the GUI path (which also gets `lp` symlinked via the Settings
-"Install lp on PATH" button).
+the audience that does. Both ship the same `lpt` binary; the formula is
+the headless path (CLI + `lpt daemon install` for a LaunchAgent), the
+cask is the GUI path (which also gets `lpt` symlinked via the Settings
+"Install lpt on PATH" button).

@@ -15,7 +15,7 @@ crates/
   platform-{win,linux}/ # stubs
   ipc/                  # length-prefixed JSON over Unix socket / Named pipe
   native-host/          # NMH stdio bridge (v0.3)
-  cli/                  # `lp` command-line client (talks to daemon over IPC)
+  cli/                  # `lpt` command-line client (talks to daemon over IPC)
   headless-daemon/      # reserved for a future GUI-less daemon
 apps/desktop/
   src-tauri/            # Rust: tray, deep-link, commands, fsnotify wiring,
@@ -42,7 +42,7 @@ cargo build --release -p linkpilot-cli   # → target/release/lp
 #   open / doctor / rules / workspaces / config / settings / browsers
 #   / default-browser. Writes always go through the local config file
 #   (atomic rewrite + anti-echo token); a running daemon's fsnotify
-#   watcher picks them up automatically. `lp history` is intentionally
+#   watcher picks them up automatically. `lpt history` is intentionally
 #   absent — RouteHistory only lives in the daemon's memory and the
 #   IPC protocol has no endpoint for it yet.
 
@@ -63,15 +63,15 @@ Two workflows in `.github/workflows/`:
   - `frontend`: tsc + vite build on `ubuntu-latest`
   - `desktop-bundle`: `tauri build --debug --bundles app` smoke test on `macos-latest`
 - **`release.yml`** (on `v*.*.*` tag)
-  - Universal binary: builds `lp` for both `x86_64-apple-darwin` and
+  - Universal binary: builds `lpt` for both `x86_64-apple-darwin` and
     `aarch64-apple-darwin`, lipos them together
   - Tauri `--target universal-apple-darwin --bundles app`
-  - Embeds the universal `lp` into `LinkPilot.app/Contents/MacOS/lp`
+  - Embeds the universal `lpt` into `LinkPilot.app/Contents/MacOS/lp`
     (so the DMG ships GUI + CLI; Settings page symlinks it to
-    `~/.local/bin/lp` via `cli_install_to_path`)
+    `~/.local/bin/lpt` via `cli_install_to_path`)
   - Runs `patch-info-plist.sh` against the bundled `.app`
   - Wraps with `hdiutil` into `LinkPilot_<version>_universal.dmg`
-  - Uploads `lp-macos`, `lp-macos.tar.gz`, DMG, and `checksums.txt` to GitHub Release
+  - Uploads `lpt-macos`, `lpt-macos.tar.gz`, DMG, and `checksums.txt` to GitHub Release
 
 Release pipeline is **unsigned/unnotarized** — users hit
 `xattr -dr com.apple.quarantine LinkPilot.app` on first launch.
@@ -120,4 +120,4 @@ the release workflow uses `hdiutil create` instead.
   surface (new `MatcherTree` variant, `Action` variant, `Settings` field,
   `Workspace` property, browser metadata field, etc.). Encodes the layered
   architecture (core schema → daemon Tauri command → `lib/tauri.ts` wrapper
-  → React page → `lp` CLI subcommand) so capabilities don't ship half-wired.
+  → React page → `lpt` CLI subcommand) so capabilities don't ship half-wired.
