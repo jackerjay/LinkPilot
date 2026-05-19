@@ -94,11 +94,14 @@ CLI-only 用户可以全程不打开 GUI 管理 daemon。共 4 个 commit:
 ✓ 6) bad TS exits 1 with bun stderr surfaced
 ```
 
-**Manual GUI checklist**(M4.4 改动需 `npx tauri dev` 或重 build .app 后逐项核对):
-- [ ] Rules 页:ts-compiled rule 显示 `compiled` badge,hover 出 tooltip
-- [ ] Edit pencil + Delete trash 在 ts-compiled rule 上禁用,hover 提示去 `lp config compile`
-- [ ] `CopyPlus` 按钮存在并工作,克隆出的 rule `source: gui` + note 追加 `(copied from ts-compiled)`
-- [ ] 改 `linkpilot.config.ts` 后再 compile,GUI 在 ~1s 内自动刷新(fsnotify)
+**Manual GUI checklist**(2026-05-19 通过 `corepack yarn tauri dev` + mixed config 验证):
+- [x] Rules 页:ts-compiled rule 显示 `compiled` badge,hover 出 tooltip
+- [x] Edit pencil + Delete trash 在 ts-compiled rule 上禁用,hover 提示去 `lp config compile`
+- [x] `CopyPlus` 按钮存在并工作,克隆出的 rule `source: gui` + note 追加 `(copied from ts-compiled)`
+- [x] gui rules 对照组:无 compiled badge,Edit/Delete 可点,无 CopyPlus 按钮
+- [x] 改 `linkpilot.config.ts` 后再 compile,GUI 在 ~1s 内自动刷新(fsnotify)
+
+验证流程:把 `bun run packages/config-dsl/examples/v0.1-demo.ts` 输出与 prod config 用 `jq` 合并成 14-rule mixed config,`lp config import` 写入,`corepack yarn tauri dev` 起一个独立 GUI 窗口(M1.3 探测到 prod daemon socket → 进 client mode),user 在 Rules 页逐项确认。验收后从 `/tmp/lp-prod-config-backup-*.json` 恢复原 8-rule gui-only 配置。
 
 ---
 
