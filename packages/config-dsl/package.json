@@ -33,6 +33,10 @@
     "config",
     "dsl"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "devDependencies": {
     "@types/bun": "^1.1.0",
     "typescript": "^5.5.0"

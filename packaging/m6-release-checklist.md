@@ -7,11 +7,41 @@ can stop after any phase without leaving partial state.
 
 ## Phase 0 — Prereqs (one-time)
 
+### npm
+
+> **If your default `npm` is hitting an internal mirror** (e.g.
+> `bnpm.byted.org` at ByteDance) — the package itself carries
+> `publishConfig.registry = "https://registry.npmjs.org/"` so the
+> CI workflow + any local `npm publish --workspace` always targets
+> the public registry regardless of your global `.npmrc`. But you
+> still need an auth token for the public registry, separately from
+> whatever internal token you have. Do that with `--registry`:
+>
+> ```sh
+> # One-time login against public npmjs (NOT the byted mirror):
+> npm login --registry=https://registry.npmjs.org/ --scope=@linkpilot
+> # then `npm whoami --registry=https://registry.npmjs.org/`
+> # should print your public npmjs username.
+> ```
+
 - [ ] `NPM_TOKEN` GitHub repo secret set (Settings → Secrets and
-      variables → Actions). Scope: `@linkpilot` publish.
-- [ ] `@linkpilot` npm scope registered to the publishing account:
-      `npm login` then `npm access list packages` should show
-      `@linkpilot/config` (or no packages but the scope exists).
+      variables → Actions). Scope: `@linkpilot` publish, from
+      [npmjs.com/settings/<user>/tokens](https://www.npmjs.com/settings)
+      (Granular access token → packages and scopes:
+      `@linkpilot/*` → Read and write). Note this is a public-npmjs
+      token, not your internal-mirror token.
+- [ ] `@linkpilot` npm scope registered to the publishing account on
+      the public registry: visit
+      <https://www.npmjs.com/org/create> if your scope is for an org,
+      or just `npm publish` once with a user-scoped name like
+      `@<your-handle>/config` (cheaper for solo maintainers). Verify
+      with:
+      ```sh
+      npm access list packages --registry=https://registry.npmjs.org/
+      ```
+
+### Homebrew
+
 - [ ] `jackerjay/homebrew-linkpilot` GitHub repo created (empty).
       Will receive `Formula/linkpilot-cli.rb` and `Casks/linkpilot.rb`
       from `packaging/homebrew/` in this repo.
