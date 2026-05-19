@@ -60,9 +60,11 @@ function compileSettings(s: DslSettings | undefined): SettingsJson {
 }
 
 export function compile(cfg: DslConfig): ConfigDocumentJson {
+  // Rule array order IS priority — top of `cfg.rules` wins. The DSL
+  // user controls this by ordering the `route.*` calls inside their
+  // `defineConfig({ rules: [...] })` block.
   const rules: RuleJson[] = cfg.rules.map((r) => ({
     id: uuid(),
-    priority: r.priority,
     enabled: r.enabled,
     when: r.when,
     then: r.then,

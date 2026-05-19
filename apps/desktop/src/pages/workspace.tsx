@@ -300,12 +300,18 @@ export function WorkspacePage({
             from the Rules tab.
           </div>
         ) : (
-          rules
-            .slice()
-            .sort((a, b) => b.priority - a.priority)
-            .map((r) => (
-              <RuleRow key={r.id} rule={r} hits={countHits(r.id, history)} />
-            ))
+          // List order in `doc.rules` IS priority; preserve it here.
+          rules.map((r) => {
+            const position = doc.rules.findIndex((x) => x.id === r.id) + 1;
+            return (
+              <RuleRow
+                key={r.id}
+                rule={r}
+                position={position}
+                hits={countHits(r.id, history)}
+              />
+            );
+          })
         )}
       </div>
 
@@ -345,7 +351,15 @@ function ruleById(rec: RouteRecord, doc: ConfigDocument): Rule | undefined {
     : undefined;
 }
 
-function RuleRow({ rule, hits }: { rule: Rule; hits: number }) {
+function RuleRow({
+  rule,
+  position,
+  hits,
+}: {
+  rule: Rule;
+  position: number;
+  hits: number;
+}) {
   return (
     <div className="mac-row">
       <span
@@ -356,8 +370,9 @@ function RuleRow({ rule, hits }: { rule: Rule; hits: number }) {
           fontVariantNumeric: "tabular-nums",
           textAlign: "right",
         }}
+        title="Priority position — top of the global rules list wins."
       >
-        {rule.priority}
+        #{position}
       </span>
       <div className="grow" style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13 }}>

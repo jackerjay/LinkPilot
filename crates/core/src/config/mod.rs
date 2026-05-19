@@ -57,15 +57,15 @@ impl ConfigDocument {
     }
 
     /// Demo config matching PRD §22. Used when no config exists on disk.
+    /// Rules are listed top-to-bottom in priority order — first match wins.
     pub fn demo() -> Self {
         use crate::rules::{Action, MatcherTree, RuleId, RuleSource};
 
         let chrome_work = BrowserTarget::new(BrowserId::new("chrome")).with_profile("Default");
         let arc = BrowserTarget::new(BrowserId::new("arc"));
 
-        let mk = |host: &str, target: BrowserTarget, prio: i32| Rule {
+        let mk = |host: &str, target: BrowserTarget| Rule {
             id: RuleId::default(),
-            priority: prio,
             enabled: true,
             when: MatcherTree::UrlHost {
                 pattern: host.to_string(),
@@ -80,10 +80,10 @@ impl ConfigDocument {
             version: SCHEMA_VERSION,
             default_target: arc.clone(),
             rules: vec![
-                mk("github.com", chrome_work.clone(), 10),
-                mk("notion.so", chrome_work.clone(), 10),
-                mk("figma.com", arc.clone(), 10),
-                mk("youtube.com", arc, 10),
+                mk("github.com", chrome_work.clone()),
+                mk("notion.so", chrome_work.clone()),
+                mk("figma.com", arc.clone()),
+                mk("youtube.com", arc),
             ],
             workspaces: Vec::new(),
             custom_browsers: Vec::new(),

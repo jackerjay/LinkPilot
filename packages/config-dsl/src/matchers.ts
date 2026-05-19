@@ -7,18 +7,11 @@ import type { ActionJson, MatcherTreeJson } from "./types.js";
  * into a complete `Rule` that `defineConfig` collects.
  */
 export class RouteBuilder {
-  private _priority = 10;
   private _enabled = true;
   private _note: string | null = null;
   private _workspaceId: string | null = null;
 
   constructor(private readonly matcher: MatcherTreeJson) {}
-
-  /** Higher priority wins; ties broken by list order. Default 10. */
-  priority(p: number): this {
-    this._priority = p;
-    return this;
-  }
 
   /** Start the rule disabled. */
   disabled(): this {
@@ -43,7 +36,6 @@ export class RouteBuilder {
     return new PendingRule(
       this.matcher,
       { kind: "open", target: target.toJSON() },
-      this._priority,
       this._enabled,
       this._note,
       this._workspaceId,
@@ -74,7 +66,6 @@ export class RouteBuilder {
     return new PendingRule(
       this.matcher,
       action,
-      this._priority,
       this._enabled,
       this._note,
       this._workspaceId,
@@ -93,7 +84,6 @@ export class PendingRule {
   constructor(
     public readonly when: MatcherTreeJson,
     public readonly then: ActionJson,
-    public readonly priority: number,
     public readonly enabled: boolean,
     public readonly note: string | null,
     public readonly workspaceId: string | null,

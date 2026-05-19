@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::browser::BrowserTarget;
 use crate::config::ConfigDocument;
-use crate::rules::{Action, MatcherTree, Rule, RuleId};
+use crate::rules::{Action, MatcherTree, RuleId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoutingContext {
@@ -115,11 +115,11 @@ impl<'a> Router<'a> {
                 explanation: None,
             };
         }
-        // Walk rules in declared order, collecting (priority, rule, eval)
-        // for those that match. We have to eval every enabled rule's tree
-        // anyway to know whether it matched, so we get the explanation for
-        // free.
-        let mut hits: Vec<(&Rule, MatcherEval)> = Vec::new();
+        // Walk rules in declared order and stop at the first match.
+        // List order IS priority (top of list wins) — there is no
+        // numeric priority field, so ties / duplicates are
+        // structurally impossible. Drag-to-reorder in the GUI and
+        // `lpt rules move` in the CLI both mutate this list.
         for rule in &self.config.rules {
             if !rule.enabled {
                 continue;
@@ -143,16 +143,11 @@ impl<'a> Router<'a> {
             }
             let eval = eval_tree(&rule.when, ctx);
             if eval.matched() {
-                hits.push((rule, eval));
+                return Explained {
+                    decision: decide_from_action(&rule.then, Some(rule.id.clone()), &rule.note),
+                    explanation: Some(eval),
+                };
             }
-        }
-        hits.sort_by_key(|hit| std::cmp::Reverse(hit.0.priority));
-
-        if let Some((rule, eval)) = hits.into_iter().next() {
-            return Explained {
-                decision: decide_from_action(&rule.then, Some(rule.id.clone()), &rule.note),
-                explanation: Some(eval),
-            };
         }
 
         Explained {
@@ -339,7 +334,6 @@ mod tests {
     fn rule(host: &str, target_browser: &str) -> Rule {
         Rule {
             id: RuleId::default(),
-            priority: 0,
             enabled: true,
             when: MatcherTree::UrlHost {
                 pattern: host.to_string(),
@@ -404,7 +398,6 @@ mod tests {
         let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
         config.rules.push(Rule {
             id: RuleId::default(),
-            priority: 10,
             enabled: true,
             when: MatcherTree::All {
                 of: vec![
@@ -497,7 +490,6 @@ mod tests {
         let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
         config.rules.push(Rule {
             id: RuleId::default(),
-            priority: 10,
             enabled: true,
             when: MatcherTree::All {
                 of: vec![
@@ -530,6 +522,61 @@ mod tests {
                 assert!(matched_rule.is_none());
             }
             other => panic!("expected Open default, got {other:?}"),
+        }
+    }
+
+    /// Regression for the v0.2 list-order priority semantics: when two
+    /// rules both match the same URL+source, the rule that appears
+    /// EARLIER in `config.rules` wins, period. No numeric priority,
+    /// no ties. Reorder = repriority. This is the user-visible fix
+    /// for "我配置了 lark→ask + github.com→Chrome 时 Chrome 不生效".
+    #[test]
+    fn first_match_in_list_order_wins() {
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
+
+        // Rule A: source-app=Lark → Ask
+        config.rules.push(Rule {
+            id: RuleId::default(),
+            enabled: true,
+            when: MatcherTree::SourceApp {
+                name: "Lark".into(),
+                bundle_id: None,
+            },
+            then: Action::Ask,
+            source: RuleSource::Gui,
+            note: Some("lark prompts".into()),
+            workspace_id: None,
+        });
+        // Rule B: host=github.com → Chrome
+        config.rules.push(Rule {
+            id: RuleId::default(),
+            enabled: true,
+            when: MatcherTree::UrlHost {
+                pattern: "github.com".into(),
+            },
+            then: Action::Open {
+                target: BrowserTarget::new(BrowserId::new("chrome")),
+            },
+            source: RuleSource::Gui,
+            note: None,
+            workspace_id: None,
+        });
+
+        let mut c = ctx("https://github.com/x/y");
+        c.source.app_name = Some("Lark".into());
+
+        // Lark rule is first → Ask wins, regardless of how "specific"
+        // the github rule looks.
+        match Router::new(&config).evaluate(&c) {
+            RoutingDecision::Ask { .. } => {}
+            other => panic!("expected Ask (first rule wins), got {other:?}"),
+        }
+
+        // Swap the list order — now github rule wins.
+        config.rules.swap(0, 1);
+        match Router::new(&config).evaluate(&c) {
+            RoutingDecision::Open { target, .. } => assert_eq!(target.browser.0, "chrome"),
+            other => panic!("expected Open chrome after reorder, got {other:?}"),
         }
     }
 }

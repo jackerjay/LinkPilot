@@ -138,7 +138,7 @@ enum Command {
 
 #[derive(Subcommand, Debug)]
 enum RulesAction {
-    /// Print every rule in the config in priority order.
+    /// Print every rule in the config in list order (top wins).
     List {
         /// Emit each rule as JSON on stdout (one rule per line).
         #[arg(long)]
@@ -149,7 +149,8 @@ enum RulesAction {
     },
     /// Print one rule's full JSON.
     Show { id: String },
-    /// Create a new rule.
+    /// Create a new rule. Inserted at the bottom of the list (lowest
+    /// priority); use `lpt rules move` to raise it.
     Add(Box<RuleAddArgs>),
     /// Delete a rule by id (full or prefix; prefix must be unambiguous).
     Delete { id: String },
@@ -157,15 +158,29 @@ enum RulesAction {
     Enable { id: String },
     /// Mark a rule disabled.
     Disable { id: String },
-    /// Set a rule's priority. Higher wins; ties broken by list order.
-    SetPriority { id: String, priority: i32 },
+    /// Reorder a rule in the priority list. List order IS priority —
+    /// top of the list wins.
+    Move {
+        id: String,
+        #[arg(value_enum)]
+        position: MovePosition,
+    },
+}
+
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+pub enum MovePosition {
+    /// Move to the very top (highest priority).
+    Top,
+    /// Move one slot up (toward higher priority).
+    Up,
+    /// Move one slot down (toward lower priority).
+    Down,
+    /// Move to the very bottom (lowest priority).
+    Bottom,
 }
 
 #[derive(clap::Args, Debug)]
 struct RuleAddArgs {
-    /// Higher priority wins. Defaults to 10 — same as the demo rules.
-    #[arg(long, default_value_t = 10)]
-    priority: i32,
     /// Start the rule disabled.
     #[arg(long)]
     disabled: bool,
@@ -495,9 +510,7 @@ fn main() -> Result<()> {
             RulesAction::Delete { id } => run_rules_delete(cli.config, &id),
             RulesAction::Enable { id } => run_rules_set_enabled(cli.config, &id, true),
             RulesAction::Disable { id } => run_rules_set_enabled(cli.config, &id, false),
-            RulesAction::SetPriority { id, priority } => {
-                run_rules_set_priority(cli.config, &id, priority)
-            }
+            RulesAction::Move { id, position } => run_rules_move(cli.config, &id, position),
         },
         Command::Workspaces { action } => match action {
             WorkspacesAction::List { json } => run_workspaces_list(cli.config, cli.local, json),
@@ -695,8 +708,8 @@ fn run_doctor(config: Option<PathBuf>, local: bool, json: bool) -> Result<()> {
 
 fn run_rules_list(config: Option<PathBuf>, local: bool, json: bool, all: bool) -> Result<()> {
     let doc = read_doc(config, local)?;
-    let mut rules: Vec<_> = doc.rules.iter().filter(|r| all || r.enabled).collect();
-    rules.sort_by_key(|r| std::cmp::Reverse(r.priority));
+    // List order IS priority — walk top-to-bottom, no sort.
+    let rules: Vec<_> = doc.rules.iter().filter(|r| all || r.enabled).collect();
     if json {
         for r in &rules {
             println!("{}", serde_json::to_string(r)?);
@@ -707,7 +720,8 @@ fn run_rules_list(config: Option<PathBuf>, local: bool, json: bool, all: bool) -
         println!("(no rules)");
         return Ok(());
     }
-    for rule in rules {
+    let width = (rules.len().max(1).to_string().len()).max(2);
+    for (idx, rule) in rules.iter().enumerate() {
         let id8 = short_id(&rule.id.0.to_string());
         let flag = if rule.enabled { ' ' } else { '!' };
         let workspace = rule
@@ -716,12 +730,13 @@ fn run_rules_list(config: Option<PathBuf>, local: bool, json: bool, all: bool) -
             .map(|w| format!(" ws={w}"))
             .unwrap_or_default();
         println!(
-            "{flag} {} [{:>4}] {}{} -> {}",
+            "{flag} #{:>width$} {} {}{} -> {}",
+            idx + 1,
             id8,
-            rule.priority,
             describe_when(&rule.when),
             workspace,
             describe_action(&rule.then),
+            width = width,
         );
     }
     Ok(())
@@ -739,7 +754,6 @@ fn run_rules_add(config: Option<PathBuf>, args: Box<RuleAddArgs>) -> Result<()> 
     let then = build_action(&args)?;
     let rule = Rule {
         id: RuleId::new(),
-        priority: args.priority,
         enabled: !args.disabled,
         when,
         then,
@@ -747,6 +761,9 @@ fn run_rules_add(config: Option<PathBuf>, args: Box<RuleAddArgs>) -> Result<()> 
         note: args.note,
         workspace_id: args.workspace,
     };
+    // Append: new rule lands at the bottom (lowest priority). The
+    // user explicitly promotes it with `lpt rules move <id> top|up`
+    // — safer default than auto-overriding existing rules.
     mutate_local(config, |doc| {
         doc.rules.push(rule.clone());
         Ok(())
@@ -778,12 +795,26 @@ fn run_rules_set_enabled(config: Option<PathBuf>, prefix: &str, enabled: bool) -
     })
 }
 
-fn run_rules_set_priority(config: Option<PathBuf>, prefix: &str, priority: i32) -> Result<()> {
+fn run_rules_move(config: Option<PathBuf>, prefix: &str, pos: MovePosition) -> Result<()> {
     mutate_local(config, |doc| {
         let id = find_rule(doc, prefix)?.id.clone();
-        let rule = doc.rules.iter_mut().find(|r| r.id == id).unwrap();
-        rule.priority = priority;
-        eprintln!("linkpilot: rule {} priority set to {priority}", id.0);
+        let idx = doc.rules.iter().position(|r| r.id == id).unwrap();
+        let target = match pos {
+            MovePosition::Top => 0,
+            MovePosition::Up => idx.saturating_sub(1),
+            MovePosition::Down => (idx + 1).min(doc.rules.len() - 1),
+            MovePosition::Bottom => doc.rules.len() - 1,
+        };
+        if target != idx {
+            let rule = doc.rules.remove(idx);
+            doc.rules.insert(target, rule);
+        }
+        eprintln!(
+            "linkpilot: rule {} moved to position {} (1 = top, {} = bottom)",
+            id.0,
+            target + 1,
+            doc.rules.len()
+        );
         Ok(())
     })
 }

@@ -82,12 +82,14 @@ interface TemplateChoice {
   detail: string;
   swatch: string;
   enabled: boolean;
-  rule: Omit<Rule, "id" | "priority">;
+  rule: Omit<Rule, "id">;
 }
 
 // 4 starter templates. The user toggles the ones they want and we
-// upsert them on Finish — the rule engine handles the rest. Priorities
-// are stamped at write-time so the earlier templates win ties.
+// upsert them on Finish — the rule engine handles the rest. They are
+// inserted in declaration order at the top of `config.rules`, so the
+// first template in this list has highest priority (list order IS
+// priority).
 const RULE_TEMPLATES: TemplateChoice[] = [
   {
     id: "tmpl-work",
@@ -257,22 +259,18 @@ export function OnboardingFlow({ onFinish }: Props) {
     // on the main app — they can always recreate the rules manually.
     try {
       const cfg: ConfigDocument = await ipc.configGet();
-      const existingTop = cfg.rules.reduce(
-        (max, r) => Math.max(max, r.priority),
-        0,
-      );
       const toAdd = templates.filter((t) => t.enabled);
-      let nextPriority = existingTop + toAdd.length * 10;
       // Rule.id is a UUID on the Rust side (RuleId(Uuid) newtype) — a
       // human-readable string like `tmpl-work-xyz` fails serde
       // deserialization and the entire configReplace bails. Use
       // crypto.randomUUID so the rule round-trips cleanly.
-      const newRules: Rule[] = toAdd.map((t) => {
-        const id = crypto.randomUUID();
-        const priority = nextPriority;
-        nextPriority -= 10;
-        return { id, priority, ...t.rule };
-      });
+      //
+      // Templates are prepended in their declared order, so the first
+      // toggled template ends up at slot #1 (highest priority).
+      const newRules: Rule[] = toAdd.map((t) => ({
+        id: crypto.randomUUID(),
+        ...t.rule,
+      }));
       if (newRules.length > 0) {
         await ipc.configReplace({
           ...cfg,

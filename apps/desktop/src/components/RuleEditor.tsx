@@ -40,7 +40,6 @@ const EMPTY_MATCHER: MatcherTree = { op: "url-host", pattern: "" };
 function newRule(): Rule {
   return {
     id: crypto.randomUUID(),
-    priority: 100,
     enabled: true,
     when: EMPTY_MATCHER,
     then: { kind: "open", target: { browser: "" } },
@@ -81,29 +80,19 @@ export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: 
         <CardTitle>{initial ? "Edit rule" : "New rule"}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="rule-priority">Priority</Label>
-            <Input
-              id="rule-priority"
-              type="number"
-              value={draft.priority}
-              onChange={(e) =>
-                setDraft({ ...draft, priority: Number(e.target.value) || 0 })
-              }
-            />
+        <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
+          <div className="space-y-0.5">
+            <Label className="text-sm">Enabled</Label>
+            <p className="text-xs text-muted-foreground">
+              Priority is set by list order on the Rules page — drag to reorder.
+            </p>
           </div>
-          <div className="space-y-1.5">
-            <Label>Enabled</Label>
-            <div className="flex h-8 items-center">
-              <Checkbox
-                checked={draft.enabled}
-                onCheckedChange={(v) =>
-                  setDraft({ ...draft, enabled: v === true })
-                }
-              />
-            </div>
-          </div>
+          <Checkbox
+            checked={draft.enabled}
+            onCheckedChange={(v) =>
+              setDraft({ ...draft, enabled: v === true })
+            }
+          />
         </div>
 
         <div className="space-y-2">
