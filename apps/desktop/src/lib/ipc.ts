@@ -9,6 +9,7 @@ import type {
   DoctorReport,
   Explained,
   InstalledBrowser,
+  PickerStyle,
   RouteRecord,
   RoutingDecision,
   Rule,
@@ -19,6 +20,13 @@ import type {
 export interface RouteRequest {
   url: string;
   from_app?: string | null;
+  /** Bundle id of the source app. Captured by AppPickerButton on the
+   *  Test URL page; without this, source-app rules authored via the
+   *  picker (which store a bundle_id on the rule) would only match
+   *  when the routing context also carries one — fine in production
+   *  but breaks the simulator. With the bundle id present, matching
+   *  also tolerates localized display names. */
+  from_app_bundle_id?: string | null;
   from_browser?: string | null;
   from_profile?: string | null;
 }
@@ -56,6 +64,18 @@ export const ipc = {
   isDefaultBrowser: () => invoke<boolean>("is_default_browser"),
   requestSetDefaultBrowser: () =>
     invoke<SetDefaultOutcome>("request_set_default_browser"),
+
+  setPickerStyle: (style: PickerStyle) =>
+    invoke<void>("set_picker_style", { style }),
+  /** Persist a per-browser profile ordering. Empty `profileIds` clears
+   *  the saved order for that browser — picker falls back to default
+   *  sort. */
+  setProfileOrder: (browser: string, profileIds: string[]) =>
+    invoke<void>("set_profile_order", { browser, profileIds }),
+  /** Open the picker window with real browsers/profile ordering. The picked
+   *  target opens `testUrl`, so Settings can verify focus and profile routing. */
+  pickerPreview: (testUrl: string) =>
+    invoke<void>("picker_preview", { testUrl }),
 
   doctor: () => invoke<DoctorReport>("doctor"),
   importConfig: (path: string) => invoke<void>("import_config", { path }),

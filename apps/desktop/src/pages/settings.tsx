@@ -9,12 +9,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TargetEditor } from "@/components/TargetEditor";
+import { PickerStyleChooser } from "@/picker/halo/PickerStyleChooser";
+import { ProfileOrderEditor } from "@/picker/halo/ProfileOrderEditor";
 import { ipc } from "@/lib/ipc";
 import { useTheme, type ThemeMode } from "@/lib/theme";
 import type {
   BrowserTarget,
   ConfigDocument,
   InstalledBrowser,
+  PickerStyle,
   SetDefaultOutcome,
 } from "@/lib/types";
 import type { CliInstallStatus, DaemonServiceStatus } from "@/lib/ipc";
@@ -91,6 +94,15 @@ export function SettingsPage({ configEpoch }: Props) {
       } else {
         setMessage("This platform doesn't expose a programmatic 'set default'.");
       }
+      await refresh();
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const changePickerStyle = async (next: PickerStyle) => {
+    try {
+      await ipc.setPickerStyle(next);
       await refresh();
     } catch (err) {
       setError(String(err));
@@ -294,6 +306,44 @@ export function SettingsPage({ configEpoch }: Props) {
               <SelectItem value="dark">Dark</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div
+          className="mac-row"
+          style={{ alignItems: "flex-start", flexDirection: "column", gap: 4 }}
+        >
+          <div style={{ width: "100%" }}>
+            <div className="mac-row-label">Browser picker style</div>
+            <div
+              className="mac-muted"
+              style={{ fontSize: 11.5, marginTop: 2 }}
+            >
+              The wheel that appears for Ask rules. Hold ⌥ over a
+              multi-profile browser in the picker to summon it. Click a
+              preview below to switch — the change applies the next time
+              the picker opens.
+            </div>
+          </div>
+          <PickerStyleChooser
+            value={doc?.settings.picker_style ?? "frosted"}
+            onChange={(v) => changePickerStyle(v)}
+          />
+        </div>
+        <div
+          className="mac-row"
+          style={{ alignItems: "flex-start", flexDirection: "column", gap: 4 }}
+        >
+          <div style={{ width: "100%" }}>
+            <div className="mac-row-label">Profile order</div>
+            <div
+              className="mac-muted"
+              style={{ fontSize: 11.5, marginTop: 2 }}
+            >
+              Customize the order profiles appear in the wheel. Position 1–9
+              maps to keyboard shortcuts — put your most-used profile at the
+              top so you can launch it with a single keystroke.
+            </div>
+          </div>
+          <ProfileOrderEditor doc={doc} onConfigChanged={refresh} />
         </div>
       </div>
 

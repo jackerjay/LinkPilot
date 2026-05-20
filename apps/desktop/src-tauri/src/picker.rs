@@ -12,11 +12,13 @@
 //!   4. `picker_resolve` drops the picked id through the channel and
 //!      `show_picker` returns it.
 
+use std::collections::HashMap;
 use std::sync::mpsc;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use serde::Serialize;
+use linkpilot_core::config::PickerStyle;
+use serde::{Deserialize, Serialize};
 use tauri::{ActivationPolicy, AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 /// One option in the chooser. The renderer uses `name` for display.
@@ -36,17 +38,65 @@ pub struct PickerChoice {
     pub app_path: Option<String>,
     #[serde(default)]
     pub icon_data_url: Option<String>,
+    /// Profiles available inside this browser, ordered with the
+    /// `is_default` entry first so the Halo wheel can index by 1–9 in
+    /// a meaningful order. Empty for single-profile browsers (Safari,
+    /// fresh Arc installs) — the renderer treats `len() <= 1` as
+    /// "no wheel, plain click → launch default".
+    #[serde(default)]
+    pub profiles: Vec<PickerProfile>,
+    /// Convenience pointer to the profile id (within `profiles`) that
+    /// the picker should launch when the user clicks the tile without
+    /// holding the summon key. `None` falls back to "first entry".
+    #[serde(default)]
+    pub default_profile_id: Option<String>,
+}
+
+/// Slim subset of `BrowserProfile` shipped to the picker renderer.
+/// Kept narrow on purpose — the picker only paints a colored avatar +
+/// name + email; everything else (avatar PNG, gaia hints) stays
+/// daemon-side.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PickerProfile {
+    pub id: String,
+    pub name: String,
+    pub email: Option<String>,
+    /// Hex `#RRGGBB`. Deterministic per-profile (see
+    /// `core::inventory::accent_for`). The wheel uses it for outer-rim
+    /// bands, hover wedges, and the Crown center-display avatar.
+    pub accent_color: Option<String>,
+    /// Mirrors `BrowserProfile::is_default`. Picker renders the
+    /// Crown idle preview around the entry where this is true.
+    #[serde(default)]
+    pub is_default: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PickerSession {
     pub url: String,
     pub choices: Vec<PickerChoice>,
+    /// Halo visual style at the moment the picker opened. The
+    /// renderer reads this once and locks the variant for this
+    /// session — flipping `picker_style` mid-pick wouldn't have a
+    /// sane outcome (Crown's center-display geometry is quite
+    /// different from Bezel's).
+    pub style: PickerStyle,
+}
+
+/// Renderer-side resolution payload. Either a (browser, profile)
+/// composite (Halo + Frosted/Bezel/Crown all use this), or just a
+/// browser id when the user clicked a single-profile tile without
+/// arming the wheel.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct PickerPick {
+    pub browser_id: String,
+    #[serde(default)]
+    pub profile_id: Option<String>,
 }
 
 pub struct PickerState {
     pub session: Mutex<Option<PickerSession>>,
-    pub pending: Mutex<Option<mpsc::Sender<Option<String>>>>,
+    pub pending: Mutex<Option<mpsc::Sender<Option<PickerPick>>>>,
 }
 
 impl Default for PickerState {
@@ -60,10 +110,16 @@ impl Default for PickerState {
 
 const WINDOW_LABEL: &str = "picker";
 const WINDOW_TIMEOUT_SECS: u64 = 60;
+const DEFAULT_PREVIEW_URL: &str = "https://example.com/";
 
 /// Show the picker, block until the user picks or cancels (or 60s
-/// elapses), and return the picked choice id.
-pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -> Option<String> {
+/// elapses), and return the picked (browser, profile) pair.
+pub fn show_picker(
+    app: &AppHandle,
+    url: &str,
+    mut choices: Vec<PickerChoice>,
+    style: PickerStyle,
+) -> Option<PickerPick> {
     // Pre-render every choice's icon as a base64 data URL so the
     // picker webview can paint the icon row on its very first frame
     // — see `PickerChoice::icon_data_url` for why this matters.
@@ -81,12 +137,13 @@ pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -
     let state: tauri::State<PickerState> = app.state();
     // sync mpsc — we're already on a worker thread, blocking is fine
     // and dodges the tokio dependency.
-    let (tx, rx) = mpsc::channel::<Option<String>>();
+    let (tx, rx) = mpsc::channel::<Option<PickerPick>>();
     {
         if let Ok(mut s) = state.session.lock() {
             *s = Some(PickerSession {
                 url: url.to_string(),
                 choices,
+                style,
             });
         }
         if let Ok(mut p) = state.pending.lock() {
@@ -112,13 +169,30 @@ pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -
 
     // Center on the monitor the cursor is on, not always the primary
     // display. Falls back to .center() if we can't resolve a monitor.
+    // The Halo wheel (outer radius ~152, plus the floating readout 200px
+    // above center) needs significant breathing room around the popover.
+    // 720×520 fits any of the three variants — Frosted/Bezel/Crown — with
+    // the wheel summoned, and stays compact enough that the rest of the
+    // screen still reads as background. The window is transparent +
+    // chrome-less, so the only "visible" surface is the central popover;
+    // the extra area is the wheel's portaled paint zone.
     let target = WebviewUrl::App("index.html?view=picker".into());
+    const WIN_W: f64 = 720.0;
+    const WIN_H: f64 = 520.0;
     let mut builder = WebviewWindowBuilder::new(app, WINDOW_LABEL, target)
         .title("LinkPilot")
-        .inner_size(560.0, 280.0)
-        .min_inner_size(560.0, 280.0)
-        .max_inner_size(560.0, 280.0)
+        .inner_size(WIN_W, WIN_H)
+        .min_inner_size(WIN_W, WIN_H)
+        .max_inner_size(WIN_W, WIN_H)
         .transparent(true)
+        // macOS draws a 1px hairline + drop shadow on every window by
+        // default. With apply_glass we used to cover that with a 16px
+        // rounded NSVisualEffectView, so the shadow traced the rounded
+        // popover shape. Without the vibrancy, the shadow + hairline
+        // outline the FULL 720x520 rectangle — visible as a faint dark
+        // border around the picker. Disabling the system shadow makes
+        // the only visible chrome the popover's own CSS box-shadow.
+        .shadow(false)
         .always_on_top(true)
         .resizable(false)
         .maximizable(false)
@@ -131,7 +205,7 @@ pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -
         // fullscreen-auxiliary, and macOS pins it there.
         .visible(false)
         .focused(true);
-    match center_position_on_cursor_monitor(app, 560.0, 280.0) {
+    match center_position_on_cursor_monitor(app, WIN_W, WIN_H) {
         Some((x, y)) => builder = builder.position(x, y),
         None => builder = builder.center(),
     }
@@ -144,14 +218,28 @@ pub fn show_picker(app: &AppHandle, url: &str, mut choices: Vec<PickerChoice>) -
             return None;
         }
     };
-    // apply_glass + elevate_above_fullscreen both reach into AppKit
-    // (NSVisualEffectView, NSWindow.setCollectionBehavior /
-    // setLevel:). Those MUST run on the main thread or the process
-    // crashes. show_picker itself is called from a worker thread
-    // (see dispatch.rs spawn), so dispatch back.
+    // We deliberately do NOT apply NSVisualEffectView vibrancy here.
+    // The old Cmd-Tab-style picker did, because its 560×280 window
+    // was *exactly* the popover; the vibrancy WAS the popover background.
+    //
+    // The Halo picker is different: the popover is small (~420×~260) and
+    // the surrounding window is large (720×520) because the wheel
+    // portals out beyond the popover frame. Painting HudWindow vibrancy
+    // across the full window leaves an oversized frosted rectangle around
+    // a popover that's already doing its own `backdrop-filter: blur(36px)` —
+    // the result is two visibly-stacked frosts and a giant "card" that
+    // dwarfs the actual UI.
+    //
+    // Instead, leave the window fully transparent (transparent: true on
+    // the builder + body/html/root → transparent in PickerWindow.tsx).
+    // The popover paints one frost layer; the Halo wheel's
+    // `halo-frost-disc` paints its own when summoned. Everything else
+    // shows the desktop through — Spotlight / Raycast style.
+    //
+    // elevate_above_fullscreen still has to run on the main thread
+    // (AppKit msg_send! to NSWindow.setCollectionBehavior).
     let win_for_main = win.clone();
     let _ = app.run_on_main_thread(move || {
-        apply_glass(&win_for_main);
         elevate_above_fullscreen(&win_for_main);
         // Now that the AppKit bits are in place, show + focus. Order
         // matters: show first (orderFrontRegardless under the hood),
@@ -295,30 +383,6 @@ fn center_position_on_cursor_monitor(
     Some((mx + (mw - width) / 2.0, my + (mh - height) / 2.0))
 }
 
-/// Apply macOS frosted-glass vibrancy to the picker window's
-/// background. HudWindow is what Spotlight / Raycast / Cmd-Tab use —
-/// it desaturates less than Sidebar so colors from the desktop bleed
-/// through (the "Control Center" feel the user asked for).
-fn apply_glass(window: &tauri::WebviewWindow) {
-    #[cfg(target_os = "macos")]
-    {
-        use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
-        match apply_vibrancy(
-            window,
-            NSVisualEffectMaterial::HudWindow,
-            Some(NSVisualEffectState::Active),
-            Some(16.0), // matches the inner content's rounded-2xl
-        ) {
-            Ok(()) => tracing::debug!("picker: vibrancy applied"),
-            Err(err) => tracing::warn!(?err, "picker: vibrancy failed"),
-        }
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = window;
-    }
-}
-
 /// Make the picker float over a full-screen Space (Lark, Slack,
 /// browser fullscreen, etc.) and sit above all normal floating
 /// windows.
@@ -376,10 +440,162 @@ fn elevate_above_fullscreen(window: &tauri::WebviewWindow) {
 }
 
 #[tauri::command]
-pub fn picker_resolve(state: tauri::State<'_, PickerState>, picked: Option<String>) {
-    let sender_opt: Option<mpsc::Sender<Option<String>>> =
+pub fn picker_resolve(state: tauri::State<'_, PickerState>, picked: Option<PickerPick>) {
+    let sender_opt: Option<mpsc::Sender<Option<PickerPick>>> =
         state.pending.lock().ok().and_then(|mut g| g.take());
     if let Some(tx) = sender_opt {
         let _ = tx.send(picked);
+    }
+}
+
+/// Open the picker in preview mode — same wheel, same keyboard, same
+/// launch path. Settings → Appearance calls this so users can test their
+/// picker style and profile ordering against their actual installed browsers
+/// before depending on it during a real Ask flow.
+///
+/// Implementation: enumerate the user's browsers + apply their saved
+/// profile order, hand it to `show_picker` from a worker thread, and launch
+/// the supplied test URL with the resulting browser/profile. `show_picker`
+/// blocks until the user picks or cancels — same lifecycle as a real ask.
+#[tauri::command]
+pub fn picker_preview(app: AppHandle, test_url: Option<String>) -> Result<(), String> {
+    use linkpilot_core::browser::{apply_profile_order, BrowserTarget};
+
+    let state: tauri::State<crate::state::AppState> = app.state();
+    let installed = state
+        .platform
+        .browser_inventory()
+        .installed_browsers()
+        .map_err(|e| e.to_string())?;
+    if installed.is_empty() {
+        return Err("No browsers detected — install at least one to preview the picker.".into());
+    }
+
+    // Refuse to clobber a real ask. The picker state has a pending
+    // sender if and only if there's a live Ask flow waiting for the
+    // user; we'd corrupt that flow by stealing its window.
+    let picker_state: tauri::State<PickerState> = app.state();
+    if picker_state
+        .pending
+        .lock()
+        .ok()
+        .map(|g| g.is_some())
+        .unwrap_or(false)
+    {
+        return Err("Another picker is already open — finish the current ask first.".into());
+    }
+
+    let doc = state.config.document();
+    let order_map = doc.settings.profile_orders.clone();
+    let style = doc.settings.picker_style;
+    let inventory = state.platform.browser_inventory();
+    let parsed_url = normalize_preview_url(test_url.as_deref())?;
+    let url = parsed_url.to_string();
+
+    let mut choices: Vec<PickerChoice> = Vec::with_capacity(installed.len());
+    let mut target_by_id: HashMap<String, BrowserTarget> = HashMap::new();
+    for b in &installed {
+        let raw = inventory.profiles(&b.id).unwrap_or_default();
+        let ordered = apply_profile_order(raw, order_map.get(&b.id.0).map(|v| v.as_slice()));
+        let profiles: Vec<PickerProfile> = ordered
+            .into_iter()
+            .map(|p| PickerProfile {
+                id: p.id,
+                name: p.display_name,
+                email: p.email,
+                accent_color: p.accent_color,
+                is_default: p.is_default,
+            })
+            .collect();
+        let default_profile_id = profiles
+            .iter()
+            .find(|p| p.is_default)
+            .or_else(|| profiles.first())
+            .map(|p| p.id.clone());
+        target_by_id.insert(b.id.0.clone(), BrowserTarget::new(b.id.clone()));
+        choices.push(PickerChoice {
+            id: b.id.0.clone(),
+            name: b.display_name.clone(),
+            bundle_id: b.platform_app_id.clone(),
+            app_path: Some(app_path_from_executable(&b.executable)),
+            icon_data_url: None,
+            profiles,
+            default_profile_id,
+        });
+    }
+
+    let app_clone = app.clone();
+    let state_clone = state.inner().clone();
+    std::thread::spawn(move || {
+        let picked = show_picker(&app_clone, &url, choices, style);
+        let Some(picked) = picked else {
+            tracing::info!("picker preview cancelled");
+            return;
+        };
+        let Some(mut target) = target_by_id.remove(&picked.browser_id) else {
+            tracing::warn!(?picked, "picker preview resolved unknown browser");
+            return;
+        };
+        if let Some(profile_id) = picked.profile_id {
+            target.profile = Some(profile_id);
+        }
+        tracing::info!(
+            ?target,
+            url = %parsed_url,
+            "picker preview resolved — launching test URL"
+        );
+        if let Err(err) = state_clone
+            .platform
+            .url_launcher()
+            .open(&target, &parsed_url)
+        {
+            tracing::error!(?err, ?target, url = %parsed_url, "picker preview launch failed");
+        }
+    });
+    Ok(())
+}
+
+fn normalize_preview_url(test_url: Option<&str>) -> Result<url::Url, String> {
+    let raw = test_url
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or(DEFAULT_PREVIEW_URL);
+    let candidate = if raw.contains("://") {
+        raw.to_string()
+    } else if is_local_preview_host(raw) {
+        format!("http://{raw}")
+    } else {
+        format!("https://{raw}")
+    };
+    let parsed =
+        url::Url::parse(&candidate).map_err(|err| format!("Invalid test URL '{raw}': {err}"))?;
+    match parsed.scheme() {
+        "http" | "https" => Ok(parsed),
+        scheme => Err(format!(
+            "Invalid test URL '{raw}': unsupported scheme '{scheme}'"
+        )),
+    }
+}
+
+fn is_local_preview_host(raw: &str) -> bool {
+    let host = raw
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or(raw)
+        .trim_start_matches('[');
+    host == "localhost"
+        || host.starts_with("localhost:")
+        || host.starts_with("127.")
+        || host.starts_with("0.0.0.0")
+        || host.starts_with("::1")
+}
+
+fn app_path_from_executable(exe: &std::path::Path) -> String {
+    // Same logic as dispatch.rs::app_path_from_executable — duplicated
+    // here so picker.rs doesn't have to depend on dispatch internals.
+    let s = exe.to_string_lossy();
+    match s.rfind(".app/") {
+        Some(idx) => s[..idx + 4].to_string(),
+        None => s.into_owned(),
     }
 }

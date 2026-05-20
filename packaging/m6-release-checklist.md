@@ -9,8 +9,7 @@ can stop after any phase without leaving partial state.
 
 ### npm
 
-> **If your default `npm` is hitting an internal mirror** (e.g.
-> `bnpm.byted.org` at ByteDance) — the package itself carries
+> **If your default `npm` is hitting a private internal mirror** — the package itself carries
 > `publishConfig.registry = "https://registry.npmjs.org/"` so the
 > CI workflow + any local `npm publish --workspace` always targets
 > the public registry regardless of your global `.npmrc`. But you
@@ -18,7 +17,7 @@ can stop after any phase without leaving partial state.
 > whatever internal token you have. Do that with `--registry`:
 >
 > ```sh
-> # One-time login against public npmjs (NOT the byted mirror):
+> # One-time login against public npmjs (not your internal mirror):
 > npm login --registry=https://registry.npmjs.org/ --scope=@linkpilot
 > # then `npm whoami --registry=https://registry.npmjs.org/`
 > # should print your public npmjs username.

@@ -32,6 +32,13 @@ export interface BrowserProfile {
   display_name: string;
   avatar_url?: string | null;
   email?: string | null;
+  /** Deterministic hex (`#RRGGBB`) accent color for this profile.
+   *  The picker uses it for the Halo wheel; Inspector reuses it for
+   *  the matched-target line. `null` for browsers we can't introspect
+   *  (Safari, Unknown). */
+  accent_color?: string | null;
+  /** True for Chromium's `Default` profile, Firefox's `Default=1`. */
+  is_default?: boolean;
 }
 
 export type MatcherTree =
@@ -95,7 +102,19 @@ export interface Settings {
    *  bypasses all rules and opens every link in `default_target`. The
    *  tray popover's "Smart routing" toggle flips this. */
   smart_routing_enabled: boolean;
+  /** Visual style for the browser+profile picker. Set via the
+   *  Settings page or `lpt settings picker-style …`; the picker
+   *  window reads it once on open. */
+  picker_style: PickerStyle;
+  /** Per-browser profile ordering. Keys are browser ids ("chrome",
+   *  "edge", "arc"). Values are ordered profile-id lists. Profiles
+   *  missing from the list fall through to the default sort
+   *  (default-first, then alphabetical) and append at the tail. */
+  profile_orders: Record<string, string[]>;
 }
+
+/** Mirrors `core::config::PickerStyle`. */
+export type PickerStyle = "frosted" | "bezel" | "crown";
 
 export interface ConfigDocument {
   version: number;

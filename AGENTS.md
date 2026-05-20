@@ -32,9 +32,7 @@
     every rolled-back transaction, every constraint violation.
     Never report success when something was bypassed.
 
-## Project-specific rules below this line
-
-# LinkPilot — Claude Code project notes
+# LinkPilot — Codex project notes
 
 Per-link router that sits between macOS, browsers, and apps that open URLs,
 and dispatches each link to the browser + profile that matches user rules.
@@ -150,7 +148,7 @@ the release workflow uses `hdiutil create` instead.
 
 ## Project skills
 
-`.claude/skills/` ships Claude Code skills scoped to this repo:
+`.Codex/skills/` ships Codex skills scoped to this repo:
 
 - **`add-config-capability`** — invoke when extending the user-configurable
   surface (new `MatcherTree` variant, `Action` variant, `Settings` field,

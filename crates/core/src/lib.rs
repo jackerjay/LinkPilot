@@ -15,7 +15,9 @@ pub mod protocol;
 pub mod routing;
 pub mod rules;
 
-pub use browser::{BrowserId, BrowserKind, BrowserProfile, BrowserTarget, InstalledBrowser};
+pub use browser::{
+    apply_profile_order, BrowserId, BrowserKind, BrowserProfile, BrowserTarget, InstalledBrowser,
+};
 pub use config::ConfigDocument;
 pub use routing::{Router, RoutingContext, RoutingDecision};
 pub use rules::Rule;

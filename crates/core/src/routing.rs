@@ -253,16 +253,34 @@ fn eval_tree(tree: &MatcherTree, ctx: &RoutingContext) -> MatcherEval {
         MatcherTree::SourceApp { name, bundle_id } => {
             // Bundle id is the stable identifier (e.g. com.electron.lark
             // matches whether the localized name is "Lark", "Feishu", or
-            // "飞书"). Only fall back to name matching when no bundle id
-            // is stored on the rule — old configs authored by hand, or
-            // rules where the user typed a name without using the picker.
-            let matched = match bundle_id {
+            // "飞书"). Production deep-link events carry the bundle id;
+            // simulated contexts (Test URL page, IPC clients without app
+            // metadata) may only have a name.
+            //
+            // Matching strategy:
+            //   1. Rule has bundle_id + ctx has bundle_id → require bundle match.
+            //   2. Rule has bundle_id + ctx has only a name → fall back to
+            //      matching the rule's display name. This is what makes the
+            //      Test URL page work for rules authored via AppPickerButton
+            //      (those store both fields).
+            //   3. No bundle id on the rule → name match (legacy / hand-written).
+            //
+            // The bundle-id-strict path still wins for production routing:
+            // deep-link contexts always set bundle_id, so the fallback only
+            // kicks in for simulators and external callers.
+            let by_bundle = match bundle_id {
                 Some(bid) if !bid.is_empty() => ctx
                     .source
                     .bundle_id
                     .as_deref()
-                    .map(|b| b.eq_ignore_ascii_case(bid))
-                    .unwrap_or(false),
+                    .map(|b| b.eq_ignore_ascii_case(bid)),
+                _ => None,
+            };
+            let matched = match by_bundle {
+                Some(true) => true,
+                Some(false) if ctx.source.bundle_id.is_some() => false,
+                // Either rule has no bundle_id, or rule has bundle_id but ctx
+                // has none — in both cases fall through to name matching.
                 _ => ctx
                     .source
                     .app_name
@@ -479,6 +497,108 @@ mod tests {
         match decision {
             RoutingDecision::Open { target, .. } => assert_eq!(target.browser.0, "chrome"),
             other => panic!("expected chrome, got {other:?}"),
+        }
+    }
+
+    fn source_app_rule(
+        host: &str,
+        app_name: &str,
+        bundle_id: Option<&str>,
+        target_browser: &str,
+    ) -> Rule {
+        Rule {
+            id: RuleId::default(),
+            enabled: true,
+            when: MatcherTree::All {
+                of: vec![
+                    MatcherTree::UrlHost {
+                        pattern: host.into(),
+                    },
+                    MatcherTree::SourceApp {
+                        name: app_name.into(),
+                        bundle_id: bundle_id.map(|s| s.to_string()),
+                    },
+                ],
+            },
+            then: Action::Open {
+                target: BrowserTarget::new(BrowserId::new(target_browser)),
+            },
+            source: RuleSource::Gui,
+            note: None,
+            workspace_id: None,
+        }
+    }
+
+    #[test]
+    fn source_app_matches_by_name_when_context_has_no_bundle_id() {
+        // Reproduces the Test URL page bug: rule authored via AppPickerButton
+        // (carries bundle_id), simulator passes only the name (bundle_id=None).
+        // The matcher should fall back to name matching so the simulator
+        // doesn't silently mis-report "no rule fired".
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
+        config.rules.push(source_app_rule(
+            "github.com",
+            "Slack",
+            Some("com.tinyspeck.slackmacgap"),
+            "chrome",
+        ));
+        let mut c = ctx("https://github.com/x");
+        c.source.app_name = Some("Slack".into());
+        c.source.bundle_id = None;
+
+        let decision = Router::new(&config).evaluate(&c);
+        match decision {
+            RoutingDecision::Open { target, .. } => assert_eq!(target.browser.0, "chrome"),
+            other => panic!("expected chrome via name fallback, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn source_app_prefers_bundle_id_when_both_present() {
+        // Localization safety: rule pins bundle_id, ctx has a *different*
+        // app_name but the matching bundle_id → still match. This is the
+        // production path (deep-link events ship bundle ids).
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
+        config.rules.push(source_app_rule(
+            "github.com",
+            "Lark",
+            Some("com.electron.lark"),
+            "chrome",
+        ));
+        let mut c = ctx("https://github.com/x");
+        c.source.app_name = Some("飞书".into());
+        c.source.bundle_id = Some("com.electron.lark".into());
+
+        let decision = Router::new(&config).evaluate(&c);
+        match decision {
+            RoutingDecision::Open { target, .. } => assert_eq!(target.browser.0, "chrome"),
+            other => panic!("expected chrome via bundle_id match, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn source_app_bundle_id_mismatch_does_not_fall_through_to_name() {
+        // Same name, different bundle_id (a rogue app impersonating "Slack").
+        // We have a bundle_id on both sides — the strict comparison must win,
+        // otherwise the name match would silently let the impersonator through.
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("arc")));
+        config.rules.push(source_app_rule(
+            "github.com",
+            "Slack",
+            Some("com.tinyspeck.slackmacgap"),
+            "chrome",
+        ));
+        let mut c = ctx("https://github.com/x");
+        c.source.app_name = Some("Slack".into());
+        c.source.bundle_id = Some("com.malicious.fake-slack".into());
+
+        let decision = Router::new(&config).evaluate(&c);
+        match decision {
+            RoutingDecision::Open { target, .. } => assert_eq!(
+                target.browser.0, "arc",
+                "name match must not override an explicit bundle_id mismatch"
+            ),
+            other => panic!("expected default arc, got {other:?}"),
         }
     }
 

@@ -8,6 +8,8 @@ pub mod store;
 
 pub use store::{default_config_path, ConfigStore};
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -132,6 +134,45 @@ pub struct Settings {
     /// LinkPilot always has.
     #[serde(default = "default_smart_routing")]
     pub smart_routing_enabled: bool,
+    /// Visual style for the browser+profile picker that appears for
+    /// `ask` routes with multi-profile browsers. The picker window
+    /// reads this once on open and renders the matching Halo variant.
+    /// Defaults to Frosted because the design lead picked it as the
+    /// most macOS-native ("baseline") — Bezel and Crown are opt-in.
+    #[serde(default)]
+    pub picker_style: PickerStyle,
+    /// User-customized profile order, per browser id. The picker uses
+    /// this to place profiles in specific wheel slots — important
+    /// because keyboard 1–9 shortcuts follow position order, so users
+    /// who learn `1 = Work` want it to stay there even after the
+    /// inventory adds new profiles.
+    ///
+    /// Semantics: profiles whose id appears in the list render in
+    /// that order. Profiles missing from the list (newly added by the
+    /// browser, or stale entries) fall through to the default sort
+    /// (`is_default` first, then alphabetical) and append at the end.
+    /// This way a user's saved order survives profile churn without
+    /// silently dropping new profiles.
+    #[serde(default)]
+    pub profile_orders: BTreeMap<String, Vec<String>>,
+}
+
+/// Visual variant for the browser-pick wheel. The three values come
+/// from the design exploration (chat2.md): all share the same geometry
+/// + interaction model, only the painted look differs.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PickerStyle {
+    /// Translucent white sectors, profile color on the outer rim.
+    /// Closest to existing popover language — recommended default.
+    #[default]
+    Frosted,
+    /// Instrument-ring look: ticks + colored dots at rest, hovered
+    /// wedge paints in.
+    Bezel,
+    /// Apple-Watch style: the wheel surrounds a center "display" that
+    /// shows the currently-aimed profile (or the default at idle).
+    Crown,
 }
 
 fn default_smart_routing() -> bool {
@@ -145,6 +186,8 @@ impl Default for Settings {
             history_retention_days: None,
             record_query_strings: false,
             smart_routing_enabled: true,
+            picker_style: PickerStyle::Frosted,
+            profile_orders: BTreeMap::new(),
         }
     }
 }

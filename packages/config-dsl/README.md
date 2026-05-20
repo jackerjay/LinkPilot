@@ -117,4 +117,4 @@ Terminals (turn a `RouteBuilder` into a `PendingRule`):
 
 ## License
 
-MIT OR Apache-2.0.
+MIT.
