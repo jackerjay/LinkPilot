@@ -128,6 +128,21 @@ export default function App() {
         return;
       }
 
+      if (!result.asset.sha256) {
+        // Refuse to auto-download an unverified DMG. Releases ship a
+        // `checksums.txt`; if it's missing or doesn't list our asset,
+        // the user can still grab the installer manually from the
+        // release page — but we never write an unverified binary to
+        // the updates dir on their behalf.
+        setUpdateCheck({
+          status: "error",
+          error:
+            "Release is missing a checksums.txt entry for the macOS DMG; refusing to auto-download an unverified installer.",
+          checkedAt: Date.now(),
+          result,
+        });
+        return;
+      }
       setUpdateCheck({ status: "downloading", result });
       try {
         const download = await ipc.updateDownload({
@@ -135,6 +150,7 @@ export default function App() {
           version: result.latestVersion,
           asset_name: result.asset.name,
           expected_bytes: result.asset.size,
+          expected_sha256: result.asset.sha256,
         });
         setUpdateCheck({ status: "downloaded", result, download });
       } catch (downloadErr) {

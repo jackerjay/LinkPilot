@@ -43,7 +43,12 @@ pub fn execute(
         Err(err) => return LaunchOutcome::Failed(format!("bad URL {raw_url}: {err}")),
     };
 
-    let default_target = state.config.document().default_target;
+    // Avoid deep-cloning the entire ConfigDocument just to read the
+    // default target. dispatch::execute runs once per URL open, which
+    // for power users routing many links a minute adds up.
+    let default_target = state
+        .config
+        .with_document(|doc| doc.default_target.clone());
 
     match decision {
         RoutingDecision::Open { target, .. } => {
@@ -182,8 +187,16 @@ fn resolve_ask(
     let mut target_by_id: HashMap<String, BrowserTarget> = HashMap::new();
     let mut choices: Vec<PickerChoice> = Vec::with_capacity(source.len());
     let inventory = state.platform.browser_inventory();
-    let doc = state.config.document();
-    let order_map = &doc.settings.profile_orders;
+    // Ask is high-frequency, so don't deep-clone the whole ConfigDocument
+    // (rules + workspaces + browsers) just to read two fields. Project
+    // out picker_style and the per-browser profile orders under the store
+    // mutex and let the rest of the document stay shared.
+    let (order_map, style) = state.config.with_document(|doc| {
+        (
+            doc.settings.profile_orders.clone(),
+            doc.settings.picker_style,
+        )
+    });
     for target in source {
         let info = installed.iter().find(|b| b.id == target.browser);
         let name = info
@@ -241,11 +254,10 @@ fn resolve_ask(
         });
     }
 
-    // Look up the user's current picker style so the renderer can
-    // open in the right Halo variant. Read once at ask-time — flipping
-    // the setting mid-pick would force a remount of the wheel which
-    // isn't worth the complexity.
-    let style = doc.settings.picker_style;
+    // Style was read at the top of this function from the same snapshot
+    // as `order_map`, so the picker variant matches whatever ordering we
+    // baked in. Flipping `picker_style` mid-pick would force a remount
+    // of the wheel which isn't worth the complexity.
     let picked = picker::show_picker(app, url, choices, style)?;
     let mut target = target_by_id.remove(&picked.browser_id)?;
     // Apply the chosen profile to the BrowserTarget. We don't overwrite

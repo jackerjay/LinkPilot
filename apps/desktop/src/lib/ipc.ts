@@ -126,6 +126,11 @@ export interface UpdateDownloadRequest {
   version: string;
   asset_name: string;
   expected_bytes?: number | null;
+  /** Lowercase hex SHA-256 from `checksums.txt`. Forwarded to the
+   *  daemon so it can verify the downloaded DMG before moving it into
+   *  place. `null` makes the daemon refuse to write — we never auto-
+   *  install an unverified binary. */
+  expected_sha256?: string | null;
 }
 
 export interface UpdateDownload {

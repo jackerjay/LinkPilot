@@ -9,7 +9,7 @@ description = "LinkPilot desktop app — Tauri shell hosting the daemon, tray, a
 [lib]
 name = "linkpilot_desktop"
 path = "src/lib.rs"
-crate-type = ["rlib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
 name = "linkpilot-desktop"
