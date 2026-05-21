@@ -33,6 +33,7 @@ LinkPilot 当前聚焦 macOS。
 - 按 host、path、来源应用、来源浏览器、来源 profile 路由 URL。
 - Chrome 系浏览器、Arc、Firefox、Safari 和自定义浏览器的识别与 profile 枚举。
 - Ask picker：Halo profile 选择环、键盘快捷键、profile 排序、暗色模式，以及 Settings 里的真实测试 URL。
+- 自动检查 GitHub Release 更新并下载 DMG，在 Settings 中由用户手动打开安装包。
 - 后台 daemon 与 Unix socket IPC，主窗口关闭后仍可继续路由。
 - 菜单栏托盘、Inspector、Test URL 模拟器、浏览器管理、Settings 和 onboarding。
 - `lpt` CLI：打开 URL、管理规则、查看配置、安装 daemon、检查默认浏览器状态。
@@ -64,6 +65,10 @@ open /Applications/LinkPilot.app
 1. 把 LinkPilot 注册为系统默认浏览器。
 2. 安装后台 daemon LaunchAgent。
 3. 把内置的 `lpt` 命令安装到 `~/.local/bin`。
+
+Settings 默认会在启动后检查 GitHub Releases 中是否有新版本。如果发现新的
+macOS DMG，LinkPilot 会下载到本地更新缓存，并提示你点击 “Open installer”
+后再手动升级。可以在 Settings → General → Updates 中关闭。
 
 ### 仅 CLI
 
@@ -128,6 +133,7 @@ lpt config import ./linkpilot.backup.json
 lpt settings show
 lpt settings smart-routing off
 lpt settings launch-at-login on
+lpt settings auto-updates off
 lpt settings history-retention 30
 
 # 浏览器

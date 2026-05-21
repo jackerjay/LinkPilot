@@ -322,6 +322,8 @@ enum SettingsAction {
     /// install/uninstall is owned by the GUI and currently CLI-only flips
     /// the persisted preference.
     LaunchAtLogin { value: OnOff },
+    /// Toggle startup checks for newer GitHub Release builds.
+    AutoUpdates { value: OnOff },
     /// Toggle whether URL query strings are kept in route history.
     RecordQueryStrings { value: OnOff },
     /// Set history retention in days, or `clear` to keep forever.
@@ -547,6 +549,9 @@ fn main() -> Result<()> {
             }
             SettingsAction::LaunchAtLogin { value } => {
                 run_settings_set(cli.config, |s| s.launch_at_login = value.as_bool())
+            }
+            SettingsAction::AutoUpdates { value } => {
+                run_settings_set(cli.config, |s| s.auto_check_updates = value.as_bool())
             }
             SettingsAction::RecordQueryStrings { value } => {
                 run_settings_set(cli.config, |s| s.record_query_strings = value.as_bool())

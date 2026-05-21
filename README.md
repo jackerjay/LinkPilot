@@ -37,6 +37,8 @@ The current app includes:
   and custom browser entries.
 - Ask picker with Halo profile wheel, keyboard shortcuts, profile ordering,
   dark mode, and a Settings test URL flow that opens real browsers.
+- Automatic GitHub Release update checks and DMG downloads, with a manual
+  installer-open step in Settings.
 - Background daemon with Unix socket IPC so routing keeps working after the
   main window is closed.
 - Menu-bar tray, inspector, test URL simulator, browser manager, settings, and
@@ -71,6 +73,11 @@ After first launch, use the onboarding or Settings page to:
 1. Register LinkPilot as the system default browser.
 2. Install the background daemon LaunchAgent.
 3. Install the bundled `lpt` command to `~/.local/bin`.
+
+Settings checks GitHub Releases for newer LinkPilot builds on startup by
+default. When a newer macOS DMG is available, LinkPilot downloads it to its
+local update cache and asks you to click "Open installer" before upgrading.
+You can turn this off under Settings → General → Updates.
 
 ### CLI only
 
@@ -137,6 +144,7 @@ lpt config import ./linkpilot.backup.json
 lpt settings show
 lpt settings smart-routing off
 lpt settings launch-at-login on
+lpt settings auto-updates off
 lpt settings history-retention 30
 
 # Browsers

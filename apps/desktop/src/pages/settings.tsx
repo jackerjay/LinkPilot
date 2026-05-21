@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +14,7 @@ import { PickerStyleChooser } from "@/picker/halo/PickerStyleChooser";
 import { ProfileOrderEditor } from "@/picker/halo/ProfileOrderEditor";
 import { ipc } from "@/lib/ipc";
 import { useTheme, type ThemeMode } from "@/lib/theme";
+import type { UpdateCheckState } from "@/lib/update";
 import type {
   BrowserTarget,
   ConfigDocument,
@@ -25,9 +27,15 @@ import brandIcon from "@/assets/brand.png";
 
 interface Props {
   configEpoch: number;
+  updateCheck: UpdateCheckState;
+  onCheckForUpdates: () => Promise<void>;
 }
 
-export function SettingsPage({ configEpoch }: Props) {
+export function SettingsPage({
+  configEpoch,
+  updateCheck,
+  onCheckForUpdates,
+}: Props) {
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
   const [configPath, setConfigPath] = useState<string | null>(null);
   const [isDefault, setIsDefault] = useState<boolean | null>(null);
@@ -122,6 +130,19 @@ export function SettingsPage({ configEpoch }: Props) {
     }
   };
 
+  const toggleAutoCheckUpdates = async (next: boolean) => {
+    if (!doc) return;
+    try {
+      await ipc.configReplace({
+        ...doc,
+        settings: { ...doc.settings, auto_check_updates: next },
+      });
+      await refresh();
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
   const doImport = async () => {
     setError(null);
     setMessage(null);
@@ -182,6 +203,32 @@ export function SettingsPage({ configEpoch }: Props) {
       setMessage(
         "Background service removed. The daemon won't auto-start anymore.",
       );
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const openReleasePage = async () => {
+    const releaseUrl =
+      updateCheck.status === "downloaded"
+        ? updateCheck.result.releaseUrl
+        : updateCheck.status === "error"
+          ? updateCheck.result?.releaseUrl
+            : null;
+    if (!releaseUrl) return;
+    setError(null);
+    try {
+      await openUrl(releaseUrl);
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const openDownloadedInstaller = async () => {
+    if (updateCheck.status !== "downloaded") return;
+    setError(null);
+    try {
+      await openPath(updateCheck.download.path);
     } catch (err) {
       setError(String(err));
     }
@@ -352,6 +399,65 @@ export function SettingsPage({ configEpoch }: Props) {
 
       <div className="mac-card-title">General</div>
       <div className="mac-card">
+        <div className="mac-row" style={{ alignItems: "flex-start" }}>
+          <div className="grow">
+            <div className="mac-row-label">Updates</div>
+            <div
+              className="mac-muted"
+              style={{ fontSize: 11.5, marginTop: 2 }}
+            >
+              {describeUpdateCheck(updateCheck)}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="mac-tbtn"
+              onClick={() => void onCheckForUpdates()}
+              disabled={
+                updateCheck.status === "checking" ||
+                updateCheck.status === "downloading"
+              }
+            >
+              {updateCheck.status === "checking"
+                ? "Checking…"
+                : updateCheck.status === "downloading"
+                  ? "Downloading…"
+                  : "Check now"}
+            </button>
+            {updateCheck.status === "downloaded" && (
+              <button
+                type="button"
+                className="mac-tbtn primary"
+                onClick={() => void openDownloadedInstaller()}
+              >
+                Open installer
+              </button>
+            )}
+            {updateCheck.status === "error" && updateCheck.result && (
+              <button
+                type="button"
+                className="mac-tbtn"
+                onClick={() => void openReleasePage()}
+              >
+                Open release
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="mac-row">
+          <span className="grow mac-row-label">
+            Automatically check and download updates
+          </span>
+          <button
+            type="button"
+            className={`mac-switch accent ${doc?.settings.auto_check_updates ? "on" : ""}`}
+            aria-pressed={!!doc?.settings.auto_check_updates}
+            onClick={() =>
+              toggleAutoCheckUpdates(!doc?.settings.auto_check_updates)
+            }
+          />
+        </div>
         <div className="mac-row">
           <span className="grow mac-row-label">Launch at login</span>
           <button
@@ -539,4 +645,30 @@ export function SettingsPage({ configEpoch }: Props) {
       )}
     </div>
   );
+}
+
+function describeUpdateCheck(state: UpdateCheckState): string {
+  switch (state.status) {
+    case "idle":
+      return "No update check has run in this session.";
+    case "checking":
+      return "Checking GitHub Releases…";
+    case "downloading":
+      return `Version ${displayVersion(state.result.latestVersion)} is available. Downloading ${state.result.asset.name}…`;
+    case "downloaded":
+      return `Version ${displayVersion(state.result.latestVersion)} is downloaded. Click Open installer to upgrade.`;
+    case "up-to-date":
+      return `LinkPilot is up to date at ${displayVersion(state.result.currentVersion)}.`;
+    case "error":
+      if (state.result?.available) {
+        return `Version ${displayVersion(state.result.latestVersion)} is available, but the installer download failed: ${state.error}`;
+      }
+      return `Update check failed: ${state.error}`;
+  }
+}
+
+function displayVersion(version: string): string {
+  return version.startsWith("v") || version.startsWith("V")
+    ? version
+    : `v${version}`;
 }

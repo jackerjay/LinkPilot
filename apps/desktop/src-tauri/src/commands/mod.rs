@@ -2,6 +2,7 @@
 //! boundary; everything below them is plain Rust the daemon owns.
 
 use std::path::PathBuf;
+use std::process::Command;
 
 use linkpilot_core::browser::{BrowserId, BrowserProfile, InstalledBrowser};
 use linkpilot_core::config::{ConfigDocument, PickerStyle, Workspace, WriterId};
@@ -15,6 +16,7 @@ use linkpilot_core::routing::{
 use crate::dispatch::{self, LaunchOutcome};
 use linkpilot_core::rules::{Rule, RuleId};
 use tauri::{AppHandle, Emitter, State};
+use url::Url;
 
 use crate::state::AppState;
 
@@ -375,6 +377,120 @@ pub fn export_config(state: State<'_, AppState>, path: PathBuf) -> Result<(), St
     let doc = state.config.document();
     let json = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| e.to_string())
+}
+
+// ----------------------------------------------------------------------------
+// updates — discover happens in the renderer so Settings can show release
+// metadata immediately; the native side owns download-to-disk because DMGs are
+// too large to shuttle through the WebView IPC boundary.
+
+#[derive(serde::Deserialize)]
+pub struct UpdateDownloadRequest {
+    pub url: String,
+    pub version: String,
+    pub asset_name: String,
+    #[serde(default)]
+    pub expected_bytes: Option<u64>,
+}
+
+#[derive(serde::Serialize)]
+pub struct UpdateDownload {
+    pub version: String,
+    pub asset_name: String,
+    pub path: String,
+    pub already_downloaded: bool,
+    pub bytes: u64,
+}
+
+#[tauri::command]
+pub async fn update_download(
+    state: State<'_, AppState>,
+    request: UpdateDownloadRequest,
+) -> Result<UpdateDownload, String> {
+    let parsed = Url::parse(&request.url).map_err(|e| format!("invalid update URL: {e}"))?;
+    if parsed.scheme() != "https" || parsed.host_str() != Some("github.com") {
+        return Err("update downloads must come from GitHub release assets".to_string());
+    }
+
+    let asset_name = safe_update_asset_name(&request.asset_name)?;
+    let Some(config_dir) = state.config.path().parent().map(PathBuf::from) else {
+        return Err("could not locate LinkPilot config directory".to_string());
+    };
+    let updates_dir = config_dir.join("updates");
+    std::fs::create_dir_all(&updates_dir)
+        .map_err(|e| format!("creating {}: {e}", updates_dir.display()))?;
+
+    let destination = updates_dir.join(&asset_name);
+    if let Ok(meta) = std::fs::metadata(&destination) {
+        let bytes = meta.len();
+        if bytes > 0 && request.expected_bytes.map(|n| n == bytes).unwrap_or(true) {
+            return Ok(UpdateDownload {
+                version: request.version,
+                asset_name,
+                path: destination.display().to_string(),
+                already_downloaded: true,
+                bytes,
+            });
+        }
+    }
+
+    let tmp = destination.with_extension("download");
+    let url = request.url;
+    let download_path = destination.clone();
+    tauri::async_runtime::spawn_blocking(move || download_update_asset(&url, &tmp, &download_path))
+        .await
+        .map_err(|e| format!("download task failed: {e}"))??;
+
+    let bytes = std::fs::metadata(&destination)
+        .map_err(|e| format!("reading {}: {e}", destination.display()))?
+        .len();
+    Ok(UpdateDownload {
+        version: request.version,
+        asset_name,
+        path: destination.display().to_string(),
+        already_downloaded: false,
+        bytes,
+    })
+}
+
+fn safe_update_asset_name(name: &str) -> Result<String, String> {
+    if name.contains('/') || name.contains('\\') {
+        return Err("update asset name must be a plain filename".to_string());
+    }
+    let file_name = name.trim();
+    if file_name.is_empty() {
+        return Err("update asset name is empty".to_string());
+    }
+    if !file_name.ends_with(".dmg") {
+        return Err("LinkPilot can only auto-download macOS DMG assets".to_string());
+    }
+    Ok(file_name.to_string())
+}
+
+fn download_update_asset(url: &str, tmp: &PathBuf, destination: &PathBuf) -> Result<(), String> {
+    if tmp.exists() {
+        std::fs::remove_file(tmp).map_err(|e| format!("removing {}: {e}", tmp.display()))?;
+    }
+    let status = Command::new("/usr/bin/curl")
+        .arg("--fail")
+        .arg("--location")
+        .arg("--silent")
+        .arg("--show-error")
+        .arg("--output")
+        .arg(tmp)
+        .arg(url)
+        .status()
+        .map_err(|e| format!("starting curl: {e}"))?;
+    if !status.success() {
+        let _ = std::fs::remove_file(tmp);
+        return Err(format!("curl exited with {status}"));
+    }
+    if destination.exists() {
+        std::fs::remove_file(destination)
+            .map_err(|e| format!("removing {}: {e}", destination.display()))?;
+    }
+    std::fs::rename(tmp, destination)
+        .map_err(|e| format!("moving update to {}: {e}", destination.display()))
 }
 
 // ----------------------------------------------------------------------------
