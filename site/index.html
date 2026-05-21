@@ -1,0 +1,1408 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LinkPilot | macOS 链接路由器</title>
+    <meta
+      name="description"
+      content="LinkPilot 是 macOS 优先的链接路由器，把每个链接送到正确的浏览器、Profile 和 Workspace。"
+    />
+    <meta name="theme-color" content="#f7faf3" />
+    <meta property="og:title" content="LinkPilot | macOS 链接路由器" />
+    <meta
+      property="og:description"
+      content="把 Slack、Lark、Terminal、IDE 和浏览器里的链接，路由到正确的浏览器、Profile 和 Workspace。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="assets/icon.png" />
+    <link rel="icon" href="assets/icon.png" />
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f7faf3;
+        --surface: #ffffff;
+        --surface-soft: #eef6ef;
+        --ink: #111512;
+        --muted: #5a635d;
+        --line: #d5ded2;
+        --line-strong: #111512;
+        --green: #1dbf73;
+        --blue: #245edb;
+        --coral: #e85f41;
+        --amber: #c98316;
+        --dark: #15171a;
+        --dark-muted: #a9b0aa;
+        --radius: 8px;
+        --shadow: 0 28px 80px rgba(17, 21, 18, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+          sans-serif;
+        line-height: 1.55;
+        text-rendering: geometricPrecision;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      img {
+        display: block;
+        max-width: 100%;
+      }
+
+      .page-shell {
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      .nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 20;
+        border-bottom: 1px solid rgba(17, 21, 18, 0.1);
+        background: rgba(247, 250, 243, 0.86);
+        backdrop-filter: blur(18px);
+      }
+
+      .nav-inner {
+        width: min(1180px, calc(100% - 40px));
+        height: 70px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 760;
+      }
+
+      .brand img {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+        color: var(--muted);
+        font-size: 0.94rem;
+      }
+
+      .nav-links a {
+        transition:
+          color 160ms ease,
+          transform 160ms ease;
+      }
+
+      .nav-links a:hover {
+        color: var(--ink);
+        transform: translateY(-1px);
+      }
+
+      .hero {
+        position: relative;
+        min-height: 88vh;
+        padding-top: 70px;
+        background: var(--paper);
+        overflow: hidden;
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: 70px 0 0;
+        background:
+          repeating-linear-gradient(
+            0deg,
+            rgba(17, 21, 18, 0.035) 0,
+            rgba(17, 21, 18, 0.035) 1px,
+            transparent 1px,
+            transparent 44px
+          ),
+          repeating-linear-gradient(
+            90deg,
+            rgba(17, 21, 18, 0.035) 0,
+            rgba(17, 21, 18, 0.035) 1px,
+            transparent 1px,
+            transparent 44px
+          );
+        opacity: 0.65;
+      }
+
+      .route-scene {
+        position: absolute;
+        inset: 70px 0 0;
+        pointer-events: none;
+      }
+
+      .route-node {
+        position: absolute;
+        min-width: 138px;
+        padding: 12px 14px;
+        border: 1px solid rgba(17, 21, 18, 0.14);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: 0 18px 60px rgba(17, 21, 18, 0.08);
+        color: var(--ink);
+      }
+
+      .route-node strong,
+      .route-target strong {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 760;
+      }
+
+      .route-node span,
+      .route-target span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .route-node.source-a {
+        top: 13%;
+        left: 6%;
+      }
+
+      .route-node.source-b {
+        top: 46%;
+        left: 3%;
+      }
+
+      .route-node.source-c {
+        bottom: 13%;
+        left: 10%;
+      }
+
+      .route-target {
+        position: absolute;
+        min-width: 160px;
+        padding: 13px 15px;
+        border: 1px solid rgba(17, 21, 18, 0.16);
+        border-left: 6px solid var(--green);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 18px 60px rgba(17, 21, 18, 0.1);
+      }
+
+      .route-target.arc {
+        top: 16%;
+        right: 7%;
+        border-left-color: var(--blue);
+      }
+
+      .route-target.work {
+        top: 46%;
+        right: 3%;
+        border-left-color: var(--green);
+      }
+
+      .route-target.safari {
+        bottom: 14%;
+        right: 11%;
+        border-left-color: var(--coral);
+      }
+
+      .route-core {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 218px;
+        min-height: 218px;
+        display: grid;
+        place-items: center;
+        padding: 22px;
+        border: 1px solid rgba(17, 21, 18, 0.18);
+        border-radius: 36px;
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: var(--shadow);
+        transform: translate(-50%, -50%) rotate(-6deg);
+      }
+
+      .route-core img {
+        width: 82px;
+        height: 82px;
+        margin: 0 auto 12px;
+        border-radius: 18px;
+      }
+
+      .route-core strong {
+        display: block;
+        text-align: center;
+        font-size: 1.05rem;
+      }
+
+      .route-core span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        text-align: center;
+        font-size: 0.82rem;
+      }
+
+      .route-line {
+        position: absolute;
+        height: 2px;
+        border-radius: 999px;
+        background: rgba(17, 21, 18, 0.24);
+        transform-origin: left center;
+      }
+
+      .route-line.a {
+        top: 25%;
+        left: 17%;
+        width: 32%;
+        transform: rotate(12deg);
+        background: var(--blue);
+      }
+
+      .route-line.b {
+        top: 53%;
+        left: 14%;
+        width: 35%;
+        background: var(--green);
+      }
+
+      .route-line.c {
+        bottom: 27%;
+        left: 20%;
+        width: 31%;
+        transform: rotate(-15deg);
+        background: var(--coral);
+      }
+
+      .route-line.d {
+        top: 34%;
+        right: 17%;
+        width: 26%;
+        transform: rotate(-10deg);
+        background: var(--blue);
+      }
+
+      .route-line.e {
+        top: 52%;
+        right: 15%;
+        width: 28%;
+        background: var(--green);
+      }
+
+      .route-line.f {
+        bottom: 30%;
+        right: 20%;
+        width: 25%;
+        transform: rotate(12deg);
+        background: var(--coral);
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 2;
+        width: min(1180px, calc(100% - 40px));
+        min-height: calc(88vh - 70px);
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        padding: 84px 0 96px;
+      }
+
+      .hero-copy {
+        max-width: 680px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 36px;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--green);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 22px;
+        font-family:
+          "Iowan Old Style", "Songti SC", "STSong", "Times New Roman", serif;
+        font-size: 5.1rem;
+        line-height: 0.95;
+        font-weight: 780;
+        letter-spacing: 0;
+      }
+
+      .hero-lede {
+        max-width: 620px;
+        margin-bottom: 32px;
+        color: #323a34;
+        font-size: 1.28rem;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 18px;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius);
+        font-size: 0.96rem;
+        font-weight: 760;
+        transition:
+          transform 160ms ease,
+          box-shadow 160ms ease,
+          background-color 160ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(17, 21, 18, 0.14);
+      }
+
+      .button.primary {
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .button.secondary {
+        background: rgba(255, 255, 255, 0.76);
+      }
+
+      .hero-proof {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 34px;
+        color: #2d352f;
+      }
+
+      .proof-pill {
+        padding: 7px 10px;
+        border: 1px solid rgba(17, 21, 18, 0.14);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .section {
+        position: relative;
+        padding: 96px 0;
+      }
+
+      .section-inner {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .section-kicker {
+        margin-bottom: 12px;
+        color: var(--coral);
+        font-size: 0.85rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .section-title {
+        max-width: 760px;
+        margin-bottom: 18px;
+        font-family:
+          "Iowan Old Style", "Songti SC", "STSong", "Times New Roman", serif;
+        font-size: 3rem;
+        line-height: 1.05;
+        font-weight: 760;
+        letter-spacing: 0;
+      }
+
+      .section-lede {
+        max-width: 720px;
+        color: var(--muted);
+        font-size: 1.06rem;
+      }
+
+      .problem-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1px;
+        margin-top: 46px;
+        border: 1px solid var(--line);
+        background: var(--line);
+      }
+
+      .problem-item {
+        min-height: 210px;
+        padding: 24px;
+        background: var(--surface);
+      }
+
+      .problem-item .index {
+        display: block;
+        margin-bottom: 34px;
+        color: var(--amber);
+        font-weight: 800;
+      }
+
+      .problem-item h3 {
+        margin-bottom: 10px;
+        font-size: 1.16rem;
+      }
+
+      .problem-item p {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .dark-band {
+        background: var(--dark);
+        color: #fff;
+      }
+
+      .dark-band .section-kicker {
+        color: #6df0a9;
+      }
+
+      .dark-band .section-lede,
+      .dark-band .flow-caption,
+      .dark-band .rule-note {
+        color: var(--dark-muted);
+      }
+
+      .flow-board {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr 1fr;
+        gap: 18px;
+        margin-top: 46px;
+        align-items: stretch;
+      }
+
+      .flow-column {
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.055);
+        overflow: hidden;
+      }
+
+      .flow-heading {
+        padding: 16px 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font-weight: 800;
+      }
+
+      .flow-list {
+        display: grid;
+        gap: 10px;
+        padding: 18px;
+      }
+
+      .flow-token {
+        padding: 12px 13px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.06);
+        color: #f9fff9;
+        font-size: 0.92rem;
+      }
+
+      .rule-console {
+        padding: 18px;
+      }
+
+      .rule-line {
+        display: grid;
+        grid-template-columns: 112px 1fr;
+        gap: 14px;
+        padding: 13px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+        font-size: 0.9rem;
+      }
+
+      .rule-line:last-child {
+        border-bottom: 0;
+      }
+
+      .rule-label {
+        color: #6df0a9;
+      }
+
+      .rule-value {
+        color: #f6f9f3;
+      }
+
+      .rule-note {
+        margin: 18px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        font-size: 0.9rem;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-top: 48px;
+      }
+
+      .feature-card {
+        min-height: 270px;
+        padding: 26px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+      }
+
+      .feature-card:nth-child(2) {
+        background: #f0f7ff;
+      }
+
+      .feature-card:nth-child(3) {
+        background: #fff6ee;
+      }
+
+      .feature-mark {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        margin-bottom: 28px;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius);
+        font-weight: 800;
+      }
+
+      .feature-card h3 {
+        margin-bottom: 12px;
+        font-size: 1.25rem;
+      }
+
+      .feature-card p {
+        color: var(--muted);
+      }
+
+      .picker-band {
+        background: #ffffff;
+      }
+
+      .picker-layout {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 56px;
+        align-items: center;
+      }
+
+      .picker-copy .section-title {
+        margin-bottom: 20px;
+      }
+
+      .picker-stage {
+        position: relative;
+        min-height: 560px;
+      }
+
+      .picker-window {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: min(520px, 100%);
+        min-height: 360px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: #f8fbf8;
+        box-shadow: var(--shadow);
+        transform: translate(-50%, -50%);
+      }
+
+      .picker-titlebar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 26px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .window-dots {
+        display: flex;
+        gap: 6px;
+      }
+
+      .window-dots span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--line);
+      }
+
+      .window-dots span:nth-child(1) {
+        background: var(--coral);
+      }
+
+      .window-dots span:nth-child(2) {
+        background: var(--amber);
+      }
+
+      .window-dots span:nth-child(3) {
+        background: var(--green);
+      }
+
+      .browser-row {
+        display: grid;
+        grid-template-columns: 44px 1fr auto;
+        gap: 14px;
+        align-items: center;
+        padding: 13px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .browser-row:last-child {
+        border-bottom: 0;
+      }
+
+      .browser-icon {
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius);
+        border: 1px solid rgba(17, 21, 18, 0.14);
+        color: #fff;
+        font-weight: 800;
+      }
+
+      .browser-icon.arc {
+        background: var(--blue);
+      }
+
+      .browser-icon.chrome {
+        background: var(--green);
+      }
+
+      .browser-icon.safari {
+        background: var(--coral);
+      }
+
+      .browser-meta strong {
+        display: block;
+        font-size: 0.98rem;
+      }
+
+      .browser-meta span,
+      .shortcut {
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .shortcut {
+        min-width: 34px;
+        padding: 4px 8px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        text-align: center;
+        font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      }
+
+      .halo {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 260px;
+        height: 260px;
+        border: 1px solid rgba(17, 21, 18, 0.16);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        animation: haloFloat 5.5s ease-in-out infinite;
+      }
+
+      .halo::before {
+        content: "";
+        position: absolute;
+        inset: 42px;
+        border: 1px dashed rgba(17, 21, 18, 0.24);
+        border-radius: 50%;
+      }
+
+      .halo-dot {
+        position: absolute;
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        border: 1px solid rgba(17, 21, 18, 0.18);
+        background: #fff;
+        box-shadow: 0 14px 30px rgba(17, 21, 18, 0.12);
+        font-weight: 800;
+      }
+
+      .halo-dot:nth-child(1) {
+        top: -8px;
+        left: 108px;
+        color: var(--blue);
+      }
+
+      .halo-dot:nth-child(2) {
+        right: 8px;
+        top: 86px;
+        color: var(--green);
+      }
+
+      .halo-dot:nth-child(3) {
+        left: 30px;
+        bottom: 20px;
+        color: var(--coral);
+      }
+
+      @keyframes haloFloat {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) rotate(-4deg);
+        }
+        50% {
+          transform: translate(-50%, -53%) rotate(4deg);
+        }
+      }
+
+      .trust-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        margin-top: 48px;
+        border: 1px solid var(--line);
+        background: var(--line);
+      }
+
+      .trust-item {
+        padding: 30px;
+        background: var(--surface);
+      }
+
+      .trust-item h3 {
+        margin-bottom: 12px;
+        font-size: 1.2rem;
+      }
+
+      .trust-item p {
+        margin-bottom: 0;
+        color: var(--muted);
+      }
+
+      .install {
+        background: #f4f7ff;
+      }
+
+      .install-layout {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 42px;
+        align-items: start;
+      }
+
+      .install-panel {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: #fff;
+        overflow: hidden;
+      }
+
+      .install-panel header {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--line);
+        font-weight: 800;
+      }
+
+      .command-block {
+        margin: 0;
+        padding: 22px;
+        overflow-x: auto;
+        background: #111512;
+        color: #eaf2e9;
+        font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+        font-size: 0.86rem;
+        line-height: 1.7;
+      }
+
+      .footer {
+        padding: 42px 0;
+        background: var(--dark);
+        color: #fff;
+      }
+
+      .footer-inner {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .footer a {
+        color: #c7f7dc;
+      }
+
+      @media (max-width: 980px) {
+        h1 {
+          font-size: 4rem;
+        }
+
+        .hero-content {
+          align-items: flex-end;
+        }
+
+        .route-node,
+        .route-target {
+          opacity: 0.52;
+        }
+
+        .route-core {
+          top: 38%;
+          left: 68%;
+          width: 178px;
+          min-height: 178px;
+        }
+
+        .problem-strip,
+        .feature-grid,
+        .flow-board,
+        .picker-layout,
+        .install-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .picker-stage {
+          min-height: 500px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .nav-inner {
+          width: min(1180px, calc(100% - 28px));
+          height: 62px;
+        }
+
+        .nav-links {
+          display: none;
+        }
+
+        .hero {
+          min-height: 86vh;
+          padding-top: 62px;
+        }
+
+        .hero::before,
+        .route-scene {
+          top: 62px;
+        }
+
+        .hero-content {
+          width: min(1180px, calc(100% - 28px));
+          min-height: calc(86vh - 62px);
+          padding: 52px 0 64px;
+        }
+
+        h1 {
+          font-size: 3.12rem;
+        }
+
+        .hero-lede {
+          font-size: 1.08rem;
+        }
+
+        .button {
+          width: 100%;
+        }
+
+        .route-node.source-b,
+        .route-node.source-c,
+        .route-target.arc,
+        .route-target.safari,
+        .route-line {
+          display: none;
+        }
+
+        .route-node.source-a {
+          top: 9%;
+          left: 6%;
+          opacity: 0.42;
+        }
+
+        .route-target.work {
+          top: 12%;
+          right: 14px;
+          opacity: 0.46;
+        }
+
+        .route-core {
+          display: none;
+        }
+
+        .section {
+          padding: 72px 0;
+        }
+
+        .section-inner,
+        .footer-inner {
+          width: min(1180px, calc(100% - 28px));
+        }
+
+        .section-title {
+          font-size: 2.3rem;
+        }
+
+        .problem-item {
+          min-height: auto;
+        }
+
+        .trust-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .picker-stage {
+          min-height: 430px;
+        }
+
+        .picker-window {
+          padding: 18px;
+        }
+
+        .halo {
+          width: 210px;
+          height: 210px;
+        }
+
+        .halo-dot:nth-child(1) {
+          left: 83px;
+        }
+
+        .halo-dot:nth-child(2) {
+          top: 68px;
+        }
+
+        .footer-inner {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <nav class="nav" aria-label="主导航">
+        <div class="nav-inner">
+          <a class="brand" href="#top" aria-label="LinkPilot 首页">
+            <img src="assets/icon.png" alt="" />
+            <span>LinkPilot</span>
+          </a>
+          <div class="nav-links">
+            <a href="#routing">路由能力</a>
+            <a href="#picker">Ask Picker</a>
+            <a href="#trust">可信边界</a>
+            <a href="#install">安装</a>
+          </div>
+        </div>
+      </nav>
+
+      <header class="hero" id="top">
+        <div class="route-scene" aria-hidden="true">
+          <div class="route-node source-a">
+            <strong>Slack</strong>
+            <span>github.com/oauth</span>
+          </div>
+          <div class="route-node source-b">
+            <strong>Terminal</strong>
+            <span>figma.com/file</span>
+          </div>
+          <div class="route-node source-c">
+            <strong>IDE</strong>
+            <span>localhost:5173</span>
+          </div>
+          <div class="route-line a"></div>
+          <div class="route-line b"></div>
+          <div class="route-line c"></div>
+          <div class="route-core">
+            <div>
+              <img src="assets/icon.png" alt="" />
+              <strong>Rules Engine</strong>
+              <span>host / path / app / profile</span>
+            </div>
+          </div>
+          <div class="route-line d"></div>
+          <div class="route-line e"></div>
+          <div class="route-line f"></div>
+          <div class="route-target arc">
+            <strong>Arc</strong>
+            <span>Personal Space</span>
+          </div>
+          <div class="route-target work">
+            <strong>Chrome Work</strong>
+            <span>公司 Profile</span>
+          </div>
+          <div class="route-target safari">
+            <strong>Safari</strong>
+            <span>支付与 Apple</span>
+          </div>
+        </div>
+        <div class="hero-content">
+          <div class="hero-copy">
+            <p class="eyebrow">macOS-first link router</p>
+            <h1>LinkPilot</h1>
+            <p class="hero-lede">
+              把每个链接送到正确的浏览器、Profile 和 Workspace。它不是浏览器，而是站在
+              macOS、应用和浏览器之间的轻量路由层。
+            </p>
+            <div class="hero-actions">
+              <a
+                class="button primary"
+                href="https://github.com/jackerjay/LinkPilot/releases/latest"
+                rel="noopener"
+              >
+                下载最新版本
+              </a>
+              <a
+                class="button secondary"
+                href="https://github.com/jackerjay/LinkPilot"
+                rel="noopener"
+              >
+                查看 GitHub
+              </a>
+            </div>
+            <div class="hero-proof" aria-label="当前能力">
+              <span class="proof-pill">macOS 桌面应用</span>
+              <span class="proof-pill">后台 daemon</span>
+              <span class="proof-pill">lpt CLI</span>
+              <span class="proof-pill">中英繁日界面</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section class="section">
+          <div class="section-inner">
+            <p class="section-kicker">Why it exists</p>
+            <h2 class="section-title">多浏览器工作流的麻烦，不该靠手动复制链接解决。</h2>
+            <p class="section-lede">
+              开发者、顾问和安全敏感用户经常同时使用 Chrome Work Profile、个人浏览器、
+              Arc、Safari、Firefox 和多个工作空间。LinkPilot 把“这个链接该去哪”变成可解释、
+              可测试、可维护的本地规则。
+            </p>
+
+            <div class="problem-strip">
+              <article class="problem-item">
+                <span class="index">01</span>
+                <h3>外部应用打开错浏览器</h3>
+                <p>Slack、Lark、Raycast、Terminal 或 IDE 发出的链接，经常落到错误身份环境。</p>
+              </article>
+              <article class="problem-item">
+                <span class="index">02</span>
+                <h3>OAuth 回调混乱</h3>
+                <p>登录流程被送进个人 Profile，或者公司账号回调进了测试浏览器。</p>
+              </article>
+              <article class="problem-item">
+                <span class="index">03</span>
+                <h3>浏览器 Profile 隔离难维护</h3>
+                <p>工作、个人、客户账号混在一起，Cookie 边界靠记忆维持。</p>
+              </article>
+              <article class="problem-item">
+                <span class="index">04</span>
+                <h3>缺少可解释的决策记录</h3>
+                <p>链接为什么去了那里，需要从规则和来源上下文里直接看见。</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section dark-band" id="routing">
+          <div class="section-inner">
+            <p class="section-kicker">Routing engine</p>
+            <h2 class="section-title">路由不是猜测，而是一条条可测试的规则。</h2>
+            <p class="section-lede">
+              LinkPilot 可以按 host、path、来源 App、来源浏览器和来源 Profile 判断目标。
+              没命中的链接走默认目标，需要人工选择时交给 Ask Picker。
+            </p>
+
+            <div class="flow-board" aria-label="链接路由流程">
+              <div class="flow-column">
+                <div class="flow-heading">来源</div>
+                <div class="flow-list">
+                  <div class="flow-token">Slack / Lark</div>
+                  <div class="flow-token">Terminal / Raycast</div>
+                  <div class="flow-token">IDE / Notes</div>
+                  <div class="flow-token">Browser context</div>
+                </div>
+              </div>
+
+              <div class="flow-column">
+                <div class="flow-heading">规则评估</div>
+                <div class="rule-console">
+                  <div class="rule-line">
+                    <span class="rule-label">host</span>
+                    <span class="rule-value">github.com, figma.com, notion.so</span>
+                  </div>
+                  <div class="rule-line">
+                    <span class="rule-label">path</span>
+                    <span class="rule-value">/oauth/*, /file/*, /work/*</span>
+                  </div>
+                  <div class="rule-line">
+                    <span class="rule-label">from app</span>
+                    <span class="rule-value">Slack, Terminal, VS Code</span>
+                  </div>
+                  <div class="rule-line">
+                    <span class="rule-label">target</span>
+                    <span class="rule-value">browser + profile + workspace</span>
+                  </div>
+                </div>
+                <p class="rule-note">
+                  GUI 和 CLI 都写入同一份本地配置；运行中的 daemon 会通过 fsnotify 自动感知变化。
+                </p>
+              </div>
+
+              <div class="flow-column">
+                <div class="flow-heading">目标</div>
+                <div class="flow-list">
+                  <div class="flow-token">Chrome Work Profile</div>
+                  <div class="flow-token">Arc Personal Space</div>
+                  <div class="flow-token">Safari Payment</div>
+                  <div class="flow-token">Ask Picker</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-inner">
+            <p class="section-kicker">What ships today</p>
+            <h2 class="section-title">桌面、后台服务和命令行是同一个路由系统。</h2>
+            <p class="section-lede">
+              当前版本聚焦 macOS：桌面应用负责配置和可视化，daemon 负责后台路由，
+              `lpt` CLI 负责脚本化操作和诊断。
+            </p>
+
+            <div class="feature-grid">
+              <article class="feature-card">
+                <div class="feature-mark">A</div>
+                <h3>桌面配置台</h3>
+                <p>
+                  Rules、Browsers、Settings、Inspector 和 Test URL 页面覆盖日常配置、浏览器管理、
+                  路由 dry-run 和实时决策检查。
+                </p>
+              </article>
+              <article class="feature-card">
+                <div class="feature-mark">B</div>
+                <h3>后台 daemon</h3>
+                <p>
+                  LinkPilot.app 关闭主窗口后，路由仍由后台服务继续处理。CLI 和 GUI 通过本机
+                  Unix socket 与同一个服务通信。
+                </p>
+              </article>
+              <article class="feature-card">
+                <div class="feature-mark">C</div>
+                <h3>`lpt` 命令行</h3>
+                <p>
+                  在终端里打开 URL、管理规则、导入导出配置、安装 daemon、检查默认浏览器状态，
+                  适合自动化和快速诊断。
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section picker-band" id="picker">
+          <div class="section-inner picker-layout">
+            <div class="picker-copy">
+              <p class="section-kicker">Ask Picker</p>
+              <h2 class="section-title">不确定时，让选择也足够快。</h2>
+              <p class="section-lede">
+                Ask 规则会打开 LinkPilot 的浏览器选择窗口。多 Profile 浏览器可以用 Halo
+                选择环快速瞄准 Profile，键盘位置 1 到 9 也能映射到常用目标。
+              </p>
+              <div class="hero-proof">
+                <span class="proof-pill">Frosted</span>
+                <span class="proof-pill">Bezel</span>
+                <span class="proof-pill">Crown</span>
+                <span class="proof-pill">Dark mode</span>
+              </div>
+            </div>
+            <div class="picker-stage" aria-label="Ask Picker 示例">
+              <div class="halo" aria-hidden="true">
+                <div class="halo-dot">1</div>
+                <div class="halo-dot">2</div>
+                <div class="halo-dot">3</div>
+              </div>
+              <div class="picker-window">
+                <div class="picker-titlebar">
+                  <div class="window-dots" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <span>Open with LinkPilot</span>
+                </div>
+                <div class="browser-row">
+                  <div class="browser-icon arc">A</div>
+                  <div class="browser-meta">
+                    <strong>Arc</strong>
+                    <span>Personal Space</span>
+                  </div>
+                  <span class="shortcut">1</span>
+                </div>
+                <div class="browser-row">
+                  <div class="browser-icon chrome">C</div>
+                  <div class="browser-meta">
+                    <strong>Chrome</strong>
+                    <span>Work Profile</span>
+                  </div>
+                  <span class="shortcut">2</span>
+                </div>
+                <div class="browser-row">
+                  <div class="browser-icon safari">S</div>
+                  <div class="browser-meta">
+                    <strong>Safari</strong>
+                    <span>Banking and Apple</span>
+                  </div>
+                  <span class="shortcut">3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="trust">
+          <div class="section-inner">
+            <p class="section-kicker">Trust boundary</p>
+            <h2 class="section-title">本地工具应该把边界讲清楚。</h2>
+            <p class="section-lede">
+              LinkPilot 的目标不是替代浏览器，也不是读取网页内容。它只关心链接、来源上下文、
+              用户配置和最终打开目标。
+            </p>
+
+            <div class="trust-grid">
+              <article class="trust-item">
+                <h3>不做通用浏览器</h3>
+                <p>LinkPilot 不渲染网页，只接收 URL 并交给真实浏览器或 Profile。</p>
+              </article>
+              <article class="trust-item">
+                <h3>配置留在本机</h3>
+                <p>规则和设置写入本地配置文件，daemon 通过本机 IPC 提供服务。</p>
+              </article>
+              <article class="trust-item">
+                <h3>决策可解释</h3>
+                <p>Inspector 和 Test URL 用真实路由引擎展示命中的规则与目标。</p>
+              </article>
+              <article class="trust-item">
+                <h3>更新需校验</h3>
+                <p>自动下载的 DMG 会按 release 中的 checksums.txt 校验 SHA-256。</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section install" id="install">
+          <div class="section-inner install-layout">
+            <div>
+              <p class="section-kicker">Install</p>
+              <h2 class="section-title">先用 DMG 或 CLI tarball 安装。</h2>
+              <p class="section-lede">
+                当前发布物未签名未公证，macOS 首次启动可能需要移除 quarantine 标记。
+                Homebrew 渠道还未作为正式安装路径发布。
+              </p>
+              <div class="hero-actions">
+                <a
+                  class="button primary"
+                  href="https://github.com/jackerjay/LinkPilot/releases/latest"
+                  rel="noopener"
+                >
+                  打开最新 Release
+                </a>
+                <a class="button secondary" href="#top">回到顶部</a>
+              </div>
+            </div>
+
+            <div class="install-panel" aria-label="安装命令">
+              <header>GUI app</header>
+              <pre class="command-block"><code>curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/LinkPilot_&lt;version&gt;_universal.dmg -o LinkPilot.dmg
+hdiutil attach LinkPilot.dmg
+cp -R "/Volumes/LinkPilot/LinkPilot.app" /Applications/
+hdiutil detach "/Volumes/LinkPilot"
+xattr -dr com.apple.quarantine /Applications/LinkPilot.app
+open /Applications/LinkPilot.app</code></pre>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="footer-inner">
+          <span>LinkPilot, route every link to the right place.</span>
+          <a href="https://github.com/jackerjay/LinkPilot" rel="noopener">GitHub</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
