@@ -114,10 +114,17 @@ export interface Settings {
    *  the complete visible Halo inventory; profiles missing from the list are
    *  hidden until added back in Settings. */
   profile_orders: Record<string, string[]>;
+  /** UI display language preference. `system` defers to navigator.languages
+   *  at boot; the others are hard overrides. */
+  language: LanguagePref;
 }
 
 /** Mirrors `core::config::PickerStyle`. */
 export type PickerStyle = "frosted" | "bezel" | "crown";
+
+/** Mirrors `core::config::LanguagePref`. Kept in sync with
+ *  `src/i18n/languages.ts::LanguagePref`. */
+export type LanguagePref = "system" | "en" | "zh-CN" | "zh-TW" | "ja-JP";
 
 export interface ConfigDocument {
   version: number;

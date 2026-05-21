@@ -253,6 +253,7 @@ pub fn run() {
             commands::set_smart_routing,
             commands::set_picker_style,
             commands::set_profile_order,
+            commands::set_language,
             picker::picker_preview,
             commands::doctor,
             commands::list_browsers,

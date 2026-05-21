@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use linkpilot_core::browser::{BrowserId, BrowserProfile, InstalledBrowser};
-use linkpilot_core::config::{ConfigDocument, PickerStyle, Workspace, WriterId};
+use linkpilot_core::config::{ConfigDocument, LanguagePref, PickerStyle, Workspace, WriterId};
 use linkpilot_core::history::RouteRecord;
 use linkpilot_core::platform::SetDefaultOutcome;
 use linkpilot_core::protocol::DoctorReport;
@@ -123,6 +123,19 @@ pub fn workspace_set_enabled(
 pub fn set_smart_routing(state: State<'_, AppState>, enabled: bool) -> Result<(), String> {
     let mut doc = state.config.document();
     doc.settings.smart_routing_enabled = enabled;
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
+/// Persist the user's UI display language preference. `System` defers to
+/// OS detection; explicit variants are hard overrides. The renderer reads
+/// `settings.language` and routes it through i18next.
+#[tauri::command]
+pub fn set_language(state: State<'_, AppState>, language: LanguagePref) -> Result<(), String> {
+    let mut doc = state.config.document();
+    doc.settings.language = language;
     state
         .config
         .replace(doc, WriterId::Gui)

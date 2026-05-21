@@ -156,6 +156,12 @@ pub struct Settings {
     /// until the user adds them back in Settings. Stale ids are skipped.
     #[serde(default)]
     pub profile_orders: BTreeMap<String, Vec<String>>,
+    /// UI display language preference. `System` defers to the OS / WebKit
+    /// `navigator.languages` chain at startup; the other variants are hard
+    /// overrides. The frontend owns the actual translation lookup (i18next
+    /// keyed off this value); core only persists the choice.
+    #[serde(default)]
+    pub language: LanguagePref,
 }
 
 /// Visual variant for the browser-pick wheel. The three values come
@@ -176,6 +182,25 @@ pub enum PickerStyle {
     Crown,
 }
 
+/// Persisted UI language preference. Frontend renders the actual
+/// strings; core stores the choice and exposes it via IPC + CLI so
+/// `lpt settings language` and the Settings page agree.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LanguagePref {
+    /// Follow the operating system / WebKit `navigator.languages`. The
+    /// frontend resolves this to one of the explicit variants at boot.
+    #[default]
+    System,
+    En,
+    #[serde(rename = "zh-CN")]
+    ZhCn,
+    #[serde(rename = "zh-TW")]
+    ZhTw,
+    #[serde(rename = "ja-JP")]
+    JaJp,
+}
+
 fn default_smart_routing() -> bool {
     true
 }
@@ -194,6 +219,7 @@ impl Default for Settings {
             smart_routing_enabled: true,
             picker_style: PickerStyle::Frosted,
             profile_orders: BTreeMap::new(),
+            language: LanguagePref::System,
         }
     }
 }
