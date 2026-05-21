@@ -1,0 +1,20 @@
+{
+  "title": "ルート Inspector",
+  "subtitle": "LinkPilot のすべての判定を新しい順に表示。行をクリックすると一致したルールの理由が見られます。",
+  "emptyHint": "ルート履歴がまだありません。リンクをクリックするか、daemon が動いている間に <code>lp open …</code> を実行してください。",
+  "selected": {
+    "card": "選択中のルート",
+    "url": "URL",
+    "source": "ソース",
+    "decision": "判定",
+    "rule": "ルール",
+    "rulePriorityTitle": "優先順位 —— リストの先頭が優先されます",
+    "ruleNoNote": "（メモなし）",
+    "ruleDefault": "— 既定のターゲット（一致するルールなし）",
+    "whyTitle": "この判定の理由",
+    "whyEmpty": "どのルールも一致せず、設定された default_target にフォールバックしました。",
+    "rawCaption": "生レコード（デバッグ / バグ報告用）",
+    "show": "表示",
+    "hide": "隠す"
+  }
+}

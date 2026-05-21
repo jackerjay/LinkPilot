@@ -1,0 +1,144 @@
+{
+  "title": "Rules",
+  "subtitle": "Evaluated highest-priority first. Drag a row to reorder; click <edit>Edit</edit> or <add>Add rule</add> for the structured editor.",
+  "copyToGui": {
+    "note": "copied from ts-compiled",
+    "noteWithExisting": "{{note}} (copied from ts-compiled)"
+  },
+  "list": {
+    "card": "Rules ({{count}})",
+    "cardFiltered": "Rules ({{visible}} / {{total}})",
+    "addRule": "Add rule",
+    "empty": "No rules yet — click <add>Add rule</add>.",
+    "emptyFilterPrefix": "No rules in this filter.",
+    "showAll": "Show all"
+  },
+  "defaultTarget": {
+    "card": "Default target",
+    "description": "Fires when no rule matches. Change it in the <settings>Settings</settings> tab."
+  },
+  "advanced": {
+    "card": "Advanced: raw JSON",
+    "show": "Show",
+    "hide": "Hide",
+    "errorTag": "error",
+    "revert": "Revert",
+    "save": "Save",
+    "saving": "Saving…"
+  },
+  "row": {
+    "dragDisabled": "Drag to reorder is disabled while a filter is active",
+    "priorityTitle": "Priority position — top of list wins. Drag to reorder.",
+    "filterByWorkspaceTitle": "Filter by this workspace",
+    "filterByWorkspace": "Filter by workspace: {{name}}",
+    "workspaceOff": "off",
+    "disabled": "disabled",
+    "compiled": "compiled",
+    "compiledHelp": "Authored in <code>linkpilot.config.ts</code>. Edit there and re-run <compile>lpt config compile</compile> to update, or use the copy button to fork an editable GUI copy.",
+    "compiledReadonly": "Compiled rules are read-only. Edit <code>linkpilot.config.ts</code> and re-run <compile>lpt config compile</compile>.",
+    "copyHelp": "Copy as GUI-editable rule. The original stays compiled and will be overwritten on the next <compile>lpt config compile</compile>.",
+    "compiledDeleteHelp": "Compiled rules can't be deleted from the GUI — remove the entry from <code>linkpilot.config.ts</code> and re-run <compile>lpt config compile</compile>.",
+    "editRule": "Edit rule",
+    "deleteRule": "Delete rule"
+  },
+  "workspaces": {
+    "card": "Workspaces ({{count}})",
+    "new": "New workspace",
+    "empty": "Group rules into workspaces (e.g. <work>Work</work>, <side>Side project</side>) and flip them on/off in one click. Assign a workspace when editing a rule.",
+    "toggle": "Toggle {{name}}",
+    "renameTitle": "Click to rename",
+    "hitsTitle": "Routes in recent history that hit a rule in this workspace",
+    "delete": "Delete workspace (rules become ungrouped)",
+    "placeholder": "Workspace name"
+  },
+  "filter": {
+    "all": "All",
+    "ungrouped": "Ungrouped"
+  },
+  "quickMove": {
+    "button": "Move to workspace",
+    "ungrouped": "— Ungrouped —",
+    "noWorkspaces": "No workspaces yet",
+    "off": "(off)"
+  },
+  "action": {
+    "open": "open →",
+    "keepSource": "keep source",
+    "ask": "ask",
+    "block": "block"
+  },
+  "counts": {
+    "rule_one": "{{count}} rule",
+    "rule_other": "{{count}} rules",
+    "hit_one": "{{count}} hit",
+    "hit_other": "{{count}} hits"
+  },
+  "editor": {
+    "editTitle": "Edit rule",
+    "newTitle": "New rule",
+    "enabled": "Enabled",
+    "priorityHint": "Priority is set by list order on the Rules page — drag to reorder.",
+    "when": "When",
+    "then": "Then",
+    "workspace": "Workspace",
+    "ungrouped": "— ungrouped —",
+    "off": "(off)",
+    "note": "Note (optional, shown in Inspector)",
+    "notePlaceholder": "Why this rule exists…",
+    "invalidTag": "invalid",
+    "errorTag": "error",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "addChild": "Add child",
+    "removeChildTitle": "Remove"
+  },
+  "target": {
+    "pickBrowser": "— pick a browser —",
+    "anyProfile": "(any profile)",
+    "incognito": "incognito"
+  },
+  "matcherHelp": {
+    "always": "(always matches)",
+    "all": "(every child must match)",
+    "any": "(any child matches)",
+    "not": "(child must NOT match)"
+  },
+  "matcherPlaceholders": {
+    "host": "github.com or *.corp.example.com",
+    "path": "/login or /oauth/callback",
+    "sourceApp": "Slack, VSCode, Terminal…",
+    "sourceProfile": "Work / Personal / Default"
+  },
+  "actionHelp": {
+    "keepSource": "(keep the navigation in the source browser — good for OAuth)",
+    "ask": "(prompt the user to pick a target)",
+    "block": "(do not open the URL)"
+  },
+  "validation": {
+    "needsChild": "{{op}} needs at least one child",
+    "patternEmpty": "{{op}} pattern is empty",
+    "sourceAppEmpty": "source-app name is empty",
+    "sourceBrowserEmpty": "source-browser is empty",
+    "sourceProfileEmpty": "source-profile is empty",
+    "openTargetMissing": "open action needs a target browser"
+  },
+  "matcherLabels": {
+    "always": "always",
+    "path": "path",
+    "from": "from",
+    "profile": "profile",
+    "not": "NOT",
+    "and": "AND",
+    "or": "OR",
+    "matched": "matched",
+    "notMatched": "did not match",
+    "evalAnd": "AND ({{count}})",
+    "evalOr": "OR ({{count}})",
+    "hostEval": "host {{pattern}}",
+    "pathEval": "path {{pattern}}",
+    "fromAppEval": "from app {{name}}",
+    "fromBrowserEval": "from browser {{browser}}",
+    "fromProfileEval": "from profile {{profile}}"
+  }
+}

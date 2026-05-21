@@ -6,8 +6,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-05-21
+
 ### Added
 
+- **Localized UI.** LinkPilot now ships English, Simplified Chinese,
+  Traditional Chinese, and Japanese resources across the main app,
+  menu-bar tray, picker window, onboarding, rules, workspaces, inspector,
+  browser manager, test URL simulator, and settings.
+- **Language preference.** Settings → Appearance includes a language
+  selector with `system`, `en`, `zh-CN`, `zh-TW`, and `ja-JP`. The same
+  preference is available through `lpt settings language`.
+- **Localized README files.** Traditional Chinese and Japanese README
+  files now sit beside the existing English and Simplified Chinese docs,
+  with cross-links between all supported languages.
 - **Automatic update downloads.** The desktop app now checks GitHub Releases
   on startup (toggle: Settings → General → Updates) and, when a newer macOS
   DMG is available, downloads it to the local update cache. A primary
@@ -45,7 +57,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Settings → Appearance** consolidates theme, picker style, and profile
   order. The Updates section moved to Settings → General.
 - **`lpt settings`** gains `auto-updates {on|off}` and
-  `picker-style {frosted|bezel|crown}` subcommands.
+  `picker-style {frosted|bezel|crown}` subcommands, plus
+  `language {system|en|zh-CN|zh-TW|ja-JP}`.
 
 ### Security
 
@@ -75,6 +88,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Picker / tray theme regressions.** Picker and tray follow system
   appearance again; only the main window applies the user's persisted
   theme override.
+- **Picker language sync.** The independent picker window now reads the
+  persisted language preference before mounting, so it no longer falls
+  back to the default detected language or briefly flashes English.
+- **Tray language sync and layout.** The tray popover and native tray menu
+  now apply the saved language preference. The tray status line no longer
+  wraps awkwardly under Chinese text, and sidebar menu items have slightly
+  more vertical breathing room for localized labels.
 - **Atomic update rename.** The destination is no longer removed
   before `rename(2)` — POSIX rename atomically replaces, so the
   pre-delete only opened a window where the file briefly didn't exist.
@@ -97,5 +117,6 @@ Initial public release. macOS desktop app, `lpt` CLI, background daemon,
 rule-based routing, Cmd-Tab-style Ask picker, browser inventory, and
 config DSL.
 
-[Unreleased]: https://github.com/jackerjay/LinkPilot/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jackerjay/LinkPilot/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jackerjay/LinkPilot/releases/tag/v0.3.0
 [0.2.0]: https://github.com/jackerjay/LinkPilot/releases/tag/v0.2.0

@@ -1,0 +1,21 @@
+{
+  "status": "Routing · {{count}} today",
+  "openMain": "Open main window",
+  "workspaces": "Workspaces",
+  "toggleWorkspace": "{{action}} workspace \"{{name}}\"",
+  "enable": "Enable",
+  "disable": "Disable",
+  "recent": "Recent",
+  "emptyRecent": "No routes yet — open a link to see it here.",
+  "footer": {
+    "rules": "Rules",
+    "history": "History",
+    "settings": "Settings"
+  },
+  "timeAgo": {
+    "seconds": "{{n}}s ago",
+    "minutes": "{{n}}m ago",
+    "hours": "{{n}}h ago",
+    "days": "{{n}}d ago"
+  }
+}

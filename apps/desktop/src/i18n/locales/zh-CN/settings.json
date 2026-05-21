@@ -1,0 +1,100 @@
+{
+  "title": "设置",
+  "subtitle": "默认浏览器、开机自启、外观以及配置导入导出。",
+  "defaultBrowser": {
+    "card": "默认浏览器",
+    "isDefault": "LinkPilot 是系统默认浏览器",
+    "isNotDefault": "LinkPilot 不是默认浏览器",
+    "summary": "所有 URL 都会走 LinkPilot 的规则引擎。",
+    "tagLoading": "…",
+    "tagActive": "已生效",
+    "tagNotSet": "未设置",
+    "hint": "macOS 会弹窗确认。Windows 上则会跳到「设置 → 默认应用」。",
+    "change": "更改…",
+    "successDefault": "设置成功，macOS 可能会再弹窗确认一次。",
+    "successOther": "请到「系统设置」里完成默认浏览器切换。",
+    "successOtherWithUrl": "打开 {{url}} 完成把 LinkPilot 设为默认浏览器。",
+    "unsupported": "当前平台不支持通过程序设置默认浏览器。"
+  },
+  "defaultTarget": {
+    "card": "默认目标",
+    "label": "默认目标",
+    "description": "<strong>没有规则命中</strong>时链接打开的位置。修改会重写配置文件。"
+  },
+  "appearance": {
+    "card": "外观",
+    "themeLabel": "主题",
+    "themeCurrent": "— 当前 <code>{{value}}</code>",
+    "themeSystem": "跟随系统",
+    "themeLight": "浅色",
+    "themeDark": "深色",
+    "languageLabel": "语言",
+    "languageDescription": "LinkPilot 界面语言。Picker 窗口下次打开时会读取这个设置。",
+    "languageSystem": "跟随系统",
+    "pickerStyleLabel": "Picker 风格",
+    "pickerStyleDescription": "Ask 规则触发时弹出的轮盘。在 picker 中按住 ⌥ 悬停到多 profile 浏览器即可召唤。点击下面的预览切换 —— 下次打开 picker 时生效。",
+    "profileOrderLabel": "Profile 顺序",
+    "profileOrderDescription": "自定义 Halo 轮盘上显示的 profile 以及排序。位置 1–9 对应键盘快捷键。"
+  },
+  "general": {
+    "card": "通用",
+    "updatesLabel": "更新",
+    "checkNow": "检查更新",
+    "checking": "检查中…",
+    "downloading": "下载中…",
+    "openInstaller": "打开安装包",
+    "openRelease": "打开发布页",
+    "autoUpdate": "自动检查并下载更新",
+    "launchAtLogin": "开机自启",
+    "configFile": "配置文件"
+  },
+  "daemon": {
+    "card": "后台服务",
+    "tagRunning": "运行中",
+    "tagRunningWithPid": "运行中 · pid {{pid}}",
+    "tagInstalledNotLoaded": "已安装 · 未加载",
+    "descLoaded": "LaunchAgent 每次登录自动加载。GUI 运行模式：「{{mode}}」。",
+    "descInstall": "安装 LaunchAgent，让 LinkPilot.app 关闭后路由依然继续工作。",
+    "descDev": "未发现内置 daemon —— 当前是开发版本。Release 版本会把 daemon 嵌入 .app。",
+    "uninstall": "卸载",
+    "install": "安装后台服务",
+    "successInstalled": "后台服务已安装。Daemon 现在开始运行，下次登录也会自动启动。",
+    "successUninstalled": "后台服务已移除，daemon 不会再自动启动。",
+    "bundledAt": "内置路径"
+  },
+  "cli": {
+    "card": "命令行工具",
+    "label": "<code>lpt</code> CLI",
+    "tagInstalled": "已安装",
+    "descBundled": "二进制内置在 .app 内。安装会在 ~/.local/bin/lpt 建立软链，让任意终端都能使用 `lpt`。",
+    "descDev": "未发现内置 `lpt` —— 当前是开发版本。Release 版本会把 CLI 嵌入 .app。",
+    "reinstall": "重新安装",
+    "install": "安装到 ~/.local/bin",
+    "bundledAt": "内置路径",
+    "successInstalled": "已安装到：{{path}}。如果 ~/.local/bin 不在 PATH 中，请手动加入。"
+  },
+  "io": {
+    "card": "导入 / 导出",
+    "importLabel": "从路径导入配置",
+    "importPlaceholder": "/绝对路径/到/某个.json",
+    "importButton": "导入",
+    "exportLabel": "导出配置到路径",
+    "exportPlaceholder": "/绝对路径/到/保存.json",
+    "exportButton": "导出",
+    "successImported": "已导入 {{path}}",
+    "successExported": "已导出到 {{path}}"
+  },
+  "feedback": {
+    "infoTag": "提示",
+    "errorTag": "错误"
+  },
+  "updateState": {
+    "idle": "本次会话还未检查过更新。",
+    "checking": "正在检查 GitHub Releases…",
+    "downloading": "发现 {{version}} 版本。正在下载 {{asset}}…",
+    "downloaded": "{{version}} 已下载完成。点击「打开安装包」升级。",
+    "upToDate": "LinkPilot 当前版本 {{version}} 已是最新。",
+    "errorWithVersion": "发现 {{version}} 版本，但安装包下载失败：{{error}}",
+    "errorPlain": "更新检查失败：{{error}}"
+  }
+}

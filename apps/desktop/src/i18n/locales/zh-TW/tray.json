@@ -1,0 +1,21 @@
+{
+  "status": "路由中 · 今日 {{count}} 條",
+  "openMain": "開啟主視窗",
+  "workspaces": "工作區",
+  "toggleWorkspace": "{{action}}工作區「{{name}}」",
+  "enable": "啟用",
+  "disable": "關閉",
+  "recent": "最近",
+  "emptyRecent": "暫無路由 — 開啟一個連結後會顯示在這裡。",
+  "footer": {
+    "rules": "規則",
+    "history": "歷史",
+    "settings": "設定"
+  },
+  "timeAgo": {
+    "seconds": "{{n}} 秒前",
+    "minutes": "{{n}} 分鐘前",
+    "hours": "{{n}} 小時前",
+    "days": "{{n}} 天前"
+  }
+}

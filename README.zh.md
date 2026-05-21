@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | 简体中文
+  <a href="README.md">English</a> | 简体中文 | <a href="README.zh-TW.md">繁體中文</a> | <a href="README.ja-JP.md">日本語</a>
 </p>
 
 LinkPilot 是一个 macOS 优先的链接路由器。它位于 macOS、浏览器和会打开
@@ -33,6 +33,7 @@ LinkPilot 当前聚焦 macOS。
 - 按 host、path、来源应用、来源浏览器、来源 profile 路由 URL。
 - Chrome 系浏览器、Arc、Firefox、Safari 和自定义浏览器的识别与 profile 枚举。
 - Ask picker：Halo profile 选择环（Frosted / Bezel / Crown 三种风格）、键盘快捷键、每浏览器 profile 排序、暗色模式，以及 Settings 里的真实测试 URL。
+- 界面语言支持 English、简体中文、繁體中文、日本語，并可选择跟随系统语言。
 - 自动检查 GitHub Release 更新，下载的 DMG 会校验 SHA-256，再由用户在 Settings 中手动打开安装包。
 - 后台 daemon 与 Unix socket IPC，主窗口关闭后仍可继续路由。
 - 菜单栏托盘、Inspector、Test URL 模拟器、浏览器管理、Settings 和 onboarding。
@@ -71,6 +72,29 @@ macOS DMG，LinkPilot 会下载到本地更新缓存，比对 release 的 `check
 里的 SHA-256，再提示你点击 “Open installer” 手动升级。没有 `checksums.txt`
 的 release 会被视为未验证，自动下载会被拒绝。可以在
 Settings → General → Updates 中关闭这一行为。
+
+## 支持语言
+
+LinkPilot 当前内置以下界面语言：
+
+- English
+- 简体中文
+- 繁體中文
+- 日本語
+
+默认情况下，LinkPilot 会在系统语言命中上述语言时自动跟随系统。你也可以在
+Settings → Appearance → Language 中手动切换。Picker 窗口会在下次打开时读取同一
+语言偏好。
+
+也可以通过 CLI 修改：
+
+```sh
+lpt settings language system
+lpt settings language en
+lpt settings language zh-CN
+lpt settings language zh-TW
+lpt settings language ja-JP
+```
 
 ### 仅 CLI
 
@@ -140,6 +164,7 @@ lpt settings smart-routing off
 lpt settings launch-at-login on
 lpt settings auto-updates off
 lpt settings picker-style crown        # frosted | bezel | crown
+lpt settings language zh-CN            # system | en | zh-CN | zh-TW | ja-JP
 lpt settings history-retention 30
 
 # 浏览器
@@ -233,8 +258,8 @@ packaging/
 维护者通过推 semver tag 发布：
 
 ```sh
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 Release workflow 会构建 universal macOS CLI、daemon 和桌面应用，修补 app bundle，

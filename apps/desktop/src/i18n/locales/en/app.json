@@ -1,0 +1,20 @@
+{
+  "tabs": {
+    "overview": "Overview",
+    "rules": "Rules",
+    "testUrl": "Test URL",
+    "inspector": "Inspector",
+    "browsers": "Browsers",
+    "settings": "Settings"
+  },
+  "sidebar": {
+    "workspaces": "Workspaces",
+    "workspaceOpenTitle": "Open the \"{{name}}\" workspace",
+    "daemon": "Daemon",
+    "workspaceFallbackTitle": "Workspace"
+  },
+  "updates": {
+    "tag": "update",
+    "checksumMissing": "Release is missing a checksums.txt entry for the macOS DMG; refusing to auto-download an unverified installer."
+  }
+}

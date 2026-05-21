@@ -3,6 +3,7 @@
 // - Settings (the default_target shown when no rule matches)
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AppIcon } from "@/components/AppIcon";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function TargetEditor({ value, browsers, onChange }: Props) {
+  const { t } = useTranslation("rules");
   const [profiles, setProfiles] = useState<BrowserProfile[]>([]);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
         }
       >
         <SelectTrigger className="w-[200px]">
-          <SelectValue placeholder="— pick a browser —" />
+          <SelectValue placeholder={t("target.pickBrowser")} />
         </SelectTrigger>
         <SelectContent>
           {browsers.map((b) => (
@@ -84,10 +86,10 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
         disabled={!value.browser}
       >
         <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder="(any profile)" />
+          <SelectValue placeholder={t("target.anyProfile")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__any">(any profile)</SelectItem>
+          <SelectItem value="__any">{t("target.anyProfile")}</SelectItem>
           {profiles.map((p) => (
             <SelectItem key={p.id} value={p.id}>
               {p.display_name}
@@ -103,7 +105,7 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
             onChange({ ...value, incognito: v === true ? true : undefined })
           }
         />
-        incognito
+        {t("target.incognito")}
       </label>
     </>
   );

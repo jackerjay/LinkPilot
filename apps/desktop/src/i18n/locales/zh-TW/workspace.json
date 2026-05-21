@@ -1,0 +1,60 @@
+{
+  "fallbackTitle": "工作區",
+  "deletedSubtitle": "這個工作區已不存在。它可能已經從 Rules 分頁刪除。",
+  "loading": "載入中…",
+  "renameTitle": "點擊重新命名",
+  "defaultDescription": "一組可以一起開關的規則。",
+  "disableTitle": "關閉工作區",
+  "enableTitle": "啟用工作區",
+  "deleteTitle": "刪除工作區（規則會變為未分組）",
+  "stats": {
+    "status": "狀態",
+    "active": "啟用中",
+    "paused": "已暫停",
+    "activeHint": "規則參與路由",
+    "pausedHint": "路由器會跳過這些規則",
+    "rules": "規則",
+    "noRules": "暫無規則",
+    "allEnabled": "全部啟用",
+    "disabled": "{{count}} 條已停用",
+    "recentHits": "最近命中",
+    "lastScanned": "已掃描最近 {{count}} 條路由",
+    "awaiting": "等待流量"
+  },
+  "rules": {
+    "card": "規則 · {{count}}",
+    "edit": "在 Rules 中編輯",
+    "empty": "這個工作區還沒有規則。請從 Rules 分頁把規則的 <code>workspace_id</code> 指向這裡。"
+  },
+  "activity": {
+    "card": "最近活動 · {{count}}"
+  },
+  "errorTag": "錯誤",
+  "ruleRow": {
+    "priorityTitle": "優先級位置 — 全域規則列表頂部優先生效。",
+    "noNote": "（無備註 · 規則 id {{id}}）",
+    "enabledTitle": "已啟用",
+    "disabledTitle": "已停用",
+    "on": "開",
+    "off": "關",
+    "hit_one": "{{count}} 次命中",
+    "hit_other": "{{count}} 次命中"
+  },
+  "timeAgo": {
+    "seconds": "{{n}} 秒前",
+    "minutes": "{{n}} 分鐘前",
+    "hours": "{{n}} 小時前",
+    "days": "{{n}} 天前"
+  },
+  "matcher": {
+    "always": "始終",
+    "host": "host {{pattern}}",
+    "path": "path {{pattern}}",
+    "from": "from {{name}}",
+    "fromBrowser": "from browser {{browser}}",
+    "fromProfile": "from profile {{profile}}",
+    "and": " 且 ",
+    "or": " 或 ",
+    "not": "not（{{value}}）"
+  }
+}

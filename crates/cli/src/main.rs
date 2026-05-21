@@ -331,6 +331,9 @@ enum SettingsAction {
     /// Set the visual style of the browser+profile picker wheel.
     /// One of `frosted` (default), `bezel`, or `crown`.
     PickerStyle { value: String },
+    /// Set the UI display language. One of `system` (default, follow OS),
+    /// `en`, `zh-CN`, `zh-TW`, `ja-JP`.
+    Language { value: String },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -578,6 +581,21 @@ fn main() -> Result<()> {
                     }
                 };
                 run_settings_set(cli.config, |s| s.picker_style = style)
+            }
+            SettingsAction::Language { value } => {
+                // Match the on-disk kebab-case serde form so `lpt settings
+                // language zh-CN` writes the same string the GUI reads back.
+                let lang = match value.as_str() {
+                    "system" => linkpilot_core::config::LanguagePref::System,
+                    "en" | "en-US" | "en-us" => linkpilot_core::config::LanguagePref::En,
+                    "zh-CN" | "zh-cn" => linkpilot_core::config::LanguagePref::ZhCn,
+                    "zh-TW" | "zh-tw" => linkpilot_core::config::LanguagePref::ZhTw,
+                    "ja-JP" | "ja-jp" | "ja" => linkpilot_core::config::LanguagePref::JaJp,
+                    other => bail!(
+                        "unknown language '{other}' (expected system | en | zh-CN | zh-TW | ja-JP)"
+                    ),
+                };
+                run_settings_set(cli.config, |s| s.language = lang)
             }
         },
         Command::Browsers { action } => match action {

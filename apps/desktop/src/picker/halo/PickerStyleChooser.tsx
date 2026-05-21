@@ -4,6 +4,7 @@
 // to launch a real Ask flow before they could tell Frosted from Bezel.
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { HaloPreview } from "./HaloPreview";
 import { ipc } from "@/lib/ipc";
@@ -17,28 +18,28 @@ interface PickerStyleChooserProps {
 interface Variant {
   id: PickerStyle;
   symbol: string;
-  name: string;
-  tagline: string;
+  nameKey: string;
+  taglineKey: string;
 }
 
 const VARIANTS: Variant[] = [
   {
     id: "frosted",
     symbol: "α",
-    name: "Frosted",
-    tagline: "Glass sectors, color on the rim",
+    nameKey: "style.variants.frosted.name",
+    taglineKey: "style.variants.frosted.tagline",
   },
   {
     id: "bezel",
     symbol: "β",
-    name: "Bezel",
-    tagline: "Ticks + dots, instrument ring",
+    nameKey: "style.variants.bezel.name",
+    taglineKey: "style.variants.bezel.tagline",
   },
   {
     id: "crown",
     symbol: "γ",
-    name: "Crown",
-    tagline: "Apple Watch — center display",
+    nameKey: "style.variants.crown.name",
+    taglineKey: "style.variants.crown.tagline",
   },
 ];
 
@@ -48,6 +49,7 @@ export function PickerStyleChooser({
   value,
   onChange,
 }: PickerStyleChooserProps) {
+  const { t } = useTranslation("picker");
   const [tryError, setTryError] = useState<string | null>(null);
   const [tryPending, setTryPending] = useState(false);
   const [testUrl, setTestUrl] = useState(DEFAULT_TEST_URL);
@@ -87,9 +89,9 @@ export function PickerStyleChooser({
               <div className="picker-style-meta">
                 <span className="picker-style-name">
                   <span className="picker-style-symbol">{v.symbol}</span>
-                  {v.name}
+                  {t(v.nameKey)}
                 </span>
-                <span className="picker-style-tag">{v.tagline}</span>
+                <span className="picker-style-tag">{t(v.taglineKey)}</span>
               </div>
               {selected && (
                 <span className="picker-style-check" aria-hidden>
@@ -102,7 +104,7 @@ export function PickerStyleChooser({
       </div>
       <div className="picker-style-actions">
         <label className="picker-style-url-field">
-          <span>Test URL</span>
+          <span>{t("style.testUrl")}</span>
           <Input
             value={testUrl}
             onChange={(e) => setTestUrl(e.currentTarget.value)}
@@ -119,14 +121,11 @@ export function PickerStyleChooser({
           className="mac-tbtn primary"
           onClick={tryPicker}
           disabled={tryPending}
-          title="Open the picker and launch the selected browser/profile"
+          title={t("style.openTitle")}
         >
-          {tryPending ? "Opening…" : "Try picker"}
+          {tryPending ? t("style.opening") : t("style.tryPicker")}
         </button>
-        <span className="picker-style-hint">
-          Opens the real picker window with your installed browsers and saved
-          profile order. Selection opens the test URL.
-        </span>
+        <span className="picker-style-hint">{t("style.hint")}</span>
       </div>
       {tryError && <div className="picker-style-error">{tryError}</div>}
     </div>

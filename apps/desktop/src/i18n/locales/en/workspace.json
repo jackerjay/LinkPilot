@@ -1,0 +1,60 @@
+{
+  "fallbackTitle": "Workspace",
+  "deletedSubtitle": "This workspace no longer exists. It may have been deleted from the Rules tab.",
+  "loading": "Loading…",
+  "renameTitle": "Click to rename",
+  "defaultDescription": "Group of rules that can be toggled together.",
+  "disableTitle": "Disable workspace",
+  "enableTitle": "Enable workspace",
+  "deleteTitle": "Delete workspace (rules become ungrouped)",
+  "stats": {
+    "status": "Status",
+    "active": "Active",
+    "paused": "Paused",
+    "activeHint": "Rules participate in routing",
+    "pausedHint": "Router skips these rules",
+    "rules": "Rules",
+    "noRules": "No rules yet",
+    "allEnabled": "All enabled",
+    "disabled": "{{count}} disabled",
+    "recentHits": "Recent hits",
+    "lastScanned": "Last {{count}} routes scanned",
+    "awaiting": "Awaiting traffic"
+  },
+  "rules": {
+    "card": "Rules · {{count}}",
+    "edit": "Edit in Rules",
+    "empty": "No rules in this workspace yet. Assign a rule's <code>workspace_id</code> from the Rules tab."
+  },
+  "activity": {
+    "card": "Recent activity · {{count}}"
+  },
+  "errorTag": "error",
+  "ruleRow": {
+    "priorityTitle": "Priority position — top of the global rules list wins.",
+    "noNote": "(no note · rule id {{id}})",
+    "enabledTitle": "Enabled",
+    "disabledTitle": "Disabled",
+    "on": "on",
+    "off": "off",
+    "hit_one": "{{count}} hit",
+    "hit_other": "{{count}} hits"
+  },
+  "timeAgo": {
+    "seconds": "{{n}}s ago",
+    "minutes": "{{n}}m ago",
+    "hours": "{{n}}h ago",
+    "days": "{{n}}d ago"
+  },
+  "matcher": {
+    "always": "always",
+    "host": "host {{pattern}}",
+    "path": "path {{pattern}}",
+    "from": "from {{name}}",
+    "fromBrowser": "from browser {{browser}}",
+    "fromProfile": "from profile {{profile}}",
+    "and": " and ",
+    "or": " or ",
+    "not": "not ({{value}})"
+  }
+}

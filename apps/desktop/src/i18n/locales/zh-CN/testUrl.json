@@ -1,0 +1,25 @@
+{
+  "title": "测试链接",
+  "subtitle": "把 URL 喂给运行中的路由引擎，不会真的打开浏览器。编辑规则后切回这里，决策结果会即时刷新。",
+  "url": "URL",
+  "urlPlaceholder": "https://example.com/some/path",
+  "fromApp": "来源应用（可选）",
+  "fromAppPlaceholder": "Slack、Terminal、VSCode…",
+  "fromBrowser": "来源浏览器（可选）",
+  "fromBrowserPlaceholder": "— 无 —",
+  "fromBrowserNone": "— 无 —",
+  "fromProfile": "来源 profile（可选）",
+  "fromProfilePlaceholder": "— 任意 —",
+  "fromProfileAny": "— 任意 —",
+  "errorTag": "错误",
+  "result": {
+    "card": "结果",
+    "decision": "决策",
+    "rule": "规则",
+    "rulePriorityTitle": "优先级位置 —— 列表越靠前优先级越高",
+    "ruleNoNote": "（无备注）",
+    "ruleDefault": "— 默认目标（没有规则命中）",
+    "whyTitle": "决策原因",
+    "whyEmpty": "没有规则命中，路由会回落到配置的 default_target。"
+  }
+}

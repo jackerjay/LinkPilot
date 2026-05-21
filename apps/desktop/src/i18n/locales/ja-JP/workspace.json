@@ -1,0 +1,60 @@
+{
+  "fallbackTitle": "ワークスペース",
+  "deletedSubtitle": "このワークスペースは存在しません。Rules タブで削除された可能性があります。",
+  "loading": "読み込み中…",
+  "renameTitle": "クリックして名前変更",
+  "defaultDescription": "まとめてオン/オフできるルールのグループです。",
+  "disableTitle": "ワークスペースを無効化",
+  "enableTitle": "ワークスペースを有効化",
+  "deleteTitle": "ワークスペースを削除（ルールは未グループになります）",
+  "stats": {
+    "status": "ステータス",
+    "active": "有効",
+    "paused": "停止中",
+    "activeHint": "ルールはルーティングに参加します",
+    "pausedHint": "ルーターはこれらのルールをスキップします",
+    "rules": "ルール",
+    "noRules": "ルールはまだありません",
+    "allEnabled": "すべて有効",
+    "disabled": "{{count}} 件が無効",
+    "recentHits": "最近のヒット",
+    "lastScanned": "直近 {{count}} 件のルートをスキャン",
+    "awaiting": "トラフィック待ち"
+  },
+  "rules": {
+    "card": "ルール · {{count}}",
+    "edit": "Rules で編集",
+    "empty": "このワークスペースにはまだルールがありません。Rules タブでルールの <code>workspace_id</code> を割り当ててください。"
+  },
+  "activity": {
+    "card": "最近のアクティビティ · {{count}}"
+  },
+  "errorTag": "エラー",
+  "ruleRow": {
+    "priorityTitle": "優先度の位置 — グローバルルールリストの上が先に使われます。",
+    "noNote": "（メモなし · rule id {{id}}）",
+    "enabledTitle": "有効",
+    "disabledTitle": "無効",
+    "on": "on",
+    "off": "off",
+    "hit_one": "{{count}} hit",
+    "hit_other": "{{count}} hits"
+  },
+  "timeAgo": {
+    "seconds": "{{n}}s ago",
+    "minutes": "{{n}}m ago",
+    "hours": "{{n}}h ago",
+    "days": "{{n}}d ago"
+  },
+  "matcher": {
+    "always": "always",
+    "host": "host {{pattern}}",
+    "path": "path {{pattern}}",
+    "from": "from {{name}}",
+    "fromBrowser": "from browser {{browser}}",
+    "fromProfile": "from profile {{profile}}",
+    "and": " and ",
+    "or": " or ",
+    "not": "not ({{value}})"
+  }
+}

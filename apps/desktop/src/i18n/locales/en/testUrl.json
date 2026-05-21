@@ -1,0 +1,25 @@
+{
+  "title": "Test URL",
+  "subtitle": "Run a URL through the live router without opening a browser. Edit a rule, switch back here, and the decision updates instantly.",
+  "url": "URL",
+  "urlPlaceholder": "https://example.com/some/path",
+  "fromApp": "From app (optional)",
+  "fromAppPlaceholder": "Slack, Terminal, VSCode…",
+  "fromBrowser": "From browser (optional)",
+  "fromBrowserPlaceholder": "— none —",
+  "fromBrowserNone": "— none —",
+  "fromProfile": "From profile (optional)",
+  "fromProfilePlaceholder": "— any —",
+  "fromProfileAny": "— any —",
+  "errorTag": "error",
+  "result": {
+    "card": "Result",
+    "decision": "Decision",
+    "rule": "Rule",
+    "rulePriorityTitle": "Priority position — top of list wins",
+    "ruleNoNote": "(no note)",
+    "ruleDefault": "— default target (no rule matched)",
+    "whyTitle": "Why this decision",
+    "whyEmpty": "No rule fired. The route would fall back to the configured default_target."
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "title": "规则",
+  "subtitle": "按最高优先级优先评估。拖动行可调整顺序；点击 <edit>编辑</edit> 或 <add>添加规则</add> 使用结构化编辑器。",
+  "copyToGui": {
+    "note": "从 ts-compiled 复制",
+    "noteWithExisting": "{{note}}（从 ts-compiled 复制）"
+  },
+  "list": {
+    "card": "规则（{{count}}）",
+    "cardFiltered": "规则（{{visible}} / {{total}}）",
+    "addRule": "添加规则",
+    "empty": "暂无规则 — 点击 <add>添加规则</add>。",
+    "emptyFilterPrefix": "当前筛选下没有规则。",
+    "showAll": "显示全部"
+  },
+  "defaultTarget": {
+    "card": "默认目标",
+    "description": "没有规则命中时生效。可在 <settings>设置</settings> 标签页修改。"
+  },
+  "advanced": {
+    "card": "高级：原始 JSON",
+    "show": "显示",
+    "hide": "隐藏",
+    "errorTag": "错误",
+    "revert": "还原",
+    "save": "保存",
+    "saving": "保存中…"
+  },
+  "row": {
+    "dragDisabled": "启用筛选时不能拖动排序",
+    "priorityTitle": "优先级位置 — 列表顶部优先生效。拖动可调整顺序。",
+    "filterByWorkspaceTitle": "按此工作空间筛选",
+    "filterByWorkspace": "按工作空间筛选：{{name}}",
+    "workspaceOff": "已关闭",
+    "disabled": "已禁用",
+    "compiled": "已编译",
+    "compiledHelp": "来源于 <code>linkpilot.config.ts</code>。请在那里编辑并重新运行 <compile>lpt config compile</compile>；也可以用复制按钮派生一个可在 GUI 编辑的副本。",
+    "compiledReadonly": "已编译规则只读。请编辑 <code>linkpilot.config.ts</code> 并重新运行 <compile>lpt config compile</compile>。",
+    "copyHelp": "复制为可在 GUI 编辑的规则。原规则仍保持编译来源，并会在下次 <compile>lpt config compile</compile> 时被覆盖。",
+    "compiledDeleteHelp": "已编译规则不能从 GUI 删除 — 请从 <code>linkpilot.config.ts</code> 移除并重新运行 <compile>lpt config compile</compile>。",
+    "editRule": "编辑规则",
+    "deleteRule": "删除规则"
+  },
+  "workspaces": {
+    "card": "工作空间（{{count}}）",
+    "new": "新建工作空间",
+    "empty": "把规则分组到工作空间（例如 <work>工作</work>、<side>副项目</side>），即可一键开关整组规则。编辑规则时可以指定工作空间。",
+    "toggle": "切换 {{name}}",
+    "renameTitle": "点击重命名",
+    "hitsTitle": "最近历史中命中此工作空间规则的路由",
+    "delete": "删除工作空间（规则会变为未分组）",
+    "placeholder": "工作空间名称"
+  },
+  "filter": {
+    "all": "全部",
+    "ungrouped": "未分组"
+  },
+  "quickMove": {
+    "button": "移动到工作空间",
+    "ungrouped": "— 未分组 —",
+    "noWorkspaces": "还没有工作空间",
+    "off": "（已关闭）"
+  },
+  "action": {
+    "open": "打开 →",
+    "keepSource": "保留来源",
+    "ask": "询问",
+    "block": "阻止"
+  },
+  "counts": {
+    "rule_one": "{{count}} 条规则",
+    "rule_other": "{{count}} 条规则",
+    "hit_one": "{{count}} 次命中",
+    "hit_other": "{{count}} 次命中"
+  },
+  "editor": {
+    "editTitle": "编辑规则",
+    "newTitle": "新建规则",
+    "enabled": "启用",
+    "priorityHint": "优先级由 Rules 页面中的列表顺序决定 — 拖动即可调整。",
+    "when": "条件",
+    "then": "动作",
+    "workspace": "工作空间",
+    "ungrouped": "— 未分组 —",
+    "off": "（已关闭）",
+    "note": "备注（可选，会显示在 Inspector 中）",
+    "notePlaceholder": "这条规则存在的原因…",
+    "invalidTag": "无效",
+    "errorTag": "错误",
+    "cancel": "取消",
+    "save": "保存",
+    "saving": "保存中…",
+    "addChild": "添加子条件",
+    "removeChildTitle": "移除"
+  },
+  "target": {
+    "pickBrowser": "— 选择浏览器 —",
+    "anyProfile": "（任意 profile）",
+    "incognito": "无痕"
+  },
+  "matcherHelp": {
+    "always": "（始终匹配）",
+    "all": "（所有子条件都必须匹配）",
+    "any": "（任一子条件匹配即可）",
+    "not": "（子条件必须不匹配）"
+  },
+  "matcherPlaceholders": {
+    "host": "github.com 或 *.corp.example.com",
+    "path": "/login 或 /oauth/callback",
+    "sourceApp": "Slack、VSCode、Terminal…",
+    "sourceProfile": "Work / Personal / Default"
+  },
+  "actionHelp": {
+    "keepSource": "（在来源浏览器内继续导航，适合 OAuth）",
+    "ask": "（提示用户选择目标）",
+    "block": "（不打开 URL）"
+  },
+  "validation": {
+    "needsChild": "{{op}} 至少需要一个子条件",
+    "patternEmpty": "{{op}} pattern 为空",
+    "sourceAppEmpty": "source-app 名称为空",
+    "sourceBrowserEmpty": "source-browser 为空",
+    "sourceProfileEmpty": "source-profile 为空",
+    "openTargetMissing": "open 动作需要目标浏览器"
+  },
+  "matcherLabels": {
+    "always": "始终",
+    "path": "路径",
+    "from": "来自",
+    "profile": "profile",
+    "not": "NOT",
+    "and": "AND",
+    "or": "OR",
+    "matched": "已匹配",
+    "notMatched": "未匹配",
+    "evalAnd": "AND（{{count}}）",
+    "evalOr": "OR（{{count}}）",
+    "hostEval": "host {{pattern}}",
+    "pathEval": "path {{pattern}}",
+    "fromAppEval": "from app {{name}}",
+    "fromBrowserEval": "from browser {{browser}}",
+    "fromProfileEval": "from profile {{profile}}"
+  }
+}

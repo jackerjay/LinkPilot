@@ -2,6 +2,8 @@
 // short human-readable label. Shared by Inspector and Test-URL pages.
 
 import { Check, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { cn } from "@/lib/utils";
 import type { MatcherEval } from "@/lib/types";
 
@@ -23,6 +25,7 @@ export function ExplanationView({
 }
 
 function EvalNode({ node, depth }: { node: MatcherEval; depth: number }) {
+  const { t } = useTranslation("rules");
   const matched = node.matched;
   return (
     <div className={depth > 0 ? "ml-3 border-l-2 border-border pl-3" : ""}>
@@ -34,11 +37,13 @@ function EvalNode({ node, depth }: { node: MatcherEval; depth: number }) {
               ? "bg-success/15 text-success"
               : "bg-destructive/15 text-destructive",
           )}
-          title={matched ? "matched" : "did not match"}
+          title={
+            matched ? t("matcherLabels.matched") : t("matcherLabels.notMatched")
+          }
         >
           {matched ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
         </span>
-        <span className="font-mono text-xs">{describeEvalNode(node)}</span>
+        <span className="font-mono text-xs">{describeEvalNode(t, node)}</span>
       </div>
       {hasChildren(node) && (
         <div className="mt-1">
@@ -67,25 +72,25 @@ function childList(n: MatcherEval): MatcherEval[] {
   }
 }
 
-function describeEvalNode(n: MatcherEval): string {
+function describeEvalNode(t: TFunction<"rules">, n: MatcherEval): string {
   switch (n.op) {
     case "always":
-      return "always";
+      return t("matcherLabels.always");
     case "all":
-      return `AND (${n.of.length})`;
+      return t("matcherLabels.evalAnd", { count: n.of.length });
     case "any":
-      return `OR (${n.of.length})`;
+      return t("matcherLabels.evalOr", { count: n.of.length });
     case "not":
-      return "NOT";
+      return t("matcherLabels.not");
     case "url-host":
-      return `host ${n.pattern}`;
+      return t("matcherLabels.hostEval", { pattern: n.pattern });
     case "url-path":
-      return `path ${n.pattern}`;
+      return t("matcherLabels.pathEval", { pattern: n.pattern });
     case "source-app":
-      return `from app ${n.name}`;
+      return t("matcherLabels.fromAppEval", { name: n.name });
     case "source-browser":
-      return `from browser ${n.browser}`;
+      return t("matcherLabels.fromBrowserEval", { browser: n.browser });
     case "source-profile":
-      return `from profile ${n.profile}`;
+      return t("matcherLabels.fromProfileEval", { profile: n.profile });
   }
 }

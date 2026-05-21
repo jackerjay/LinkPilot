@@ -1,0 +1,44 @@
+{
+  "title": "概要",
+  "subtitle": "Daemon の状態と最近のルーティング判定。",
+  "stats": {
+    "routesToday": "今日のルート数",
+    "live": "ライブ",
+    "awaiting": "クリック待ち",
+    "activeRules": "有効なルール",
+    "disabled": "{{count}} 件無効",
+    "allEnabled": "すべて有効",
+    "browsers": "ブラウザ",
+    "detected": "検出済み"
+  },
+  "status": {
+    "card": "ステータス",
+    "daemon": "Daemon",
+    "daemonRunning": "実行中",
+    "daemonUnreachable": "接続不可",
+    "daemonTitleRunning": "Daemon は実行中です",
+    "daemonTitleUnreachable": "Daemon に接続できません",
+    "defaultBrowser": "システムの既定のブラウザ",
+    "defaultNotSet": "未設定",
+    "tagActive": "有効",
+    "tagNotSet": "未設定",
+    "browsersDetected": "検出されたブラウザ",
+    "browsersCount": "{{count}} 個のアプリ",
+    "configFile": "設定ファイル"
+  },
+  "recent": {
+    "card": "最近のルート",
+    "empty": "まだルートがありません。<code>lpt open …</code> を実行するか、リンクをクリックしてみてください。"
+  },
+  "decision": {
+    "allow": "許可",
+    "block": "ブロック",
+    "ask": "確認"
+  },
+  "timeAgo": {
+    "seconds": "{{n}} 秒前",
+    "minutes": "{{n}} 分前",
+    "hours": "{{n}} 時間前",
+    "days": "{{n}} 日前"
+  }
+}

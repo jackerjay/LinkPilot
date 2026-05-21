@@ -1,0 +1,44 @@
+{
+  "title": "總覽",
+  "subtitle": "Daemon 狀態和最近的路由決策。",
+  "stats": {
+    "routesToday": "今日路由",
+    "live": "即時",
+    "awaiting": "等待點擊",
+    "activeRules": "已啟用規則",
+    "disabled": "{{count}} 條已停用",
+    "allEnabled": "全部啟用",
+    "browsers": "瀏覽器",
+    "detected": "已識別"
+  },
+  "status": {
+    "card": "狀態",
+    "daemon": "Daemon",
+    "daemonRunning": "執行中",
+    "daemonUnreachable": "無法連線",
+    "daemonTitleRunning": "Daemon 正在執行",
+    "daemonTitleUnreachable": "Daemon 無法連線",
+    "defaultBrowser": "系統預設瀏覽器",
+    "defaultNotSet": "未設定",
+    "tagActive": "已生效",
+    "tagNotSet": "未設定",
+    "browsersDetected": "已識別瀏覽器",
+    "browsersCount": "{{count}} 個應用程式",
+    "configFile": "設定檔"
+  },
+  "recent": {
+    "card": "最近路由",
+    "empty": "尚無路由。試試 <code>lpt open …</code> 或點擊連結。"
+  },
+  "decision": {
+    "allow": "放行",
+    "block": "已封鎖",
+    "ask": "詢問"
+  },
+  "timeAgo": {
+    "seconds": "{{n}} 秒前",
+    "minutes": "{{n}} 分鐘前",
+    "hours": "{{n}} 小時前",
+    "days": "{{n}} 天前"
+  }
+}

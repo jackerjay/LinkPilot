@@ -1,0 +1,144 @@
+{
+  "title": "ルール",
+  "subtitle": "優先度が高い順に評価されます。行をドラッグして並べ替え、<edit>編集</edit> または <add>ルールを追加</add> で構造化エディタを開きます。",
+  "copyToGui": {
+    "note": "ts-compiled からコピー",
+    "noteWithExisting": "{{note}}（ts-compiled からコピー）"
+  },
+  "list": {
+    "card": "ルール（{{count}}）",
+    "cardFiltered": "ルール（{{visible}} / {{total}}）",
+    "addRule": "ルールを追加",
+    "empty": "ルールはまだありません — <add>ルールを追加</add> をクリックしてください。",
+    "emptyFilterPrefix": "このフィルタに該当するルールはありません。",
+    "showAll": "すべて表示"
+  },
+  "defaultTarget": {
+    "card": "デフォルトターゲット",
+    "description": "どのルールにも一致しないときに使われます。<settings>設定</settings> タブで変更できます。"
+  },
+  "advanced": {
+    "card": "詳細: raw JSON",
+    "show": "表示",
+    "hide": "非表示",
+    "errorTag": "エラー",
+    "revert": "戻す",
+    "save": "保存",
+    "saving": "保存中…"
+  },
+  "row": {
+    "dragDisabled": "フィルタ中はドラッグで並べ替えできません",
+    "priorityTitle": "優先度の位置 — リストの上が先に使われます。ドラッグして並べ替えます。",
+    "filterByWorkspaceTitle": "このワークスペースでフィルタ",
+    "filterByWorkspace": "ワークスペースでフィルタ: {{name}}",
+    "workspaceOff": "オフ",
+    "disabled": "無効",
+    "compiled": "compiled",
+    "compiledHelp": "<code>linkpilot.config.ts</code> で定義されています。そこで編集して <compile>lpt config compile</compile> を再実行するか、コピーボタンで GUI 編集可能なコピーを作成してください。",
+    "compiledReadonly": "compiled ルールは読み取り専用です。<code>linkpilot.config.ts</code> を編集して <compile>lpt config compile</compile> を再実行してください。",
+    "copyHelp": "GUI 編集可能なルールとしてコピーします。元のルールは compiled のままで、次回の <compile>lpt config compile</compile> で上書きされます。",
+    "compiledDeleteHelp": "compiled ルールは GUI から削除できません — <code>linkpilot.config.ts</code> から削除して <compile>lpt config compile</compile> を再実行してください。",
+    "editRule": "ルールを編集",
+    "deleteRule": "ルールを削除"
+  },
+  "workspaces": {
+    "card": "ワークスペース（{{count}}）",
+    "new": "新規ワークスペース",
+    "empty": "ルールをワークスペース（例: <work>Work</work>, <side>Side project</side>）にまとめると、まとめてオン/オフできます。ルール編集時にワークスペースを割り当てられます。",
+    "toggle": "{{name}} を切り替え",
+    "renameTitle": "クリックして名前変更",
+    "hitsTitle": "最近の履歴でこのワークスペースのルールに一致したルート",
+    "delete": "ワークスペースを削除（ルールは未グループになります）",
+    "placeholder": "ワークスペース名"
+  },
+  "filter": {
+    "all": "すべて",
+    "ungrouped": "未グループ"
+  },
+  "quickMove": {
+    "button": "ワークスペースへ移動",
+    "ungrouped": "— 未グループ —",
+    "noWorkspaces": "ワークスペースはまだありません",
+    "off": "（オフ）"
+  },
+  "action": {
+    "open": "開く →",
+    "keepSource": "元を維持",
+    "ask": "確認",
+    "block": "ブロック"
+  },
+  "counts": {
+    "rule_one": "{{count}} 件のルール",
+    "rule_other": "{{count}} 件のルール",
+    "hit_one": "{{count}} hit",
+    "hit_other": "{{count}} hits"
+  },
+  "editor": {
+    "editTitle": "ルールを編集",
+    "newTitle": "新規ルール",
+    "enabled": "有効",
+    "priorityHint": "優先度は Rules ページのリスト順で決まります — ドラッグして並べ替えます。",
+    "when": "条件",
+    "then": "アクション",
+    "workspace": "ワークスペース",
+    "ungrouped": "— 未グループ —",
+    "off": "（オフ）",
+    "note": "メモ（任意、Inspector に表示）",
+    "notePlaceholder": "このルールが必要な理由…",
+    "invalidTag": "無効",
+    "errorTag": "エラー",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "saving": "保存中…",
+    "addChild": "子条件を追加",
+    "removeChildTitle": "削除"
+  },
+  "target": {
+    "pickBrowser": "— ブラウザを選択 —",
+    "anyProfile": "（任意の profile）",
+    "incognito": "シークレット"
+  },
+  "matcherHelp": {
+    "always": "（常に一致）",
+    "all": "（すべての子条件が一致する必要があります）",
+    "any": "（いずれかの子条件が一致）",
+    "not": "（子条件が一致してはいけません）"
+  },
+  "matcherPlaceholders": {
+    "host": "github.com または *.corp.example.com",
+    "path": "/login または /oauth/callback",
+    "sourceApp": "Slack, VSCode, Terminal…",
+    "sourceProfile": "Work / Personal / Default"
+  },
+  "actionHelp": {
+    "keepSource": "（元のブラウザで移動を続けます。OAuth に便利です）",
+    "ask": "（ユーザーにターゲット選択を促します）",
+    "block": "（URL を開きません）"
+  },
+  "validation": {
+    "needsChild": "{{op}} には少なくとも 1 つの子条件が必要です",
+    "patternEmpty": "{{op}} pattern が空です",
+    "sourceAppEmpty": "source-app name が空です",
+    "sourceBrowserEmpty": "source-browser が空です",
+    "sourceProfileEmpty": "source-profile が空です",
+    "openTargetMissing": "open action にはターゲットブラウザが必要です"
+  },
+  "matcherLabels": {
+    "always": "常に",
+    "path": "path",
+    "from": "from",
+    "profile": "profile",
+    "not": "NOT",
+    "and": "AND",
+    "or": "OR",
+    "matched": "一致",
+    "notMatched": "不一致",
+    "evalAnd": "AND ({{count}})",
+    "evalOr": "OR ({{count}})",
+    "hostEval": "host {{pattern}}",
+    "pathEval": "path {{pattern}}",
+    "fromAppEval": "from app {{name}}",
+    "fromBrowserEval": "from browser {{browser}}",
+    "fromProfileEval": "from profile {{profile}}"
+  }
+}

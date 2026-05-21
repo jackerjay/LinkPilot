@@ -1,0 +1,84 @@
+{
+  "messages": {
+    "browserScanFailed": "ブラウザのスキャンに失敗しました: {{error}}",
+    "defaultDone": "macOS が確認を求めます。",
+    "defaultConsent": "システム設定 > デスクトップとDockで切り替えを確認してください。",
+    "defaultUnsupported": "このプラットフォームでは既定ブラウザ API を利用できません。",
+    "failed": "失敗しました: {{error}}",
+    "templateSaveFailed": "テンプレートの保存に失敗しました（{{error}}）。テンプレートなしで続行します。ルールタブから後で追加できます。"
+  },
+  "footer": {
+    "skip": "設定をスキップ",
+    "step": "{{total}} ステップ中 {{step}}",
+    "back": "戻る",
+    "saving": "保存中...",
+    "finish": "完了",
+    "continue": "続行"
+  },
+  "step1": {
+    "logoAlt": "LinkPilot",
+    "title": "LinkPilot へようこそ。",
+    "body": "考え込まずに、すべてのリンクを適切なブラウザ、プロファイル、ワークスペースへ振り分けます。",
+    "features": {
+      "rules": {
+        "title": "ルールエンジン",
+        "detail": "ホスト、アプリ、パスで一致条件を作れます。"
+      },
+      "browsers": {
+        "title": "複数ブラウザ",
+        "detail": "Chrome、Arc、Safari、Firefox。"
+      },
+      "profiles": {
+        "title": "プロファイル",
+        "detail": "仕事は Work、私用は Fun へ送れます。"
+      },
+      "inspector": {
+        "title": "インスペクタ",
+        "detail": "すべての判断を後から確認できます。"
+      }
+    }
+  },
+  "step2": {
+    "title": "LinkPilot を既定のブラウザに設定",
+    "body": "macOS が確認ダイアログを表示します。LinkPilot はWebページを表示せず、各リンクを渡すブラウザを決めるだけです。",
+    "urlToken": "URL",
+    "alreadyDefault": "既定に設定済み",
+    "working": "処理中...",
+    "setDefault": "LinkPilot を既定に設定...",
+    "help": "これはシステム設定 > デスクトップとDockからいつでも変更できます。"
+  },
+  "step3": {
+    "title": "LinkPilot がルーティングできるブラウザを選択",
+    "scanning": "スキャン中...",
+    "found_one": "/Applications をスキャンし、{{count}} 個のブラウザを見つけました。",
+    "found_other": "/Applications をスキャンし、{{count}} 個のブラウザを見つけました。",
+    "noProfiles": "プロファイルなし"
+  },
+  "step4": {
+    "title": "テンプレートから開始",
+    "body": "4つのルールを用意しました。必要なものをオンにし、残りは後でルールタブから調整できます。",
+    "help": "ルールはいつでも編集、並べ替え、削除できます。"
+  },
+  "templates": {
+    "work": {
+      "label": "仕事 -> Chrome / Work",
+      "detail": "github.com、linear.app、notion.so、figma.com",
+      "note": "仕事用ツール -> Chrome / Work プロファイル"
+    },
+    "oauth": {
+      "label": "OAuth -> 元のブラウザを維持",
+      "detail": "/oauth/callback パスはログイン元のブラウザに残します",
+      "note": "OAuth リダイレクトは元のブラウザで完了させる必要があります"
+    },
+    "media": {
+      "label": "メディア -> Arc",
+      "detail": "youtube.com、twitch.tv",
+      "note": "ストリーミングメディア -> Arc"
+    },
+    "banking": {
+      "label": "銀行 -> Safari",
+      "detail": "個人の銀行サイトはキーチェーン利用のため Safari に残します",
+      "note": "銀行 -> Safari（キーチェーン）"
+    }
+  }
+}

@@ -5,6 +5,8 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { AppIcon } from "@/components/AppIcon";
 import { appPathFromExecutable } from "@/lib/browsers";
 import { ipc } from "@/lib/ipc";
@@ -43,6 +45,7 @@ export function ProfileOrderEditor({
   pickerStyle,
   onConfigChanged,
 }: ProfileOrderEditorProps) {
+  const { t } = useTranslation("picker");
   const [catalog, setCatalog] = useState<BrowserProfileCatalog[]>([]);
   const [editingBrowserId, setEditingBrowserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,14 +126,13 @@ export function ProfileOrderEditor({
   }, [catalog, hiddenByBrowser]);
 
   if (loading) {
-    return <div className="profile-order-empty">Scanning browser profiles…</div>;
+    return <div className="profile-order-empty">{t("profileOrder.scanning")}</div>;
   }
 
   if (catalog.length === 0) {
     return (
       <div className="profile-order-empty">
-        No browsers detected yet. Install a Chromium-family browser to customize
-        profile order.
+        {t("profileOrder.noBrowsers")}
       </div>
     );
   }
@@ -151,12 +153,16 @@ export function ProfileOrderEditor({
           >
             <span className="profile-order-hidden-banner-dot" aria-hidden />
             <span className="profile-order-hidden-banner-copy">
-              <strong>
-                {hiddenSummary.total} new profile
-                {hiddenSummary.total === 1 ? "" : "s"} detected
-              </strong>{" "}
-              in {formatBrowserList(hiddenSummary.browserNames)}. They stay
-              hidden from the Halo wheel until you add them.
+              <Trans
+                i18nKey="profileOrder.hiddenBanner"
+                ns="picker"
+                count={hiddenSummary.total}
+                values={{
+                  count: hiddenSummary.total,
+                  browsers: formatBrowserList(t, hiddenSummary.browserNames),
+                }}
+                components={{ strong: <strong /> }}
+              />
             </span>
           </div>
         )}
@@ -176,14 +182,14 @@ export function ProfileOrderEditor({
                 }`}
                 disabled={!canConfigure}
                 onClick={() => setEditingBrowserId(row.browser.id)}
-                title={
-                  hiddenCount > 0
-                    ? `${hiddenCount} detected profile${
-                        hiddenCount === 1 ? "" : "s"
-                      } not yet placed in the Halo wheel`
+                  title={
+                    hiddenCount > 0
+                    ? t("profileOrder.hiddenTitle", {
+                        count: hiddenCount,
+                      })
                     : canConfigure
-                      ? "Configure this browser in the Halo wheel"
-                      : "Profile order is available only when a browser has more than one profile"
+                      ? t("profileOrder.configureTitle")
+                      : t("profileOrder.unavailableTitle")
                 }
               >
                 <span className="profile-order-browser-icon">
@@ -200,24 +206,28 @@ export function ProfileOrderEditor({
                   </span>
                   <span className="profile-order-browser-meta">
                     {row.error
-                      ? "Profile scan failed"
-                      : `${row.profiles.length} profile${
-                          row.profiles.length === 1 ? "" : "s"
-                        }`}
+                      ? t("profileOrder.scanFailed")
+                      : t("profileOrder.profileCount", {
+                          count: row.profiles.length,
+                        })}
                   </span>
                 </span>
                 {hiddenCount > 0 && (
                   <span
                     className="profile-order-hidden-chip"
-                    aria-label={`${hiddenCount} unplaced profile${
-                      hiddenCount === 1 ? "" : "s"
-                    }`}
+                    aria-label={t("profileOrder.hiddenTitle", {
+                      count: hiddenCount,
+                    })}
                   >
-                    +{hiddenCount} new
+                    {t("profileOrder.newChip", { count: hiddenCount })}
                   </span>
                 )}
                 <span className="profile-order-browser-status">
-                  {saved ? "Saved" : canConfigure ? "Configure" : "Unavailable"}
+                  {saved
+                    ? t("profileOrder.statusSaved")
+                    : canConfigure
+                      ? t("profileOrder.statusConfigure")
+                      : t("profileOrder.statusUnavailable")}
                 </span>
               </button>
             );
@@ -226,8 +236,7 @@ export function ProfileOrderEditor({
 
         {configurableCount === 0 && (
           <div className="profile-order-empty">
-            Profile order can be configured after at least one detected browser
-            exposes more than one profile.
+            {t("profileOrder.noneConfigurable")}
           </div>
         )}
         {error && <div className="profile-order-error">{error}</div>}
@@ -259,6 +268,7 @@ function ProfileOrderDialog({
   onClose: () => void;
   onSaved: () => Promise<void> | void;
 }) {
+  const { t } = useTranslation("picker");
   const initial = useMemo(
     () => initialDraftFromSaved(row.profiles, savedOrder),
     [row.profiles, savedOrder],
@@ -362,7 +372,7 @@ function ProfileOrderDialog({
 
   const save = useCallback(async () => {
     if (draft.length < 1) {
-      setError("Keep at least one profile visible for Halo configuration.");
+      setError(t("profileOrder.keepOne"));
       return;
     }
     setPending(true);
@@ -379,7 +389,7 @@ function ProfileOrderDialog({
     } finally {
       setPending(false);
     }
-  }, [clearOnSave, draft, onClose, onSaved, row.browser.id]);
+  }, [clearOnSave, draft, onClose, onSaved, row.browser.id, t]);
 
   const previewProfiles = useMemo(
     () => draft.map(toPickerProfile),
@@ -402,18 +412,21 @@ function ProfileOrderDialog({
         <div className="profile-order-modal-head">
           <div>
             <Dialog.Title className="profile-order-modal-title">
-              Configure profile Halo
+              {t("profileOrder.dialogTitle")}
             </Dialog.Title>
             <Dialog.Description className="profile-order-modal-desc">
-              {row.browser.display_name} · {draft.length} visible of{" "}
-              {row.profiles.length} detected profiles
+              {t("profileOrder.dialogDescription", {
+                browser: row.browser.display_name,
+                visible: draft.length,
+                detected: row.profiles.length,
+              })}
             </Dialog.Description>
           </div>
           <Dialog.Close asChild>
             <button
               type="button"
               className="profile-order-icon-btn"
-              aria-label="Close"
+              aria-label={t("profileOrder.close")}
             >
               <X size={16} />
             </button>
@@ -450,10 +463,10 @@ function ProfileOrderDialog({
                       onClick={removeSelected}
                       title={
                         canRemove
-                          ? "Hide selected profile"
-                          : "At least one profile must remain visible"
+                          ? t("profileOrder.hideSelected")
+                          : t("profileOrder.mustRemain")
                       }
-                      aria-label="Hide selected profile"
+                      aria-label={t("profileOrder.hideSelected")}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -494,7 +507,7 @@ function ProfileOrderDialog({
               </>
             ) : (
               <div className="profile-order-halo-empty">
-                Use the add sector to choose a visible profile.
+                {t("profileOrder.haloEmpty")}
               </div>
             )}
           </div>
@@ -504,7 +517,7 @@ function ProfileOrderDialog({
               className={error ? "profile-order-error" : "profile-order-note"}
             >
               {error ??
-                "Saving now clears custom order and uses the browser default."}
+                t("profileOrder.clearNote")}
             </div>
           )}
         </div>
@@ -517,12 +530,12 @@ function ProfileOrderDialog({
             disabled={pending}
           >
             <RotateCcw size={14} />
-            Reset
+            {t("profileOrder.reset")}
           </button>
           <span className="grow" />
           <Dialog.Close asChild>
             <button type="button" className="mac-tbtn" disabled={pending}>
-              Cancel
+              {t("profileOrder.cancel")}
             </button>
           </Dialog.Close>
           <button
@@ -531,7 +544,7 @@ function ProfileOrderDialog({
             disabled={pending || draft.length < 1}
             onClick={() => void save()}
           >
-            {pending ? "Saving…" : "Save"}
+            {pending ? t("profileOrder.saving") : t("profileOrder.save")}
           </button>
         </div>
       </Dialog.Content>
@@ -550,11 +563,12 @@ function ProfileChooserOverlay({
   onClose: () => void;
   onPick: (profileId: string) => void;
 }) {
+  const { t } = useTranslation("picker");
   return (
     <div
       className="profile-order-profile-picker"
       role="dialog"
-      aria-label="Choose a profile to add"
+      aria-label={t("profileOrder.chooseProfileAria")}
     >
       <div className="profile-order-profile-picker-head">
         <span className="profile-order-profile-picker-app">
@@ -566,14 +580,14 @@ function ProfileChooserOverlay({
           />
         </span>
         <span className="profile-order-profile-picker-title">
-          <span>Choose a profile</span>
+          <span>{t("profileOrder.chooseProfile")}</span>
           <span>{row.browser.display_name}</span>
         </span>
         <button
           type="button"
           className="profile-order-icon-btn"
           onClick={onClose}
-          aria-label="Close profile chooser"
+          aria-label={t("profileOrder.closeChooser")}
         >
           <X size={16} />
         </button>
@@ -611,11 +625,13 @@ function ProfileChooserOverlay({
 /** Render a list of browser names as "A", "A and B", or "A, B and C".
  *  Kept inline because Intl.ListFormat isn't worth a runtime config dep
  *  for this single call site. */
-function formatBrowserList(names: string[]): string {
+function formatBrowserList(t: TFunction<"picker">, names: string[]): string {
   if (names.length === 0) return "";
   if (names.length === 1) return names[0];
-  if (names.length === 2) return `${names[0]} and ${names[1]}`;
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  if (names.length === 2) return `${names[0]} ${t("profileOrder.and")} ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")} ${t("profileOrder.and")} ${
+    names[names.length - 1]
+  }`;
 }
 
 function hasSavedOrder(doc: ConfigDocument | null, browserId: string): boolean {

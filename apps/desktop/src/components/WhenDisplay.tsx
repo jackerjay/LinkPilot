@@ -12,6 +12,7 @@
 // pages/rules.tsx — same content shape, just visual.
 
 import { Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Asterisk,
   Ban,
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
+  const { t } = useTranslation("rules");
   switch (matcher.op) {
     case "always":
       return (
@@ -40,7 +42,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
             className="shrink-0 text-amber-500"
             style={{ width: iconSize, height: iconSize }}
           />
-          always
+          {t("matcherLabels.always")}
         </span>
       );
 
@@ -62,7 +64,9 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
             className="shrink-0 text-emerald-500"
             style={{ width: iconSize, height: iconSize }}
           />
-          <span className="text-muted-foreground">path</span>
+          <span className="text-muted-foreground">
+            {t("matcherLabels.path")}
+          </span>
           <span className="font-mono">{matcher.pattern}</span>
         </span>
       );
@@ -78,7 +82,9 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
             size={iconSize}
             alt={matcher.name}
           />
-          <span className="text-muted-foreground">from</span>
+          <span className="text-muted-foreground">
+            {t("matcherLabels.from")}
+          </span>
           <span>{matcher.name}</span>
         </span>
       );
@@ -86,7 +92,9 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
     case "source-browser":
       return (
         <span className="inline-flex items-center gap-1.5">
-          <span className="text-muted-foreground">from</span>
+          <span className="text-muted-foreground">
+            {t("matcherLabels.from")}
+          </span>
           <BrowserBadge browserId={matcher.browser} iconSize={iconSize} />
         </span>
       );
@@ -98,7 +106,9 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
             className="shrink-0 text-violet-500"
             style={{ width: iconSize, height: iconSize }}
           />
-          <span className="text-muted-foreground">profile</span>
+          <span className="text-muted-foreground">
+            {t("matcherLabels.profile")}
+          </span>
           <span className="font-mono">{matcher.profile}</span>
         </span>
       );
@@ -112,7 +122,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
               style={{ width: iconSize, height: iconSize }}
             />
           }
-          separator="AND"
+          separator={t("matcherLabels.and")}
           children_={matcher.of}
           iconSize={iconSize}
         />
@@ -127,7 +137,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
               style={{ width: iconSize, height: iconSize }}
             />
           }
-          separator="OR"
+          separator={t("matcherLabels.or")}
           children_={matcher.of}
           iconSize={iconSize}
         />
@@ -140,7 +150,7 @@ export function WhenDisplay({ matcher, iconSize = 14 }: Props) {
             className="shrink-0 text-rose-500"
             style={{ width: iconSize, height: iconSize }}
           />
-          <span className="text-rose-500">NOT</span>
+          <span className="text-rose-500">{t("matcherLabels.not")}</span>
           <WhenDisplay matcher={matcher.of} iconSize={iconSize} />
         </span>
       );

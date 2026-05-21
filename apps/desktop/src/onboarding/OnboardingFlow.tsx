@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Check, Compass, FileText, Globe, User, Workflow } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { AppIcon } from "@/components/AppIcon";
 import { appPathFromExecutable } from "@/lib/browsers";
 import { ipc } from "@/lib/ipc";
@@ -78,11 +79,12 @@ const DARK_GRADIENTS: Record<Step, string> = {
 
 interface TemplateChoice {
   id: string;
-  label: string;
-  detail: string;
+  labelKey: string;
+  detailKey: string;
+  noteKey: string;
   swatch: string;
   enabled: boolean;
-  rule: Omit<Rule, "id">;
+  rule: Omit<Rule, "id" | "note">;
 }
 
 // 4 starter templates. The user toggles the ones they want and we
@@ -93,14 +95,14 @@ interface TemplateChoice {
 const RULE_TEMPLATES: TemplateChoice[] = [
   {
     id: "tmpl-work",
-    label: "Work → Chrome / Work",
-    detail: "github.com, linear.app, notion.so, figma.com",
+    labelKey: "templates.work.label",
+    detailKey: "templates.work.detail",
+    noteKey: "templates.work.note",
     swatch: "#1A73E8",
     enabled: true,
     rule: {
       enabled: true,
       source: "gui",
-      note: "Work tools → Chrome / Work profile",
       when: {
         op: "any",
         of: [
@@ -118,28 +120,28 @@ const RULE_TEMPLATES: TemplateChoice[] = [
   },
   {
     id: "tmpl-oauth",
-    label: "OAuth → Keep source",
-    detail: "/oauth/callback paths stay in the originating browser",
+    labelKey: "templates.oauth.label",
+    detailKey: "templates.oauth.detail",
+    noteKey: "templates.oauth.note",
     swatch: "#34c759",
     enabled: true,
     rule: {
       enabled: true,
       source: "gui",
-      note: "OAuth redirects must complete in the source browser",
       when: { op: "url-path", pattern: "/oauth/callback" },
       then: { kind: "keep-source" },
     },
   },
   {
     id: "tmpl-media",
-    label: "Media → Arc",
-    detail: "youtube.com, twitch.tv",
+    labelKey: "templates.media.label",
+    detailKey: "templates.media.detail",
+    noteKey: "templates.media.note",
     swatch: "#FF6F61",
     enabled: false,
     rule: {
       enabled: true,
       source: "gui",
-      note: "Streaming media → Arc",
       when: {
         op: "any",
         of: [
@@ -152,14 +154,14 @@ const RULE_TEMPLATES: TemplateChoice[] = [
   },
   {
     id: "tmpl-banking",
-    label: "Banking → Safari",
-    detail: "Personal banking sites stay in Safari for keychain support",
+    labelKey: "templates.banking.label",
+    detailKey: "templates.banking.detail",
+    noteKey: "templates.banking.note",
     swatch: "#1E96F0",
     enabled: false,
     rule: {
       enabled: true,
       source: "gui",
-      note: "Banking → Safari (keychain)",
       when: { op: "url-host", pattern: "*.bank.com" },
       then: { kind: "open", target: { browser: "safari" } },
     },
@@ -167,6 +169,7 @@ const RULE_TEMPLATES: TemplateChoice[] = [
 ];
 
 export function OnboardingFlow({ onFinish }: Props) {
+  const { t } = useTranslation("onboarding");
   const [step, setStep] = useState<Step>(1);
   const [browsers, setBrowsers] = useState<InstalledBrowser[] | null>(null);
   const [profilesByBrowser, setProfilesByBrowser] = useState<
@@ -214,10 +217,10 @@ export function OnboardingFlow({ onFinish }: Props) {
         );
         setProfilesByBrowser(Object.fromEntries(profileEntries));
       } catch (err) {
-        setMessage(`Browser scan failed: ${err}`);
+        setMessage(t("messages.browserScanFailed", { error: String(err) }));
       }
     })();
-  }, [step, browsers]);
+  }, [step, browsers, t]);
 
   // Reflect current default-browser status at the top of step 2 so the
   // user can see when the macOS prompt has been accepted.
@@ -232,22 +235,20 @@ export function OnboardingFlow({ onFinish }: Props) {
     try {
       const outcome: SetDefaultOutcome = await ipc.requestSetDefaultBrowser();
       if (outcome.kind === "done") {
-        setMessage("macOS will prompt you to confirm.");
+        setMessage(t("messages.defaultDone"));
       } else if (outcome.kind === "user-consent-required") {
-        setMessage(
-          "Confirm the switch in System Settings → Desktop & Dock.",
-        );
+        setMessage(t("messages.defaultConsent"));
       } else {
-        setMessage("Default-browser API isn't available on this platform.");
+        setMessage(t("messages.defaultUnsupported"));
       }
       const next = await ipc.isDefaultBrowser();
       setIsDefault(next);
     } catch (err) {
-      setMessage(`Failed: ${err}`);
+      setMessage(t("messages.failed", { error: String(err) }));
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [t]);
 
   const finish = useCallback(async () => {
     setBusy(true);
@@ -267,9 +268,10 @@ export function OnboardingFlow({ onFinish }: Props) {
       //
       // Templates are prepended in their declared order, so the first
       // toggled template ends up at slot #1 (highest priority).
-      const newRules: Rule[] = toAdd.map((t) => ({
+      const newRules: Rule[] = toAdd.map((tpl) => ({
         id: crypto.randomUUID(),
-        ...t.rule,
+        ...tpl.rule,
+        note: t(tpl.noteKey),
       }));
       if (newRules.length > 0) {
         await ipc.configReplace({
@@ -284,14 +286,14 @@ export function OnboardingFlow({ onFinish }: Props) {
       // hides the structured details from `invoke()`.
       console.error("onboarding: configReplace failed", err);
       setMessage(
-        `Template save failed (${err}). Continuing without templates — you can add rules from the Rules tab.`,
+        t("messages.templateSaveFailed", { error: String(err) }),
       );
     }
     // Reached regardless of save outcome — Finish always exits the
     // wizard so the user isn't trapped.
     markOnboardingComplete();
     onFinish();
-  }, [templates, onFinish]);
+  }, [templates, onFinish, t]);
 
   const skip = useCallback(() => {
     markOnboardingComplete();
@@ -446,14 +448,14 @@ export function OnboardingFlow({ onFinish }: Props) {
           }}
         >
           <button type="button" className="mac-tbtn" onClick={skip}>
-            Skip setup
+            {t("footer.skip")}
           </button>
           <span style={{ flex: 1 }} />
           <span
             className="mac-muted"
             style={{ fontSize: 12, marginRight: 12 }}
           >
-            Step {step} of 4
+            {t("footer.step", { step, total: 4 })}
           </span>
           {step > 1 && (
             <button
@@ -463,7 +465,7 @@ export function OnboardingFlow({ onFinish }: Props) {
               onClick={() => setStep(((step - 1) as Step))}
               disabled={busy}
             >
-              Back
+              {t("footer.back")}
             </button>
           )}
           <button
@@ -478,7 +480,11 @@ export function OnboardingFlow({ onFinish }: Props) {
               }
             }}
           >
-            {step === 4 ? (busy ? "Saving…" : "Finish") : "Continue"}
+            {step === 4
+              ? busy
+                ? t("footer.saving")
+                : t("footer.finish")
+              : t("footer.continue")}
           </button>
         </div>
       </div>
@@ -487,11 +493,32 @@ export function OnboardingFlow({ onFinish }: Props) {
 }
 
 function Step1() {
+  const { t } = useTranslation("onboarding");
   const features = [
-    { icon: Workflow, t: "Rules engine", d: "Match by host, app, or path." },
-    { icon: Globe, t: "Multi-browser", d: "Chrome, Arc, Safari, Firefox." },
-    { icon: User, t: "Profiles", d: "Send work to Work, fun to Fun." },
-    { icon: FileText, t: "Inspector", d: "Every decision is auditable." },
+    {
+      icon: Workflow,
+      key: "rules",
+      title: t("step1.features.rules.title"),
+      detail: t("step1.features.rules.detail"),
+    },
+    {
+      icon: Globe,
+      key: "browsers",
+      title: t("step1.features.browsers.title"),
+      detail: t("step1.features.browsers.detail"),
+    },
+    {
+      icon: User,
+      key: "profiles",
+      title: t("step1.features.profiles.title"),
+      detail: t("step1.features.profiles.detail"),
+    },
+    {
+      icon: FileText,
+      key: "inspector",
+      title: t("step1.features.inspector.title"),
+      detail: t("step1.features.inspector.detail"),
+    },
   ];
   return (
     <>
@@ -499,7 +526,7 @@ function Step1() {
         src={brandIcon}
         width={96}
         height={96}
-        alt="LinkPilot"
+        alt={t("step1.logoAlt")}
         style={{
           borderRadius: 24,
           boxShadow:
@@ -515,7 +542,7 @@ function Step1() {
           letterSpacing: "-0.02em",
         }}
       >
-        Welcome to LinkPilot.
+        {t("step1.title")}
       </h1>
       <p
         style={{
@@ -526,8 +553,7 @@ function Step1() {
           lineHeight: 1.5,
         }}
       >
-        Route every link to the right browser, profile, and workspace — without
-        thinking about it.
+        {t("step1.body")}
       </p>
       <div
         style={{
@@ -543,7 +569,7 @@ function Step1() {
           const Icon = f.icon;
           return (
             <div
-              key={f.t}
+              key={f.key}
               style={{
                 padding: 12,
                 background: "var(--mac-card-fill)",
@@ -571,9 +597,9 @@ function Step1() {
                 <Icon size={15} strokeWidth={1.8} />
               </span>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{f.t}</div>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{f.title}</div>
                 <div style={{ fontSize: 12, color: "var(--mac-fg-muted)" }}>
-                  {f.d}
+                  {f.detail}
                 </div>
               </div>
             </div>
@@ -595,6 +621,7 @@ function Step2({
   onSetDefault: () => void;
   message: string | null;
 }) {
+  const { t } = useTranslation("onboarding");
   return (
     <>
       <h1
@@ -605,7 +632,7 @@ function Step2({
           letterSpacing: "-0.01em",
         }}
       >
-        Set LinkPilot as your default browser
+        {t("step2.title")}
       </h1>
       <p
         style={{
@@ -614,8 +641,7 @@ function Step2({
           marginTop: 8,
         }}
       >
-        macOS will show a confirmation dialog. LinkPilot doesn't render web
-        pages — it just decides which browser to hand each link to.
+        {t("step2.body")}
       </p>
       <div
         style={{
@@ -639,7 +665,7 @@ function Step2({
             fontWeight: 600,
           }}
         >
-          URL
+          {t("step2.urlToken")}
         </span>
         <ArrowUpRight size={18} strokeWidth={1.8} />
         <img
@@ -667,10 +693,10 @@ function Step2({
           onClick={onSetDefault}
         >
           {isDefault
-            ? "Already default ✓"
+            ? t("step2.alreadyDefault")
             : busy
-            ? "Working…"
-            : "Set LinkPilot as default…"}
+            ? t("step2.working")
+            : t("step2.setDefault")}
         </button>
       </div>
       {message && (
@@ -693,7 +719,7 @@ function Step2({
           maxWidth: 360,
         }}
       >
-        You can change this at any time in System Settings → Desktop & Dock.
+        {t("step2.help")}
       </p>
     </>
   );
@@ -710,6 +736,7 @@ function Step3({
   setBrowserOn: (next: Record<string, boolean>) => void;
   profilesByBrowser: Record<string, BrowserProfile[]>;
 }) {
+  const { t } = useTranslation("onboarding");
   const sorted = useMemo(
     () => (browsers ? [...browsers].sort((a, b) => a.display_name.localeCompare(b.display_name)) : null),
     [browsers],
@@ -717,19 +744,19 @@ function Step3({
   return (
     <>
       <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
-        Pick which browsers LinkPilot can route to
+        {t("step3.title")}
       </h1>
       <p style={{ color: "var(--mac-fg-muted)", marginTop: 8 }}>
         {sorted === null
-          ? "Scanning…"
-          : `We scanned /Applications and found ${sorted.length} browsers.`}
+          ? t("step3.scanning")
+          : t("step3.found", { count: sorted.length })}
       </p>
       <div style={{ marginTop: 20, width: "100%", maxWidth: 460 }}>
         {sorted?.map((b, i) => {
           const profiles = profilesByBrowser[b.id] ?? [];
           const profileLabel =
             profiles.length === 0
-              ? "No profiles"
+              ? t("step3.noProfiles")
               : profiles.map((p) => p.display_name).join(" · ");
           const isFirst = i === 0;
           const isLast = i === (sorted.length - 1);
@@ -794,6 +821,7 @@ function Step4({
   templates: TemplateChoice[];
   setTemplates: (next: TemplateChoice[]) => void;
 }) {
+  const { t } = useTranslation("onboarding");
   const toggle = (id: string) =>
     setTemplates(
       templates.map((t) => (t.id === id ? { ...t, enabled: !t.enabled } : t)),
@@ -801,7 +829,7 @@ function Step4({
   return (
     <>
       <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
-        Start from a template
+        {t("step4.title")}
       </h1>
       <p
         style={{
@@ -810,8 +838,7 @@ function Step4({
           maxWidth: 380,
         }}
       >
-        We've drafted four rules. Toggle the ones you want; tweak the rest in
-        the Rules tab later.
+        {t("step4.body")}
       </p>
       <div
         style={{
@@ -845,9 +872,11 @@ function Step4({
               }}
             />
             <div style={{ flex: 1, textAlign: "left" }}>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>{tpl.label}</div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>
+                {t(tpl.labelKey)}
+              </div>
               <div style={{ fontSize: 11.5, color: "var(--mac-fg-muted)" }}>
-                {tpl.detail}
+                {t(tpl.detailKey)}
               </div>
             </div>
             <button
@@ -866,7 +895,7 @@ function Step4({
           marginTop: 14,
         }}
       >
-        You can edit, reorder, or delete rules any time.
+        {t("step4.help")}
       </p>
     </>
   );

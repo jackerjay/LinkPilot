@@ -3,6 +3,7 @@
 // MatcherEval tree, which we render exactly like the Inspector does.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AppIcon } from "@/components/AppIcon";
 import { AppPickerButton } from "@/components/AppPickerButton";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ interface Props {
 const NONE = "__none";
 
 export function TestUrlPage({ configEpoch }: Props) {
+  const { t } = useTranslation("testUrl");
   const [url, setUrl] = useState("https://github.com/anthropics/anthropic-cookbook");
   const [fromApp, setFromApp] = useState("");
   // Tracks the bundle id captured by AppPickerButton — kept in sync with
@@ -131,28 +133,25 @@ export function TestUrlPage({ configEpoch }: Props) {
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="mac-h2">Test URL</h2>
-        <p className="mac-subtitle">
-          Run a URL through the live router without opening a browser. Edit a
-          rule, switch back here, and the decision updates instantly.
-        </p>
+        <h2 className="mac-h2">{t("title")}</h2>
+        <p className="mac-subtitle">{t("subtitle")}</p>
       </header>
 
       <Card>
         <CardContent className="space-y-3 pt-4">
           <div className="space-y-1.5">
-            <Label htmlFor="test-url">URL</Label>
+            <Label htmlFor="test-url">{t("url")}</Label>
             <Input
               id="test-url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com/some/path"
+              placeholder={t("urlPlaceholder")}
             />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="from-app">From app (optional)</Label>
+              <Label htmlFor="from-app">{t("fromApp")}</Label>
               <div className="flex gap-2">
                 <Input
                   id="from-app"
@@ -165,7 +164,7 @@ export function TestUrlPage({ configEpoch }: Props) {
                     // for hand-written rules.
                     setFromAppBundleId(null);
                   }}
-                  placeholder="Slack, Terminal, VSCode…"
+                  placeholder={t("fromAppPlaceholder")}
                 />
                 <AppPickerButton
                   onPicked={(p) => {
@@ -176,16 +175,16 @@ export function TestUrlPage({ configEpoch }: Props) {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>From browser (optional)</Label>
+              <Label>{t("fromBrowser")}</Label>
               <Select
                 value={fromBrowser || NONE}
                 onValueChange={(v) => setFromBrowser(v === NONE ? "" : v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="— none —" />
+                  <SelectValue placeholder={t("fromBrowserPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>— none —</SelectItem>
+                  <SelectItem value={NONE}>{t("fromBrowserNone")}</SelectItem>
                   {browsers.map((b) => (
                     <SelectItem key={b.id} value={b.id}>
                       <span className="flex items-center gap-2">
@@ -203,17 +202,17 @@ export function TestUrlPage({ configEpoch }: Props) {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>From profile (optional)</Label>
+              <Label>{t("fromProfile")}</Label>
               <Select
                 value={fromProfile || NONE}
                 onValueChange={(v) => setFromProfile(v === NONE ? "" : v)}
                 disabled={!fromBrowser}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="— any —" />
+                  <SelectValue placeholder={t("fromProfilePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>— any —</SelectItem>
+                  <SelectItem value={NONE}>{t("fromProfileAny")}</SelectItem>
                   {profiles.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.display_name}
@@ -229,7 +228,7 @@ export function TestUrlPage({ configEpoch }: Props) {
       {error && (
         <Card>
           <CardContent className="flex items-center gap-2 pt-4">
-            <Badge variant="destructive">error</Badge>
+            <Badge variant="destructive">{t("errorTag")}</Badge>
             <span className="text-sm text-muted-foreground">{error}</span>
           </CardContent>
         </Card>
@@ -238,18 +237,18 @@ export function TestUrlPage({ configEpoch }: Props) {
       {result && (
         <Card>
           <CardHeader>
-            <CardTitle>Result</CardTitle>
+            <CardTitle>{t("result.card")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <ResultRow label="Decision">
+            <ResultRow label={t("result.decision")}>
               <DecisionLine decision={result.decision} />
             </ResultRow>
-            <ResultRow label="Rule">
+            <ResultRow label={t("result.rule")}>
               {matchedRule ? (
                 <>
                   <span
                     className="font-mono text-xs"
-                    title="Priority position — top of list wins"
+                    title={t("result.rulePriorityTitle")}
                   >
                     #{matchedPosition}
                   </span>{" "}
@@ -257,21 +256,21 @@ export function TestUrlPage({ configEpoch }: Props) {
                     <span className="text-sm">{matchedRule.note}</span>
                   ) : (
                     <span className="text-sm text-muted-foreground">
-                      (no note)
+                      {t("result.ruleNoNote")}
                     </span>
                   )}
                 </>
               ) : (
                 <span className="text-sm text-muted-foreground">
-                  — default target (no rule matched)
+                  {t("result.ruleDefault")}
                 </span>
               )}
             </ResultRow>
             <div className="space-y-2">
-              <Label>Why this decision</Label>
+              <Label>{t("result.whyTitle")}</Label>
               <ExplanationView
                 explanation={result.explanation}
-                emptyMessage="No rule fired. The route would fall back to the configured default_target."
+                emptyMessage={t("result.whyEmpty")}
               />
             </div>
           </CardContent>

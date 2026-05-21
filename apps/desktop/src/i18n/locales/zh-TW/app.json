@@ -1,0 +1,20 @@
+{
+  "tabs": {
+    "overview": "總覽",
+    "rules": "規則",
+    "testUrl": "測試連結",
+    "inspector": "Inspector",
+    "browsers": "瀏覽器",
+    "settings": "設定"
+  },
+  "sidebar": {
+    "workspaces": "工作區",
+    "workspaceOpenTitle": "開啟「{{name}}」工作區",
+    "daemon": "Daemon",
+    "workspaceFallbackTitle": "工作區"
+  },
+  "updates": {
+    "tag": "更新",
+    "checksumMissing": "此版本缺少 macOS DMG 的 checksums.txt 校驗項；拒絕自動下載未經校驗的安裝程式。"
+  }
+}

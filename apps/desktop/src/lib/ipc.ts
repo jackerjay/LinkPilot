@@ -9,6 +9,7 @@ import type {
   DoctorReport,
   Explained,
   InstalledBrowser,
+  LanguagePref,
   PickerStyle,
   RouteRecord,
   RoutingDecision,
@@ -67,6 +68,9 @@ export const ipc = {
 
   setPickerStyle: (style: PickerStyle) =>
     invoke<void>("set_picker_style", { style }),
+  /** Persist the UI language preference. `system` means follow OS. */
+  setLanguage: (language: LanguagePref) =>
+    invoke<void>("set_language", { language }),
   /** Persist a per-browser visible profile ordering. Empty `profileIds`
    *  clears customization for that browser — picker falls back to default
    *  sort and shows every detected profile. */

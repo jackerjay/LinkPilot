@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import type { DragEvent, MouseEvent as ReactMouseEvent } from "react";
 import {
   Check,
@@ -59,6 +60,7 @@ type DropPos = "before" | "after";
 type RuleFilter = "all" | "ungrouped" | string;
 
 export function RulesPage({ configEpoch, pendingFilter }: Props) {
+  const { t } = useTranslation("rules");
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
   const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
   const [editor, setEditor] = useState<EditorState>({ kind: "closed" });
@@ -165,8 +167,8 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
       id: crypto.randomUUID(),
       source: "gui",
       note: rule.note
-        ? `${rule.note} (copied from ts-compiled)`
-        : "copied from ts-compiled",
+        ? t("copyToGui.noteWithExisting", { note: rule.note })
+        : t("copyToGui.note"),
     };
     try {
       await ipc.ruleUpsert(copy);
@@ -232,10 +234,13 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="mac-h2">Rules</h2>
+        <h2 className="mac-h2">{t("title")}</h2>
         <p className="mac-subtitle">
-          Evaluated highest-priority first. Drag a row to reorder; click{" "}
-          <em>Edit</em> or <em>Add rule</em> for the structured editor.
+          <Trans
+            i18nKey="subtitle"
+            ns="rules"
+            components={{ edit: <em />, add: <em /> }}
+          />
         </p>
       </header>
 
@@ -253,15 +258,19 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>
-            Rules ({visibleRules.length}
-            {filter !== "all" && ` / ${doc?.rules.length ?? 0}`})
+            {filter === "all"
+              ? t("list.card", { count: visibleRules.length })
+              : t("list.cardFiltered", {
+                  visible: visibleRules.length,
+                  total: doc?.rules.length ?? 0,
+                })}
           </CardTitle>
           <Button
             onClick={() => setEditor({ kind: "new" })}
             disabled={editor.kind !== "closed"}
           >
             <Plus />
-            Add rule
+            {t("list.addRule")}
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -274,18 +283,22 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
           )}
           {doc && doc.rules.length === 0 && (
             <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              No rules yet — click "Add rule".
+              <Trans
+                i18nKey="list.empty"
+                ns="rules"
+                components={{ add: <span /> }}
+              />
             </div>
           )}
           {doc && doc.rules.length > 0 && visibleRules.length === 0 && (
             <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              No rules in this filter.{" "}
+              {t("list.emptyFilterPrefix")}{" "}
               <button
                 type="button"
                 className="underline underline-offset-2 hover:text-foreground"
                 onClick={() => setFilter("all")}
               >
-                Show all
+                {t("list.showAll")}
               </button>
               .
             </div>
@@ -405,7 +418,7 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Default target</CardTitle>
+          <CardTitle>{t("defaultTarget.card")}</CardTitle>
           {doc && (
             <span className="text-xs text-muted-foreground">
               <BrowserBadge
@@ -417,20 +430,24 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
         </CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground">
-            Fires when no rule matches. Change it in the <em>Settings</em> tab.
+            <Trans
+              i18nKey="defaultTarget.description"
+              ns="rules"
+              components={{ settings: <em /> }}
+            />
           </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Advanced: raw JSON</CardTitle>
+          <CardTitle>{t("advanced.card")}</CardTitle>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowAdvanced((v) => !v)}
           >
-            {showAdvanced ? "Hide" : "Show"}
+            {showAdvanced ? t("advanced.hide") : t("advanced.show")}
           </Button>
         </CardHeader>
         {showAdvanced && doc && (
@@ -443,7 +460,7 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
       {error && (
         <Card>
           <CardContent className="flex items-center gap-2 pt-4">
-            <Badge variant="destructive">error</Badge>
+            <Badge variant="destructive">{t("advanced.errorTag")}</Badge>
             <span className="text-sm text-muted-foreground">{error}</span>
           </CardContent>
         </Card>
@@ -500,6 +517,7 @@ function RuleRow({
   onDrop,
   onDragEnd,
 }: RuleRowProps) {
+  const { t } = useTranslation("rules");
   // Visually mute rules that won't fire — either explicitly disabled or
   // sitting in a turned-off workspace. The router treats both the same.
   const muted = !rule.enabled || workspaceDisabled;
@@ -539,13 +557,13 @@ function RuleRow({
         </TooltipTrigger>
         {!reorderEnabled && (
           <TooltipContent>
-            Drag to reorder is disabled while a filter is active
+            {t("row.dragDisabled")}
           </TooltipContent>
         )}
       </Tooltip>
       <span
         className="w-10 shrink-0 font-mono text-xs text-muted-foreground"
-        title="Priority position — top of list wins. Drag to reorder."
+        title={t("row.priorityTitle")}
       >
         #{position}
       </span>
@@ -565,7 +583,7 @@ function RuleRow({
               type="button"
               onClick={onBadgeClick}
               className="cursor-pointer"
-              title="Filter by this workspace"
+              title={t("row.filterByWorkspaceTitle")}
             >
               <Badge
                 variant={workspaceDisabled ? "outline" : "secondary"}
@@ -576,23 +594,27 @@ function RuleRow({
             </button>
           </TooltipTrigger>
           <TooltipContent>
-            Filter by workspace: {workspace.display_name}
-            {workspaceDisabled && " (off)"}
+            {t("row.filterByWorkspace", { name: workspace.display_name })}
+            {workspaceDisabled && ` (${t("row.workspaceOff")})`}
           </TooltipContent>
         </Tooltip>
       )}
-      {!rule.enabled && <Badge variant="destructive">disabled</Badge>}
+      {!rule.enabled && (
+        <Badge variant="destructive">{t("row.disabled")}</Badge>
+      )}
       {isCompiled && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Badge variant="secondary" className="cursor-help">
-              compiled
+              {t("row.compiled")}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            Authored in <code>linkpilot.config.ts</code>. Edit there and
-            re-run <code>lp config compile</code> to update, or use the
-            copy button to fork an editable GUI copy.
+            <Trans
+              i18nKey="row.compiledHelp"
+              ns="rules"
+              components={{ code: <code />, compile: <code /> }}
+            />
           </TooltipContent>
         </Tooltip>
       )}
@@ -613,9 +635,11 @@ function RuleRow({
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            Compiled rules are read-only. Edit{" "}
-            <code>linkpilot.config.ts</code> and re-run{" "}
-            <code>lp config compile</code>.
+            <Trans
+              i18nKey="row.compiledReadonly"
+              ns="rules"
+              components={{ code: <code />, compile: <code /> }}
+            />
           </TooltipContent>
         </Tooltip>
       )}
@@ -626,7 +650,7 @@ function RuleRow({
               <Pencil />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Edit rule</TooltipContent>
+          <TooltipContent>{t("row.editRule")}</TooltipContent>
         </Tooltip>
       )}
       {isCompiled && (
@@ -637,8 +661,11 @@ function RuleRow({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            Copy as GUI-editable rule. The original stays compiled and
-            will be overwritten on the next <code>lp config compile</code>.
+            <Trans
+              i18nKey="row.copyHelp"
+              ns="rules"
+              components={{ compile: <code /> }}
+            />
           </TooltipContent>
         </Tooltip>
       )}
@@ -657,9 +684,11 @@ function RuleRow({
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            Compiled rules can't be deleted from the GUI — remove the
-            entry from <code>linkpilot.config.ts</code> and re-run{" "}
-            <code>lp config compile</code>.
+            <Trans
+              i18nKey="row.compiledDeleteHelp"
+              ns="rules"
+              components={{ code: <code />, compile: <code /> }}
+            />
           </TooltipContent>
         </Tooltip>
       )}
@@ -675,7 +704,7 @@ function RuleRow({
               <Trash2 />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Delete rule</TooltipContent>
+          <TooltipContent>{t("row.deleteRule")}</TooltipContent>
         </Tooltip>
       )}
     </div>
@@ -689,6 +718,7 @@ function AdvancedJsonEditor({
   doc: ConfigDocument;
   onSaved: () => Promise<void>;
 }) {
+  const { t } = useTranslation("rules");
   const [draft, setDraft] = useState(() => JSON.stringify(doc, null, 2));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -721,7 +751,7 @@ function AdvancedJsonEditor({
       />
       {error && (
         <div className="flex items-center gap-2">
-          <Badge variant="destructive">error</Badge>
+          <Badge variant="destructive">{t("advanced.errorTag")}</Badge>
           <span className="text-xs text-muted-foreground">{error}</span>
         </div>
       )}
@@ -731,10 +761,10 @@ function AdvancedJsonEditor({
           onClick={() => setDraft(JSON.stringify(doc, null, 2))}
           disabled={busy}
         >
-          Revert
+          {t("advanced.revert")}
         </Button>
         <Button onClick={save} disabled={busy}>
-          {busy ? "Saving…" : "Save"}
+          {busy ? t("advanced.saving") : t("advanced.save")}
         </Button>
       </div>
     </div>
@@ -765,6 +795,7 @@ function WorkspacesCard({
   onChanged,
   onError,
 }: WorkspacesCardProps) {
+  const { t } = useTranslation("rules");
   const [creating, setCreating] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -832,7 +863,9 @@ function WorkspacesCard({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle>Workspaces ({doc.workspaces.length})</CardTitle>
+        <CardTitle>
+          {t("workspaces.card", { count: doc.workspaces.length })}
+        </CardTitle>
         <Button
           size="sm"
           variant="outline"
@@ -843,15 +876,17 @@ function WorkspacesCard({
           disabled={creating}
         >
           <Plus />
-          New workspace
+          {t("workspaces.new")}
         </Button>
       </CardHeader>
       <CardContent>
         {doc.workspaces.length === 0 && !creating && (
           <p className="text-xs text-muted-foreground">
-            Group rules into workspaces (e.g. <em>Work</em>, <em>Side
-            project</em>) and flip them on/off in one click. Assign a
-            workspace when editing a rule.
+            <Trans
+              i18nKey="workspaces.empty"
+              ns="rules"
+              components={{ work: <em />, side: <em /> }}
+            />
           </p>
         )}
         {(doc.workspaces.length > 0 || creating) && (
@@ -882,7 +917,7 @@ function WorkspacesCard({
                   <MiniSwitch
                     checked={ws.enabled}
                     onChange={() => toggle(ws)}
-                    label={`Toggle ${ws.display_name}`}
+                    label={t("workspaces.toggle", { name: ws.display_name })}
                   />
                   {isRenaming ? (
                     <Input
@@ -907,13 +942,13 @@ function WorkspacesCard({
                         "text-sm hover:underline",
                         !ws.enabled && "text-muted-foreground",
                       )}
-                      title="Click to rename"
+                      title={t("workspaces.renameTitle")}
                     >
                       {ws.display_name}
                     </button>
                   )}
                   <span className="text-xs text-muted-foreground">
-                    {count} rule{count === 1 ? "" : "s"}
+                    {t("counts.rule", { count })}
                   </span>
                   {/* Hits chip — recent routes attributed to a rule that
                       belongs to this workspace. Hidden at 0 so a fresh
@@ -921,11 +956,10 @@ function WorkspacesCard({
                   {(hits.get(ws.id) ?? 0) > 0 && (
                     <span
                       className="text-xs text-muted-foreground font-mono"
-                      title="Routes in recent history that hit a rule in this workspace"
+                      title={t("workspaces.hitsTitle")}
                       style={{ fontVariantNumeric: "tabular-nums" }}
                     >
-                      · {hits.get(ws.id)} hit
-                      {hits.get(ws.id) === 1 ? "" : "s"}
+                      · {t("counts.hit", { count: hits.get(ws.id) ?? 0 })}
                     </span>
                   )}
                   <div className="flex-1" />
@@ -941,7 +975,7 @@ function WorkspacesCard({
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      Delete workspace (rules become ungrouped)
+                      {t("workspaces.delete")}
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -952,7 +986,7 @@ function WorkspacesCard({
                 <MiniSwitch checked disabled label="" onChange={() => {}} />
                 <Input
                   autoFocus
-                  placeholder="Workspace name"
+                  placeholder={t("workspaces.placeholder")}
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
                   onKeyDown={(e) => {
@@ -1006,19 +1040,20 @@ interface FilterChipsProps {
 }
 
 function FilterChips({ doc, active, onChange }: FilterChipsProps) {
+  const { t } = useTranslation("rules");
   if (doc.workspaces.length === 0) return null;
   const total = doc.rules.length;
   const ungroupedCount = doc.rules.filter((r) => !r.workspace_id).length;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <FilterChip
-        label="All"
+        label={t("filter.all")}
         count={total}
         active={active === "all"}
         onClick={() => onChange("all")}
       />
       <FilterChip
-        label="Ungrouped"
+        label={t("filter.ungrouped")}
         count={ungroupedCount}
         active={active === "ungrouped"}
         onClick={() => onChange("ungrouped")}
@@ -1101,6 +1136,7 @@ function QuickMoveButton({
   workspaces,
   onSelect,
 }: QuickMoveButtonProps) {
+  const { t } = useTranslation("rules");
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -1138,7 +1174,7 @@ function QuickMoveButton({
             <FolderInput />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Move to workspace</TooltipContent>
+        <TooltipContent>{t("quickMove.button")}</TooltipContent>
       </Tooltip>
       {open && (
         <div
@@ -1146,7 +1182,7 @@ function QuickMoveButton({
           role="menu"
         >
           <QuickMoveItem
-            label="— Ungrouped —"
+            label={t("quickMove.ungrouped")}
             active={currentWorkspaceId === null}
             onClick={() => pick(null)}
             muted
@@ -1158,14 +1194,14 @@ function QuickMoveButton({
             <QuickMoveItem
               key={ws.id}
               label={ws.display_name}
-              hint={!ws.enabled ? "(off)" : undefined}
+              hint={!ws.enabled ? t("quickMove.off") : undefined}
               active={currentWorkspaceId === ws.id}
               onClick={() => pick(ws.id)}
             />
           ))}
           {workspaces.length === 0 && (
             <div className="px-3 py-1.5 text-xs text-muted-foreground">
-              No workspaces yet
+              {t("quickMove.noWorkspaces")}
             </div>
           )}
         </div>
@@ -1243,11 +1279,12 @@ function MiniSwitch({ checked, onChange, label, disabled }: MiniSwitchProps) {
 }
 
 function ActionDisplay({ action }: { action: Rule["then"] }) {
+  const { t } = useTranslation("rules");
   switch (action.kind) {
     case "open":
       return (
         <span className="inline-flex items-center gap-1.5">
-          <span>open →</span>
+          <span>{t("action.open")}</span>
           <BrowserBadge
             browserId={action.target.browser}
             profile={action.target.profile}
@@ -1255,10 +1292,10 @@ function ActionDisplay({ action }: { action: Rule["then"] }) {
         </span>
       );
     case "keep-source":
-      return <span>keep source</span>;
+      return <span>{t("action.keepSource")}</span>;
     case "ask":
-      return <span>ask</span>;
+      return <span>{t("action.ask")}</span>;
     case "block":
-      return <span>block</span>;
+      return <span>{t("action.block")}</span>;
   }
 }

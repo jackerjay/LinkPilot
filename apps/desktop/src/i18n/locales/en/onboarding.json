@@ -1,0 +1,84 @@
+{
+  "messages": {
+    "browserScanFailed": "Browser scan failed: {{error}}",
+    "defaultDone": "macOS will prompt you to confirm.",
+    "defaultConsent": "Confirm the switch in System Settings > Desktop & Dock.",
+    "defaultUnsupported": "Default-browser API is not available on this platform.",
+    "failed": "Failed: {{error}}",
+    "templateSaveFailed": "Template save failed ({{error}}). Continuing without templates. You can add rules from the Rules tab."
+  },
+  "footer": {
+    "skip": "Skip setup",
+    "step": "Step {{step}} of {{total}}",
+    "back": "Back",
+    "saving": "Saving...",
+    "finish": "Finish",
+    "continue": "Continue"
+  },
+  "step1": {
+    "logoAlt": "LinkPilot",
+    "title": "Welcome to LinkPilot.",
+    "body": "Route every link to the right browser, profile, and workspace without thinking about it.",
+    "features": {
+      "rules": {
+        "title": "Rules engine",
+        "detail": "Match by host, app, or path."
+      },
+      "browsers": {
+        "title": "Multi-browser",
+        "detail": "Chrome, Arc, Safari, Firefox."
+      },
+      "profiles": {
+        "title": "Profiles",
+        "detail": "Send work to Work, fun to Fun."
+      },
+      "inspector": {
+        "title": "Inspector",
+        "detail": "Every decision is auditable."
+      }
+    }
+  },
+  "step2": {
+    "title": "Set LinkPilot as your default browser",
+    "body": "macOS will show a confirmation dialog. LinkPilot does not render web pages. It just decides which browser to hand each link to.",
+    "urlToken": "URL",
+    "alreadyDefault": "Already default",
+    "working": "Working...",
+    "setDefault": "Set LinkPilot as default...",
+    "help": "You can change this at any time in System Settings > Desktop & Dock."
+  },
+  "step3": {
+    "title": "Pick which browsers LinkPilot can route to",
+    "scanning": "Scanning...",
+    "found_one": "We scanned /Applications and found {{count}} browser.",
+    "found_other": "We scanned /Applications and found {{count}} browsers.",
+    "noProfiles": "No profiles"
+  },
+  "step4": {
+    "title": "Start from a template",
+    "body": "We drafted four rules. Toggle the ones you want; tweak the rest in the Rules tab later.",
+    "help": "You can edit, reorder, or delete rules any time."
+  },
+  "templates": {
+    "work": {
+      "label": "Work -> Chrome / Work",
+      "detail": "github.com, linear.app, notion.so, figma.com",
+      "note": "Work tools -> Chrome / Work profile"
+    },
+    "oauth": {
+      "label": "OAuth -> Keep source",
+      "detail": "/oauth/callback paths stay in the originating browser",
+      "note": "OAuth redirects must complete in the source browser"
+    },
+    "media": {
+      "label": "Media -> Arc",
+      "detail": "youtube.com, twitch.tv",
+      "note": "Streaming media -> Arc"
+    },
+    "banking": {
+      "label": "Banking -> Safari",
+      "detail": "Personal banking sites stay in Safari for keychain support",
+      "note": "Banking -> Safari (keychain)"
+    }
+  }
+}

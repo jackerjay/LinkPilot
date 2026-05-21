@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { AppIcon } from "@/components/AppIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { DecisionLine } from "./menu-bar";
 import type { ConfigDocument, RouteRecord } from "@/lib/types";
 
 export function InspectorPage() {
+  const { t } = useTranslation("inspector");
   const [records, setRecords] = useState<RouteRecord[]>([]);
   const [selected, setSelected] = useState<RouteRecord | null>(null);
   const [config, setConfig] = useState<ConfigDocument | null>(null);
@@ -52,20 +54,19 @@ export function InspectorPage() {
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="mac-h2">Route Inspector</h2>
-        <p className="mac-subtitle">
-          Every decision LinkPilot makes, newest first. Click a row to see why
-          the rule matched.
-        </p>
+        <h2 className="mac-h2">{t("title")}</h2>
+        <p className="mac-subtitle">{t("subtitle")}</p>
       </header>
 
       <Card className="max-h-[480px] overflow-y-auto">
         <CardContent className="p-0">
           {records.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
-              No routes logged yet. Click some links or run{" "}
-              <span className="font-mono">lp open …</span> while the daemon is
-              up.
+              <Trans
+                i18nKey="emptyHint"
+                ns="inspector"
+                components={{ code: <span className="font-mono" /> }}
+              />
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -106,15 +107,15 @@ export function InspectorPage() {
       {selected && (
         <Card>
           <CardHeader>
-            <CardTitle>Selected route</CardTitle>
+            <CardTitle>{t("selected.card")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <SummaryRow label="URL">
+            <SummaryRow label={t("selected.url")}>
               <span className="block select-text break-all font-mono text-xs">
                 {selected.context.url}
               </span>
             </SummaryRow>
-            <SummaryRow label="Source">
+            <SummaryRow label={t("selected.source")}>
               {selected.context.source.app_name ? (
                 <span className="flex items-center gap-2">
                   <AppIcon
@@ -135,15 +136,15 @@ export function InspectorPage() {
                 </span>
               )}
             </SummaryRow>
-            <SummaryRow label="Decision">
+            <SummaryRow label={t("selected.decision")}>
               <DecisionLine decision={selected.decision} />
             </SummaryRow>
-            <SummaryRow label="Rule">
+            <SummaryRow label={t("selected.rule")}>
               {matchedRule ? (
                 <>
                   <span
                     className="font-mono text-xs"
-                    title="Priority position — top of list wins"
+                    title={t("selected.rulePriorityTitle")}
                   >
                     #{matchedPosition}
                   </span>{" "}
@@ -151,35 +152,35 @@ export function InspectorPage() {
                     <span className="text-sm">{matchedRule.note}</span>
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      (no note)
+                      {t("selected.ruleNoNote")}
                     </span>
                   )}
                 </>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  — default target (no rule matched)
+                  {t("selected.ruleDefault")}
                 </span>
               )}
             </SummaryRow>
 
             <div className="space-y-2">
-              <Label>Why this decision</Label>
+              <Label>{t("selected.whyTitle")}</Label>
               <ExplanationView
                 explanation={selected.explanation}
-                emptyMessage="No rule fired. The route fell back to the configured default_target."
+                emptyMessage={t("selected.whyEmpty")}
               />
             </div>
 
             <div className="flex items-center justify-between border-t border-border pt-3">
               <span className="text-xs text-muted-foreground">
-                Raw record (for debugging / bug reports)
+                {t("selected.rawCaption")}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRaw((v) => !v)}
               >
-                {showRaw ? "Hide" : "Show"}
+                {showRaw ? t("selected.hide") : t("selected.show")}
               </Button>
             </div>
             {showRaw && (

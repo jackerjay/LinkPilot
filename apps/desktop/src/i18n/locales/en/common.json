@@ -1,0 +1,35 @@
+{
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "reset": "Reset",
+    "import": "Import",
+    "export": "Export",
+    "close": "Close",
+    "open": "Open",
+    "add": "Add",
+    "remove": "Remove",
+    "edit": "Edit",
+    "configure": "Configure",
+    "test": "Test",
+    "retry": "Retry"
+  },
+  "status": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "pending": "Pending",
+    "unavailable": "Unavailable"
+  },
+  "toggle": {
+    "on": "On",
+    "off": "Off"
+  },
+  "errors": {
+    "generic": "Something went wrong: {{message}}"
+  },
+  "appPicker": {
+    "tooltip": "Pick from installed apps"
+  }
+}

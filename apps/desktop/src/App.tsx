@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -10,6 +11,7 @@ import {
   Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { applyLanguage } from "@/i18n";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   OnboardingFlow,
@@ -44,17 +46,25 @@ type TabId =
 
 interface Tab {
   id: TabId;
-  label: string;
+  /** i18n key under the `app.tabs` namespace. Resolved inside the component
+   *  so a language switch re-renders the sidebar without a remount. */
+  labelKey:
+    | "overview"
+    | "rules"
+    | "testUrl"
+    | "inspector"
+    | "browsers"
+    | "settings";
   icon: LucideIcon;
 }
 
 const TABS: Tab[] = [
-  { id: "menu-bar", label: "Overview", icon: Gauge },
-  { id: "rules", label: "Rules", icon: Workflow },
-  { id: "test-url", label: "Test URL", icon: FlaskConical },
-  { id: "inspector", label: "Inspector", icon: ScrollText },
-  { id: "browsers", label: "Browsers", icon: Compass },
-  { id: "settings", label: "Settings", icon: SettingsIcon },
+  { id: "menu-bar", labelKey: "overview", icon: Gauge },
+  { id: "rules", labelKey: "rules", icon: Workflow },
+  { id: "test-url", labelKey: "testUrl", icon: FlaskConical },
+  { id: "inspector", labelKey: "inspector", icon: ScrollText },
+  { id: "browsers", labelKey: "browsers", icon: Compass },
+  { id: "settings", labelKey: "settings", icon: SettingsIcon },
 ];
 
 function isUpdateActionable(state: UpdateCheckState): boolean {
@@ -66,6 +76,7 @@ function isUpdateActionable(state: UpdateCheckState): boolean {
 }
 
 export default function App() {
+  const { t } = useTranslation("app");
   const [tab, setTab] = useState<TabId>("menu-bar");
   const [configEpoch, setConfigEpoch] = useState(0);
   const [config, setConfig] = useState<ConfigDocument | null>(null);
@@ -136,8 +147,7 @@ export default function App() {
         // the updates dir on their behalf.
         setUpdateCheck({
           status: "error",
-          error:
-            "Release is missing a checksums.txt entry for the macOS DMG; refusing to auto-download an unverified installer.",
+          error: t("updates.checksumMissing"),
           checkedAt: Date.now(),
           result,
         });
@@ -179,6 +189,15 @@ export default function App() {
     autoUpdateCheckStartedRef.current = true;
     void runUpdateCheck();
   }, [config?.settings.auto_check_updates, runUpdateCheck, showOnboarding]);
+
+  // Reconcile i18next with the persisted language preference. Re-runs
+  // whenever ConfigDocument is reloaded (fsnotify echo, Settings save,
+  // import / undo), so flipping the language from the CLI or another
+  // window propagates here without a full app restart.
+  useEffect(() => {
+    if (!config) return;
+    applyLanguage(config.settings.language);
+  }, [config?.settings.language, config]);
 
   useEffect(() => {
     let unlistenConfig: (() => void) | undefined;
@@ -312,34 +331,38 @@ export default function App() {
             </h1>
           </div>
 
-          {TABS.map((t) => {
-            const Icon = t.icon;
+          {TABS.map((tabDef) => {
+            const Icon = tabDef.icon;
             // A tab is visually active only when no workspace detail
             // page is taking over the right pane.
-            const isActive = tab === t.id && selectedWorkspaceId === null;
+            const isActive =
+              tab === tabDef.id && selectedWorkspaceId === null;
             return (
               <button
-                key={t.id}
-                onClick={() => goToTab(t.id)}
+                key={tabDef.id}
+                onClick={() => goToTab(tabDef.id)}
                 className={cn("mac-sidebar-item", isActive && "active")}
               >
                 <Icon className="mac-symbol-icon h-[15px] w-[15px]" />
-                <span>{t.label}</span>
-                {t.id === "settings" && isUpdateActionable(updateCheck) && (
-                  <span
-                    className="mac-tag"
-                    style={{ marginLeft: "auto", fontSize: 10 }}
-                  >
-                    update
-                  </span>
-                )}
+                <span>{t(`tabs.${tabDef.labelKey}`)}</span>
+                {tabDef.id === "settings" &&
+                  isUpdateActionable(updateCheck) && (
+                    <span
+                      className="mac-tag"
+                      style={{ marginLeft: "auto", fontSize: 10 }}
+                    >
+                      {t("updates.tag")}
+                    </span>
+                  )}
               </button>
             );
           })}
 
           {workspaces.length > 0 && (
             <>
-              <div className="mac-sidebar-section">Workspaces</div>
+              <div className="mac-sidebar-section">
+                {t("sidebar.workspaces")}
+              </div>
               {workspaces.map((w) => {
                 const hits = workspaceHits.get(w.id) ?? 0;
                 const isActive = selectedWorkspaceId === w.id;
@@ -348,7 +371,9 @@ export default function App() {
                     key={w.id}
                     type="button"
                     onClick={() => openWorkspaceDetail(w.id)}
-                    title={`Open the "${w.display_name}" workspace`}
+                    title={t("sidebar.workspaceOpenTitle", {
+                      name: w.display_name,
+                    })}
                     className={cn(
                       "mac-sidebar-item",
                       isActive && "active",
@@ -409,7 +434,8 @@ export default function App() {
               )}
             />
             <span>
-              Daemon{daemonVersion ? ` · ${daemonVersion}` : ""}
+              {t("sidebar.daemon")}
+              {daemonVersion ? ` · ${daemonVersion}` : ""}
             </span>
           </div>
         </aside>
@@ -424,8 +450,11 @@ export default function App() {
               {selectedWorkspaceId
                 ? config?.workspaces.find(
                     (w) => w.id === selectedWorkspaceId,
-                  )?.display_name ?? "Workspace"
-                : TABS.find((t) => t.id === tab)?.label ?? ""}
+                  )?.display_name ?? t("sidebar.workspaceFallbackTitle")
+                : (() => {
+                    const def = TABS.find((td) => td.id === tab);
+                    return def ? t(`tabs.${def.labelKey}`) : "";
+                  })()}
             </span>
           </div>
           <div className="mac-scroll">

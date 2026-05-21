@@ -111,6 +111,7 @@ pub fn run() {
             // watcher itself, so there's no risk of a feedback loop
             // (IPC reads don't write, so they don't re-fire the watch).
             let app_handle = app.handle().clone();
+            let config_for_watch = config_store.clone();
             let watcher = config_store
                 .watch(move |origin| {
                     let label = match origin {
@@ -118,6 +119,8 @@ pub fn run() {
                         linkpilot_core::config::store::ChangeOrigin::Echo => "echo",
                     };
                     let _ = app_handle.emit("config-changed", label);
+                    let language = config_for_watch.document().settings.language;
+                    tray::update_menu_language(&app_handle, language);
                 })
                 .map_err(|e| anyhow::anyhow!("watch config: {e}"))?;
             state.attach_watcher(watcher);
@@ -202,8 +205,8 @@ pub fn run() {
                 }
             }
 
-            tray::install(&app.handle())?;
             app.manage(state);
+            tray::install(&app.handle())?;
             // Browser-picker state for the Ask UI (see picker.rs).
             app.manage(picker::PickerState::default());
 
@@ -253,6 +256,7 @@ pub fn run() {
             commands::set_smart_routing,
             commands::set_picker_style,
             commands::set_profile_order,
+            commands::set_language,
             picker::picker_preview,
             commands::doctor,
             commands::list_browsers,

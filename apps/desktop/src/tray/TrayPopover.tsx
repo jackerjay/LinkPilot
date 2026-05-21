@@ -6,6 +6,8 @@
 // the main window (and vice versa).
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Clock,
@@ -14,6 +16,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { BrowserBadge } from "@/components/BrowserBadge";
+import { applyLanguage } from "@/i18n";
 import { ipc, onConfigChanged, onRouteLogged } from "@/lib/ipc";
 import type {
   ConfigDocument,
@@ -24,6 +27,7 @@ import type {
 import brandIcon from "@/assets/brand.png";
 
 export function TrayPopover() {
+  const { t } = useTranslation("tray");
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
   const [config, setConfig] = useState<ConfigDocument | null>(null);
   const [recent, setRecent] = useState<RouteRecord[]>([]);
@@ -74,6 +78,11 @@ export function TrayPopover() {
     .filter((r) => r.decision.action === "open")
     .slice(0, 4);
 
+  useEffect(() => {
+    if (!config) return;
+    applyLanguage(config.settings.language);
+  }, [config?.settings.language, config]);
+
   // Each action shows the main window and (when a tab is provided)
   // deep-links the App's tab state via the `tray:navigate` event the
   // Rust side emits. Hides the popover in the same call atomically.
@@ -113,8 +122,18 @@ export function TrayPopover() {
               "0 0 0 0.5px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.12)",
           }}
         />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600, fontSize: 13 }}>LinkPilot</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontWeight: 600,
+              fontSize: 13,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            LinkPilot
+          </div>
           <div
             className="mac-muted"
             style={{
@@ -122,21 +141,33 @@ export function TrayPopover() {
               display: "inline-flex",
               gap: 5,
               alignItems: "center",
+              maxWidth: "100%",
+              minWidth: 0,
+              whiteSpace: "nowrap",
             }}
           >
             <span
               className={`mac-dot ${doctor ? "ok" : "warn"}`}
-              style={{ width: 6, height: 6 }}
+              style={{ width: 6, height: 6, flex: "0 0 6px" }}
             />
-            Routing · {recent.length} today
+            <span
+              style={{
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t("status", { count: recent.length })}
+            </span>
           </div>
         </div>
         <button
           type="button"
           className="mac-tbtn"
           style={{ height: 22, minWidth: 22, padding: 0 }}
-          aria-label="Open main window"
-          title="Open main window"
+          aria-label={t("openMain")}
+          title={t("openMain")}
           onClick={() => openMain()}
         >
           <SquarePen size={12} strokeWidth={1.8} />
@@ -157,7 +188,7 @@ export function TrayPopover() {
               color: "var(--mac-fg-muted)",
             }}
           >
-            Workspaces
+            {t("workspaces")}
           </div>
           <div style={{ padding: "0 12px 10px" }}>
             <div
@@ -176,7 +207,10 @@ export function TrayPopover() {
                   type="button"
                   className="mac-tbtn"
                   onClick={() => toggleWorkspace(w)}
-                  title={`${w.enabled ? "Disable" : "Enable"} workspace "${w.display_name}"`}
+                  title={t("toggleWorkspace", {
+                    action: w.enabled ? t("disable") : t("enable"),
+                    name: w.display_name,
+                  })}
                   style={{
                     minWidth: 0,
                     justifyContent: "center",
@@ -226,7 +260,7 @@ export function TrayPopover() {
           color: "var(--mac-fg-muted)",
         }}
       >
-        Recent
+        {t("recent")}
       </div>
       <div style={{ flex: 1, overflow: "auto", padding: "0 8px" }}>
         {recentOpens.length === 0 ? (
@@ -234,7 +268,7 @@ export function TrayPopover() {
             className="mac-muted"
             style={{ fontSize: 11.5, padding: "12px 10px", textAlign: "center" }}
           >
-            No routes yet — open a link to see it here.
+            {t("emptyRecent")}
           </div>
         ) : (
           recentOpens.map((r, i) => {
@@ -275,7 +309,7 @@ export function TrayPopover() {
                       marginTop: 1,
                     }}
                   >
-                    {timeAgo(r.timestamp_ms)}
+                    {formatTimeAgo(t, r.timestamp_ms)}
                     {target.profile ? ` · ${target.profile}` : ""}
                   </div>
                 </div>
@@ -303,7 +337,7 @@ export function TrayPopover() {
           onClick={() => openMain("rules")}
         >
           <Workflow size={13} strokeWidth={1.8} />
-          <span>Rules</span>
+          <span>{t("footer.rules")}</span>
         </button>
         <button
           type="button"
@@ -312,7 +346,7 @@ export function TrayPopover() {
           onClick={() => openMain("inspector")}
         >
           <Clock size={13} strokeWidth={1.8} />
-          <span>History</span>
+          <span>{t("footer.history")}</span>
         </button>
         <button
           type="button"
@@ -321,18 +355,17 @@ export function TrayPopover() {
           onClick={() => openMain("settings")}
         >
           <SettingsIcon size={13} strokeWidth={1.8} />
-          <span>Settings</span>
+          <span>{t("footer.settings")}</span>
         </button>
       </div>
     </div>
   );
 }
 
-function timeAgo(ms: number): string {
+function formatTimeAgo(t: TFunction<"tray">, ms: number): string {
   const s = Math.round((Date.now() - ms) / 1000);
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
+  if (s < 60) return t("timeAgo.seconds", { n: s });
+  if (s < 3600) return t("timeAgo.minutes", { n: Math.round(s / 60) });
+  if (s < 86400) return t("timeAgo.hours", { n: Math.round(s / 3600) });
+  return t("timeAgo.days", { n: Math.round(s / 86400) });
 }
-

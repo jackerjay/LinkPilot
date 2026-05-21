@@ -1,0 +1,74 @@
+{
+  "halo": {
+    "openWith": "Open with",
+    "profileCount_one": "{{count}} profile",
+    "profileCount_other": "{{count}} profiles",
+    "footer": {
+      "summon": "SUMMON",
+      "direct": "DIRECT",
+      "default": "DEFAULT",
+      "cancel": "CANCEL"
+    },
+    "modifierActive": "Aim, release to open",
+    "modifierIdle": "Hold ⌥ to pick a profile",
+    "readoutHint": "release ⌥ or press 1–9",
+    "opening": "Opening in {{browser}}",
+    "crownHint": "open · aim to switch"
+  },
+  "style": {
+    "variants": {
+      "frosted": { "name": "Frosted", "tagline": "Glass sectors, color on the rim" },
+      "bezel": { "name": "Bezel", "tagline": "Ticks + dots, instrument ring" },
+      "crown": { "name": "Crown", "tagline": "Apple Watch — center display" }
+    },
+    "testUrl": "Test URL",
+    "openTitle": "Open the picker and launch the selected browser/profile",
+    "opening": "Opening…",
+    "tryPicker": "Try picker",
+    "hint": "Opens the real picker window with your installed browsers and saved profile order. Selection opens the test URL."
+  },
+  "profileOrder": {
+    "scanning": "Scanning browser profiles…",
+    "noBrowsers": "No browsers detected yet. Install a Chromium-family browser to customize profile order.",
+    "hiddenBanner_one": "<strong>{{count}} new profile</strong> detected in {{browsers}}. They stay hidden from the Halo wheel until you add them.",
+    "hiddenBanner_other": "<strong>{{count}} new profiles</strong> detected in {{browsers}}. They stay hidden from the Halo wheel until you add them.",
+    "hiddenTitle_one": "{{count}} detected profile not yet placed in the Halo wheel",
+    "hiddenTitle_other": "{{count}} detected profiles not yet placed in the Halo wheel",
+    "configureTitle": "Configure this browser in the Halo wheel",
+    "unavailableTitle": "Profile order is available only when a browser has more than one profile",
+    "scanFailed": "Profile scan failed",
+    "profileCount_one": "{{count}} profile",
+    "profileCount_other": "{{count}} profiles",
+    "newChip": "+{{count}} new",
+    "statusSaved": "Saved",
+    "statusConfigure": "Configure",
+    "statusUnavailable": "Unavailable",
+    "noneConfigurable": "Profile order can be configured after at least one detected browser exposes more than one profile.",
+    "keepOne": "Keep at least one profile visible for Halo configuration.",
+    "dialogTitle": "Configure profile Halo",
+    "dialogDescription": "{{browser}} · {{visible}} visible of {{detected}} detected profiles",
+    "close": "Close",
+    "hideSelected": "Hide selected profile",
+    "mustRemain": "At least one profile must remain visible",
+    "haloEmpty": "Use the add sector to choose a visible profile.",
+    "clearNote": "Saving now clears custom order and uses the browser default.",
+    "reset": "Reset",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "chooseProfileAria": "Choose a profile to add",
+    "chooseProfile": "Choose a profile",
+    "closeChooser": "Close profile chooser",
+    "and": "and"
+  },
+  "preview": {
+    "addProfile": "Add profile",
+    "selectProfile": "Select {{profile}}",
+    "mockProfiles": {
+      "default": "Default",
+      "work": "Work",
+      "side": "Side",
+      "personal": "Personal"
+    }
+  }
+}
