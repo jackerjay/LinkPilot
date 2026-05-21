@@ -141,18 +141,14 @@ pub struct Settings {
     /// most macOS-native ("baseline") — Bezel and Crown are opt-in.
     #[serde(default)]
     pub picker_style: PickerStyle,
-    /// User-customized profile order, per browser id. The picker uses
-    /// this to place profiles in specific wheel slots — important
-    /// because keyboard 1–9 shortcuts follow position order, so users
-    /// who learn `1 = Work` want it to stay there even after the
-    /// inventory adds new profiles.
+    /// User-customized visible profile order, per browser id. The picker
+    /// uses this to place profiles in specific wheel slots — important
+    /// because keyboard 1–9 shortcuts follow position order.
     ///
-    /// Semantics: profiles whose id appears in the list render in
-    /// that order. Profiles missing from the list (newly added by the
-    /// browser, or stale entries) fall through to the default sort
-    /// (`is_default` first, then alphabetical) and append at the end.
-    /// This way a user's saved order survives profile churn without
-    /// silently dropping new profiles.
+    /// Semantics: an empty/missing list means default sort (`is_default`
+    /// first, then alphabetical). A non-empty list is the complete visible
+    /// Halo inventory for that browser; profiles missing from it are hidden
+    /// until the user adds them back in Settings. Stale ids are skipped.
     #[serde(default)]
     pub profile_orders: BTreeMap<String, Vec<String>>,
 }

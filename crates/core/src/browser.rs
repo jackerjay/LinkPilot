@@ -93,14 +93,12 @@ impl BrowserTarget {
     }
 }
 
-/// Reorder a list of profiles according to a user-saved order. Profiles
-/// whose id appears in `order` come first, in that order. Anything not
-/// in `order` (newly added profiles, stale entries, or a browser the
-/// user never customized) keeps the default ordering — `is_default`
-/// first, then alphabetical by display name — and appends at the tail.
+/// Reorder a list of profiles according to a user-saved visible order.
+/// Profiles whose id appears in `order` render in that order. Anything
+/// not in a non-empty saved order is hidden from the Halo wheel until
+/// the user adds it back in Settings.
 ///
 /// This means:
-///   * A user's saved order survives profile churn (new profile? → tail).
 ///   * A browser with no saved order falls through to the legacy default
 ///     ordering, so behavior is unchanged for users who never touched
 ///     the editor.
@@ -124,9 +122,9 @@ pub fn apply_profile_order(
         }
     };
 
-    // O(N+M) two-pass: index profiles by id, then walk the order list,
-    // pulling matching entries out. Leftovers get the default sort and
-    // append.
+    // O(N+M) two-pass: index profiles by id, then walk the saved visible
+    // list, pulling matching entries out. Leftovers are intentionally not
+    // appended: omission is how Settings hides a profile from Halo.
     let mut by_id: std::collections::HashMap<String, BrowserProfile> =
         profiles.into_iter().map(|p| (p.id.clone(), p)).collect();
     let mut out: Vec<BrowserProfile> = Vec::with_capacity(by_id.len());
@@ -135,13 +133,6 @@ pub fn apply_profile_order(
             out.push(p);
         }
     }
-    let mut leftovers: Vec<BrowserProfile> = by_id.into_values().collect();
-    leftovers.sort_by(|a, b| {
-        b.is_default
-            .cmp(&a.is_default)
-            .then_with(|| a.display_name.cmp(&b.display_name))
-    });
-    out.extend(leftovers);
     out
 }
 
@@ -189,10 +180,9 @@ mod tests {
     }
 
     #[test]
-    fn unlisted_profiles_append_in_default_sort() {
-        // User saved an order for two profiles, then the browser added
-        // a third one. The new profile should appear at the tail —
-        // not silently dropped or jumped to the front.
+    fn saved_order_hides_unlisted_profiles() {
+        // The saved list is the complete visible Halo inventory. Profiles
+        // not listed here stay hidden until the user adds them back.
         let input = vec![
             p("Default", "Personal", true),
             p("Profile 1", "Side", false),
@@ -202,8 +192,7 @@ mod tests {
         let order = vec!["Profile 2".into(), "Default".into()];
         let out = apply_profile_order(input, Some(&order));
         let ids: Vec<&str> = out.iter().map(|p| p.id.as_str()).collect();
-        assert_eq!(ids, vec!["Profile 2", "Default", "Profile 3", "Profile 1"]);
-        //                          listed              ↑ alpha within unlisted
+        assert_eq!(ids, vec!["Profile 2", "Default"]);
     }
 
     #[test]

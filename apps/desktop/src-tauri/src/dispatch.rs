@@ -206,11 +206,10 @@ fn resolve_ask(
             })
             .unwrap_or_default();
 
-        // Apply the user's saved order for this browser. Profiles
-        // missing from the saved list fall through to the default
-        // sort (default-first, then alphabetical) and append at the
-        // tail — so the Halo wheel's 1–9 number shortcuts stay
-        // predictable across profile churn.
+        // Apply the user's saved visible order for this browser. Empty/missing
+        // means default sort; a non-empty saved list is the complete visible
+        // Halo inventory, so omitted profiles stay hidden until added back in
+        // Settings.
         let ordered = apply_profile_order(raw_profiles, order_map.get(&id).map(|v| v.as_slice()));
         let profiles: Vec<PickerProfile> = ordered
             .into_iter()

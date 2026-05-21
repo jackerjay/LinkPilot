@@ -141,9 +141,10 @@ pub fn set_picker_style(state: State<'_, AppState>, style: PickerStyle) -> Resul
         .map_err(|e| e.to_string())
 }
 
-/// Persist a user-customized profile ordering for one browser. An empty
-/// `profile_ids` list deletes the entry — the picker then falls back
-/// to the default ordering (`is_default` first, then alphabetical).
+/// Persist a user-customized visible profile ordering for one browser. An
+/// empty `profile_ids` list deletes the entry — the picker then falls back to
+/// the default ordering (`is_default` first, then alphabetical) and shows every
+/// detected profile.
 #[tauri::command]
 pub fn set_profile_order(
     state: State<'_, AppState>,

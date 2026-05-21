@@ -338,12 +338,15 @@ export function SettingsPage({ configEpoch }: Props) {
               className="mac-muted"
               style={{ fontSize: 11.5, marginTop: 2 }}
             >
-              Customize the order profiles appear in the wheel. Position 1–9
-              maps to keyboard shortcuts — put your most-used profile at the
-              top so you can launch it with a single keystroke.
+              Customize which profiles appear in the Halo wheel and the order
+              they occupy. Position 1–9 maps to keyboard shortcuts.
             </div>
           </div>
-          <ProfileOrderEditor doc={doc} onConfigChanged={refresh} />
+          <ProfileOrderEditor
+            doc={doc}
+            pickerStyle={doc?.settings.picker_style ?? "frosted"}
+            onConfigChanged={refresh}
+          />
         </div>
       </div>
 

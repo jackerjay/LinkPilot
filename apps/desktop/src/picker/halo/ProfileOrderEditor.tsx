@@ -1,288 +1,602 @@
-// Per-browser profile order editor for Settings → Appearance.
-// Up/down arrow buttons (no drag-and-drop — would need a new dependency
-// and the wheel already constrains us to ≤9 keyboard slots, so most
-// reorderings are a few clicks).
-//
-// Order semantics live on the backend (see core::browser::apply_profile_order):
-// unlisted profiles append at the tail in default sort, so this editor only
-// ever needs to remember the prefix the user actually customized.
+// Per-browser profile visibility/order editor for Settings → Appearance.
+// The saved list is the complete visible order for that browser. An empty
+// list clears customization and falls back to browser-default ordering.
 
+import * as Dialog from "@radix-ui/react-dialog";
+import { RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ipc } from "@/lib/ipc";
 import { appPathFromExecutable } from "@/lib/browsers";
+import { ipc } from "@/lib/ipc";
 import type {
   BrowserProfile,
   ConfigDocument,
   InstalledBrowser,
+  PickerStyle,
 } from "@/lib/types";
-import { FALLBACK_PALETTE, profileMonogram } from "./types";
+import { polarToCart, sectorMidAngle } from "./geometry";
+import { FALLBACK_PALETTE, profileMonogram, type PickerProfile } from "./types";
+import { HaloPreview } from "./HaloPreview";
 
 interface ProfileOrderEditorProps {
   doc: ConfigDocument | null;
-  /** Re-fetch the config after mutating. Parent owns the
-   *  ConfigDocument; we just signal "go reload". */
+  pickerStyle: PickerStyle;
+  /** Re-fetch the config after mutating. Parent owns the ConfigDocument. */
   onConfigChanged: () => Promise<void> | void;
 }
 
+interface BrowserProfileCatalog {
+  browser: InstalledBrowser;
+  profiles: BrowserProfile[];
+  error: string | null;
+}
+
+interface InitialDraft {
+  profiles: BrowserProfile[];
+  clearOnSave: boolean;
+}
+
+const EDITOR_HALO_SIZE = 360;
+
 export function ProfileOrderEditor({
   doc,
+  pickerStyle,
   onConfigChanged,
 }: ProfileOrderEditorProps) {
-  const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
-  const [selectedBrowser, setSelectedBrowser] = useState<string>("");
-  const [profiles, setProfiles] = useState<BrowserProfile[]>([]);
+  const [catalog, setCatalog] = useState<BrowserProfileCatalog[]>([]);
+  const [editingBrowserId, setEditingBrowserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Browsers that have >1 profile are the only ones where ordering
-  // matters. Single-profile (Safari) gets nothing to arrange.
-  const multiProfileBrowsers = useMemo(
-    () =>
-      // We don't know profile counts until listProfiles fires; show
-      // every browser for now and the editor empties itself out when
-      // the selected one has fewer than 2 profiles.
-      browsers,
-    [browsers],
-  );
-
   useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError(null);
+
     ipc
       .listBrowsers()
-      .then((bs) => {
-        setBrowsers(bs);
-        // Auto-select the first browser so the editor isn't empty on
-        // first open. The user can still re-pick from the dropdown.
-        if (!selectedBrowser && bs.length > 0) {
-          setSelectedBrowser(bs[0].id);
+      .then(async (browsers) => {
+        const rows = await Promise.all(
+          browsers.map(async (browser): Promise<BrowserProfileCatalog> => {
+            try {
+              const profiles = await ipc.listProfiles(browser.id);
+              return { browser, profiles, error: null };
+            } catch (e) {
+              return { browser, profiles: [], error: String(e) };
+            }
+          }),
+        );
+        if (!alive) return;
+        setCatalog(rows);
+      })
+      .catch((e) => {
+        if (alive) {
+          setCatalog([]);
+          setError(String(e));
         }
       })
-      .catch((e) => setError(String(e)));
-    // We deliberately don't depend on selectedBrowser — refetching
-    // browsers shouldn't reset the user's pick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Reload profiles when the selected browser changes — applying the
-  // saved order if one exists. Profiles not in the saved order get
-  // sorted default-first/alpha and pushed to the tail, mirroring the
-  // backend's `apply_profile_order` so the editor reflects exactly
-  // what the picker would render.
-  useEffect(() => {
-    if (!selectedBrowser) {
-      setProfiles([]);
-      return;
-    }
-    let alive = true;
-    ipc
-      .listProfiles(selectedBrowser)
-      .then((raw) => {
-        if (!alive) return;
-        const saved = doc?.settings.profile_orders?.[selectedBrowser];
-        setProfiles(applyOrderClientSide(raw, saved));
-      })
-      .catch(() => {
-        if (alive) setProfiles([]);
+      .finally(() => {
+        if (alive) setLoading(false);
       });
+
     return () => {
       alive = false;
     };
-    // Reapply when the saved order in `doc` changes (e.g. after we
-    // call setProfileOrder and the parent refreshes the doc).
-  }, [selectedBrowser, doc]);
+  }, []);
 
-  const move = useCallback(
-    (idx: number, direction: -1 | 1) => {
-      setProfiles((prev) => {
-        const next = [...prev];
-        const target = idx + direction;
-        if (target < 0 || target >= next.length) return prev;
-        [next[idx], next[target]] = [next[target], next[idx]];
-        // Persist immediately — Settings pages in this codebase don't
-        // have explicit Save buttons, every mutation writes through.
-        ipc
-          .setProfileOrder(
-            selectedBrowser,
-            next.map((p) => p.id),
-          )
-          .then(() => onConfigChanged())
-          .catch((e) => setError(String(e)));
-        return next;
-      });
-    },
-    [selectedBrowser, onConfigChanged],
+  const editingRow = useMemo(
+    () => catalog.find((row) => row.browser.id === editingBrowserId) ?? null,
+    [catalog, editingBrowserId],
   );
 
-  const reset = useCallback(() => {
-    // Empty list clears the saved order — backend falls back to
-    // default-first/alpha sort.
-    ipc
-      .setProfileOrder(selectedBrowser, [])
-      .then(() => onConfigChanged())
-      .catch((e) => setError(String(e)));
-  }, [selectedBrowser, onConfigChanged]);
+  const configurableCount = catalog.filter(
+    (row) => row.profiles.length > 1,
+  ).length;
 
-  const hasSavedOrder = useMemo(() => {
-    if (!doc || !selectedBrowser) return false;
-    const saved = doc.settings.profile_orders?.[selectedBrowser];
-    return saved != null && saved.length > 0;
-  }, [doc, selectedBrowser]);
+  if (loading) {
+    return <div className="profile-order-empty">Scanning browser profiles…</div>;
+  }
 
-  if (browsers.length === 0) {
+  if (catalog.length === 0) {
     return (
       <div className="profile-order-empty">
-        No browsers detected yet. Install a Chromium-family browser to
-        customize profile order.
+        No browsers detected yet. Install a Chromium-family browser to customize
+        profile order.
       </div>
     );
   }
 
   return (
-    <div className="profile-order-editor">
-      <div className="profile-order-head">
-        <Select
-          value={selectedBrowser}
-          onValueChange={(v) => setSelectedBrowser(v)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Pick a browser" />
-          </SelectTrigger>
-          <SelectContent>
-            {multiProfileBrowsers.map((b) => (
-              <SelectItem key={b.id} value={b.id}>
-                <span className="profile-order-browser-row">
+    <Dialog.Root
+      open={editingRow !== null}
+      onOpenChange={(open) => {
+        if (!open) setEditingBrowserId(null);
+      }}
+    >
+      <div className="profile-order-editor">
+        <div className="profile-order-browser-grid">
+          {catalog.map((row) => {
+            const canConfigure = row.profiles.length > 1;
+            const saved = hasSavedOrder(doc, row.browser.id);
+            return (
+              <button
+                key={row.browser.id}
+                type="button"
+                className={`profile-order-browser-card${
+                  canConfigure ? "" : " disabled"
+                }${saved ? " saved" : ""}`}
+                disabled={!canConfigure}
+                onClick={() => setEditingBrowserId(row.browser.id)}
+                title={
+                  canConfigure
+                    ? "Configure this browser in the Halo wheel"
+                    : "Profile order is available only when a browser has more than one profile"
+                }
+              >
+                <span className="profile-order-browser-icon">
                   <AppIcon
-                    bundleId={b.platform_app_id ?? undefined}
-                    appPath={appPathFromExecutable(b.executable)}
-                    size={14}
-                    alt={b.display_name}
+                    bundleId={row.browser.platform_app_id ?? undefined}
+                    appPath={appPathFromExecutable(row.browser.executable)}
+                    size={18}
+                    alt={row.browser.display_name}
                   />
-                  {b.display_name}
                 </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {hasSavedOrder && (
+                <span className="profile-order-browser-copy">
+                  <span className="profile-order-browser-name">
+                    {row.browser.display_name}
+                  </span>
+                  <span className="profile-order-browser-meta">
+                    {row.error
+                      ? "Profile scan failed"
+                      : `${row.profiles.length} profile${
+                          row.profiles.length === 1 ? "" : "s"
+                        }`}
+                  </span>
+                </span>
+                <span className="profile-order-browser-status">
+                  {saved ? "Saved" : canConfigure ? "Configure" : "Unavailable"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {configurableCount === 0 && (
+          <div className="profile-order-empty">
+            Profile order can be configured after at least one detected browser
+            exposes more than one profile.
+          </div>
+        )}
+        {error && <div className="profile-order-error">{error}</div>}
+      </div>
+
+      {editingRow && (
+        <ProfileOrderDialog
+          row={editingRow}
+          savedOrder={doc?.settings.profile_orders?.[editingRow.browser.id]}
+          pickerStyle={pickerStyle}
+          onClose={() => setEditingBrowserId(null)}
+          onSaved={onConfigChanged}
+        />
+      )}
+    </Dialog.Root>
+  );
+}
+
+function ProfileOrderDialog({
+  row,
+  savedOrder,
+  pickerStyle,
+  onClose,
+  onSaved,
+}: {
+  row: BrowserProfileCatalog;
+  savedOrder: string[] | undefined;
+  pickerStyle: PickerStyle;
+  onClose: () => void;
+  onSaved: () => Promise<void> | void;
+}) {
+  const initial = useMemo(
+    () => initialDraftFromSaved(row.profiles, savedOrder),
+    [row.profiles, savedOrder],
+  );
+  const [draft, setDraft] = useState<BrowserProfile[]>(initial.profiles);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initial.profiles[0]?.id ?? null,
+  );
+  const [profilePickerOpen, setProfilePickerOpen] = useState(false);
+  const [clearOnSave, setClearOnSave] = useState(initial.clearOnSave);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraft(initial.profiles);
+    setSelectedId(initial.profiles[0]?.id ?? null);
+    setClearOnSave(initial.clearOnSave);
+    setProfilePickerOpen(false);
+    setError(null);
+  }, [initial]);
+
+  const selectedIndex = useMemo(() => {
+    const idx = draft.findIndex((profile) => profile.id === selectedId);
+    return idx >= 0 ? idx : 0;
+  }, [draft, selectedId]);
+  const selectedProfile = draft[selectedIndex] ?? null;
+  const hiddenProfiles = useMemo(() => {
+    const visible = new Set(draft.map((profile) => profile.id));
+    return sortProfilesDefault(
+      row.profiles.filter((profile) => !visible.has(profile.id)),
+    );
+  }, [draft, row.profiles]);
+
+  useEffect(() => {
+    if (hiddenProfiles.length === 0 && profilePickerOpen) {
+      setProfilePickerOpen(false);
+    }
+  }, [hiddenProfiles.length, profilePickerOpen]);
+
+  const removeSelected = useCallback(() => {
+    if (draft.length <= 1) return;
+    const next = draft.filter((_, idx) => idx !== selectedIndex);
+    setDraft(next);
+    setSelectedId(next[Math.min(selectedIndex, next.length - 1)]?.id ?? null);
+    setProfilePickerOpen(false);
+    setClearOnSave(false);
+  }, [draft, selectedIndex]);
+
+  const addProfile = useCallback(
+    (profileId: string) => {
+      const profile = row.profiles.find((p) => p.id === profileId);
+      if (!profile) return;
+      const next = [...draft, profile];
+      setDraft(next);
+      setSelectedId(profile.id);
+      setProfilePickerOpen(false);
+      setClearOnSave(false);
+    },
+    [draft, row.profiles],
+  );
+
+  const reorderProfile = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (fromIndex === toIndex) return;
+      if (fromIndex < 0 || fromIndex >= draft.length) return;
+      const boundedTo = Math.min(Math.max(toIndex, 0), draft.length - 1);
+      const next = [...draft];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return;
+      next.splice(boundedTo, 0, moved);
+      setDraft(next);
+      setSelectedId(moved.id);
+      setProfilePickerOpen(false);
+      setClearOnSave(false);
+    },
+    [draft],
+  );
+
+  const selectHaloSlot = useCallback(
+    (idx: number) => {
+      if (idx === draft.length && hiddenProfiles.length > 0) {
+        setProfilePickerOpen(true);
+        return;
+      }
+      const profile = draft[idx];
+      if (!profile) return;
+      setSelectedId(profile.id);
+      setProfilePickerOpen(false);
+    },
+    [draft, hiddenProfiles.length],
+  );
+
+  const restoreDefaultDraft = useCallback(() => {
+    const next = sortProfilesDefault(row.profiles);
+    setDraft(next);
+    setSelectedId(next[0]?.id ?? null);
+    setClearOnSave(true);
+    setProfilePickerOpen(false);
+    setError(null);
+  }, [row.profiles]);
+
+  const save = useCallback(async () => {
+    if (draft.length < 1) {
+      setError("Keep at least one profile visible for Halo configuration.");
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      await ipc.setProfileOrder(
+        row.browser.id,
+        clearOnSave ? [] : draft.map((profile) => profile.id),
+      );
+      await onSaved();
+      onClose();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setPending(false);
+    }
+  }, [clearOnSave, draft, onClose, onSaved, row.browser.id]);
+
+  const previewProfiles = useMemo(
+    () => draft.map(toPickerProfile),
+    [draft],
+  );
+  const hasAddSlot = hiddenProfiles.length > 0;
+  const canRemove = draft.length > 1 && selectedProfile !== null;
+  const deletePosition = selectedProfile
+    ? deleteControlPosition(
+        selectedIndex,
+        draft.length + (hasAddSlot ? 1 : 0),
+        EDITOR_HALO_SIZE,
+      )
+    : null;
+
+  return (
+    <Dialog.Portal>
+      <Dialog.Overlay className="profile-order-modal-overlay" />
+      <Dialog.Content className="profile-order-modal">
+        <div className="profile-order-modal-head">
+          <div>
+            <Dialog.Title className="profile-order-modal-title">
+              Configure profile Halo
+            </Dialog.Title>
+            <Dialog.Description className="profile-order-modal-desc">
+              {row.browser.display_name} · {draft.length} visible of{" "}
+              {row.profiles.length} detected profiles
+            </Dialog.Description>
+          </div>
+          <Dialog.Close asChild>
+            <button
+              type="button"
+              className="profile-order-icon-btn"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </Dialog.Close>
+        </div>
+
+        <div className="profile-order-modal-body">
+          <div className="profile-order-halo-stage">
+            {draft.length > 0 ? (
+              <>
+                <div className="profile-order-wheel-wrap">
+                  <HaloPreview
+                    style={pickerStyle}
+                    size={EDITOR_HALO_SIZE}
+                    profiles={previewProfiles}
+                    activeIndex={selectedIndex}
+                    selectedIndex={selectedIndex}
+                    interactive
+                    addSlot={hasAddSlot}
+                    draggable
+                    onSelectIndex={selectHaloSlot}
+                    onReorder={reorderProfile}
+                  />
+
+                  {deletePosition && (
+                    <button
+                      type="button"
+                      className="profile-order-sector-delete"
+                      style={{
+                        left: deletePosition.left,
+                        top: deletePosition.top,
+                      }}
+                      disabled={!canRemove}
+                      onClick={removeSelected}
+                      title={
+                        canRemove
+                          ? "Hide selected profile"
+                          : "At least one profile must remain visible"
+                      }
+                      aria-label="Hide selected profile"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {selectedProfile && (
+                  <div className="profile-order-selected-chip">
+                    <span
+                      className="profile-order-avatar"
+                      style={{
+                        background:
+                          selectedProfile.accent_color ??
+                          FALLBACK_PALETTE[
+                            selectedIndex % FALLBACK_PALETTE.length
+                          ],
+                      }}
+                    >
+                      {profileMonogram(toPickerProfile(selectedProfile))}
+                    </span>
+                    <span className="profile-order-selected-copy">
+                      <span>{selectedProfile.display_name}</span>
+                      {selectedProfile.email && (
+                        <span>{selectedProfile.email}</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                {profilePickerOpen && hiddenProfiles.length > 0 && (
+                  <ProfileChooserOverlay
+                    row={row}
+                    profiles={hiddenProfiles}
+                    onClose={() => setProfilePickerOpen(false)}
+                    onPick={addProfile}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="profile-order-halo-empty">
+                Use the add sector to choose a visible profile.
+              </div>
+            )}
+          </div>
+
+          {(clearOnSave || error) && (
+            <div
+              className={error ? "profile-order-error" : "profile-order-note"}
+            >
+              {error ??
+                "Saving now clears custom order and uses the browser default."}
+            </div>
+          )}
+        </div>
+
+        <div className="profile-order-modal-footer">
           <button
             type="button"
             className="mac-tbtn"
-            onClick={reset}
-            title="Forget the saved order; picker falls back to default"
+            onClick={restoreDefaultDraft}
+            disabled={pending}
           >
+            <RotateCcw size={14} />
             Reset
           </button>
-        )}
+          <span className="grow" />
+          <Dialog.Close asChild>
+            <button type="button" className="mac-tbtn" disabled={pending}>
+              Cancel
+            </button>
+          </Dialog.Close>
+          <button
+            type="button"
+            className="mac-tbtn primary"
+            disabled={pending || draft.length < 1}
+            onClick={() => void save()}
+          >
+            {pending ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </Dialog.Content>
+    </Dialog.Portal>
+  );
+}
+
+function ProfileChooserOverlay({
+  row,
+  profiles,
+  onClose,
+  onPick,
+}: {
+  row: BrowserProfileCatalog;
+  profiles: BrowserProfile[];
+  onClose: () => void;
+  onPick: (profileId: string) => void;
+}) {
+  return (
+    <div
+      className="profile-order-profile-picker"
+      role="dialog"
+      aria-label="Choose a profile to add"
+    >
+      <div className="profile-order-profile-picker-head">
+        <span className="profile-order-profile-picker-app">
+          <AppIcon
+            bundleId={row.browser.platform_app_id ?? undefined}
+            appPath={appPathFromExecutable(row.browser.executable)}
+            size={24}
+            alt={row.browser.display_name}
+          />
+        </span>
+        <span className="profile-order-profile-picker-title">
+          <span>Choose a profile</span>
+          <span>{row.browser.display_name}</span>
+        </span>
+        <button
+          type="button"
+          className="profile-order-icon-btn"
+          onClick={onClose}
+          aria-label="Close profile chooser"
+        >
+          <X size={16} />
+        </button>
       </div>
 
-      {profiles.length === 0 ? (
-        <div className="profile-order-empty">
-          No profiles detected for this browser.
-        </div>
-      ) : profiles.length === 1 ? (
-        <div className="profile-order-empty">
-          {profiles[0].display_name} is the only profile — nothing to
-          reorder.
-        </div>
-      ) : (
-        <ol className="profile-order-list">
-          {profiles.map((p, idx) => {
-            const accent =
-              p.accent_color ?? FALLBACK_PALETTE[idx % FALLBACK_PALETTE.length];
-            return (
-              <li key={p.id} className="profile-order-row">
-                <span
-                  className="profile-order-num"
-                  title={
-                    idx < 9
-                      ? `Press ${idx + 1} in the picker to launch this`
-                      : "Past slot 9 — keyboard shortcut unavailable"
-                  }
-                >
-                  {idx + 1}
-                </span>
-                <span
-                  className="profile-order-avatar"
-                  style={{ background: accent }}
-                >
-                  {profileMonogram({
-                    id: p.id,
-                    name: p.display_name,
-                    is_default: !!p.is_default,
-                  })}
-                </span>
-                <span className="profile-order-name">
-                  <span>{p.display_name}</span>
-                  {p.email && (
-                    <span className="profile-order-email">{p.email}</span>
-                  )}
-                  {p.is_default && (
-                    <span className="profile-order-default-tag">DEFAULT</span>
-                  )}
-                </span>
-                <span className="profile-order-actions">
-                  <button
-                    type="button"
-                    aria-label="Move up"
-                    disabled={idx === 0}
-                    onClick={() => move(idx, -1)}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Move down"
-                    disabled={idx === profiles.length - 1}
-                    onClick={() => move(idx, 1)}
-                  >
-                    ▼
-                  </button>
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-
-      {error && <div className="profile-order-error">{error}</div>}
+      <div className="profile-order-profile-grid">
+        {profiles.map((profile, idx) => (
+          <button
+            key={profile.id}
+            type="button"
+            className="profile-order-profile-card"
+            onClick={() => onPick(profile.id)}
+          >
+            <span
+              className="profile-order-profile-avatar"
+              style={{
+                background:
+                  profile.accent_color ??
+                  FALLBACK_PALETTE[idx % FALLBACK_PALETTE.length],
+              }}
+            >
+              {profileMonogram(toPickerProfile(profile))}
+            </span>
+            <span className="profile-order-profile-card-copy">
+              <span>{profile.display_name}</span>
+              {profile.email && <span>{profile.email}</span>}
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
-/** Mirror of `core::browser::apply_profile_order` so the editor renders
- *  immediately without an extra round-trip. The backend re-applies the
- *  same logic when the picker actually opens, so any divergence would
- *  show up the moment the user clicked "Try picker". */
-function applyOrderClientSide(
+function hasSavedOrder(doc: ConfigDocument | null, browserId: string): boolean {
+  const saved = doc?.settings.profile_orders?.[browserId];
+  return saved != null && saved.length > 0;
+}
+
+function initialDraftFromSaved(
   raw: BrowserProfile[],
   saved: string[] | undefined,
-): BrowserProfile[] {
+): InitialDraft {
   if (!saved || saved.length === 0) {
-    return [...raw].sort(
-      (a, b) =>
-        Number(!!b.is_default) - Number(!!a.is_default) ||
-        a.display_name.localeCompare(b.display_name),
-    );
+    return { profiles: sortProfilesDefault(raw), clearOnSave: true };
   }
-  const byId = new Map(raw.map((p) => [p.id, p]));
-  const out: BrowserProfile[] = [];
+
+  const byId = new Map(raw.map((profile) => [profile.id, profile]));
+  const profiles: BrowserProfile[] = [];
   for (const id of saved) {
-    const p = byId.get(id);
-    if (p) {
-      out.push(p);
+    const profile = byId.get(id);
+    if (profile) {
+      profiles.push(profile);
       byId.delete(id);
     }
   }
-  const leftovers = [...byId.values()].sort(
+
+  return profiles.length >= 2
+    ? { profiles, clearOnSave: false }
+    : { profiles: sortProfilesDefault(raw), clearOnSave: true };
+}
+
+function sortProfilesDefault(raw: BrowserProfile[]): BrowserProfile[] {
+  return [...raw].sort(
     (a, b) =>
       Number(!!b.is_default) - Number(!!a.is_default) ||
       a.display_name.localeCompare(b.display_name),
   );
-  return [...out, ...leftovers];
+}
+
+function toPickerProfile(profile: BrowserProfile): PickerProfile {
+  return {
+    id: profile.id,
+    name: profile.display_name,
+    email: profile.email,
+    accent_color: profile.accent_color,
+    is_default: !!profile.is_default,
+  };
+}
+
+function deleteControlPosition(
+  index: number,
+  slotCount: number,
+  size: number,
+): { left: number; top: number } {
+  const angle = sectorMidAngle(index, slotCount);
+  const [left, top] = polarToCart(size / 2, size / 2, size * 0.49, angle);
+  return { left, top };
 }

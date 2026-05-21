@@ -67,9 +67,9 @@ export const ipc = {
 
   setPickerStyle: (style: PickerStyle) =>
     invoke<void>("set_picker_style", { style }),
-  /** Persist a per-browser profile ordering. Empty `profileIds` clears
-   *  the saved order for that browser — picker falls back to default
-   *  sort. */
+  /** Persist a per-browser visible profile ordering. Empty `profileIds`
+   *  clears customization for that browser — picker falls back to default
+   *  sort and shows every detected profile. */
   setProfileOrder: (browser: string, profileIds: string[]) =>
     invoke<void>("set_profile_order", { browser, profileIds }),
   /** Open the picker window with real browsers/profile ordering. The picked

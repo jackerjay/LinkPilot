@@ -21,7 +21,8 @@ export interface PickerChoice {
   bundle_id?: string | null;
   app_path?: string | null;
   icon_data_url?: string | null;
-  /** Ordered: default profile first, then alphabetical by name. */
+  /** Ordered and filtered by Settings profile order, or default-first
+   *  alphabetical when no customization exists. */
   profiles: PickerProfile[];
   default_profile_id?: string | null;
 }

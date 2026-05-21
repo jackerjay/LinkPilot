@@ -106,10 +106,10 @@ export interface Settings {
    *  Settings page or `lpt settings picker-style …`; the picker
    *  window reads it once on open. */
   picker_style: PickerStyle;
-  /** Per-browser profile ordering. Keys are browser ids ("chrome",
-   *  "edge", "arc"). Values are ordered profile-id lists. Profiles
-   *  missing from the list fall through to the default sort
-   *  (default-first, then alphabetical) and append at the tail. */
+  /** Per-browser visible profile ordering. Keys are browser ids ("chrome",
+   *  "edge", "arc"). Empty/missing means default sort. A non-empty list is
+   *  the complete visible Halo inventory; profiles missing from the list are
+   *  hidden until added back in Settings. */
   profile_orders: Record<string, string[]>;
 }
 
