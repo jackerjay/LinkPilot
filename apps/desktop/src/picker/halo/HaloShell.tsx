@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { AppIcon } from "@/components/AppIcon";
 import {
   DEFAULT_HALO_GEOMETRY,
@@ -121,6 +122,7 @@ export function HaloShell({
   showReadout = true,
   geometry = DEFAULT_HALO_GEOMETRY,
 }: HaloShellProps) {
+  const { t } = useTranslation("picker");
   const optDown = useModKey();
   const tileRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -333,7 +335,7 @@ export function HaloShell({
       {launching && <LaunchToast event={launching} />}
 
       <div className="pk-pop-head">
-        <div className="pk-eyebrow">Open with</div>
+        <div className="pk-eyebrow">{t("halo.openWith")}</div>
         <div className="pk-url" title={url}>
           {urlPreview}
         </div>
@@ -421,7 +423,9 @@ export function HaloShell({
                 </div>
                 <div className="pk-tile-name">{c.name}</div>
                 <div className="pk-b-tile-count">
-                  {multi ? `${c.profiles.length} profiles` : " "}
+                  {multi
+                    ? t("halo.profileCount", { count: c.profiles.length })
+                    : " "}
                 </div>
               </button>
             );
@@ -431,17 +435,18 @@ export function HaloShell({
 
       <div className="pk-pop-foot">
         <span className="pk-foot-group">
-          <span className="pk-kbd">{SUMMON_KEY_LABEL}</span> SUMMON
+          <span className="pk-kbd">{SUMMON_KEY_LABEL}</span>{" "}
+          {t("halo.footer.summon")}
         </span>
         <span className="pk-foot-group">
           <span className="pk-kbd">1</span>
-          <span className="pk-kbd">9</span> DIRECT
+          <span className="pk-kbd">9</span> {t("halo.footer.direct")}
         </span>
         <span className="pk-foot-group">
-          <span className="pk-kbd">⏎</span> DEFAULT
+          <span className="pk-kbd">⏎</span> {t("halo.footer.default")}
         </span>
         <span className="pk-foot-group">
-          <span className="pk-kbd">ESC</span> CANCEL
+          <span className="pk-kbd">ESC</span> {t("halo.footer.cancel")}
         </span>
       </div>
 
@@ -474,11 +479,12 @@ export function HaloShell({
 // -------- ⌥ pill --------------------------------------------------------
 
 function ModifierPill({ active }: { active: boolean }) {
+  const { t } = useTranslation("picker");
   return (
     <div className={"pk-b-modkey" + (active ? " active" : "")}>
       <span className="pk-b-modkey-kbd">{SUMMON_KEY_LABEL}</span>
       <span>
-        {active ? "Aim, release to open" : "Hold ⌥ to pick a profile"}
+        {active ? t("halo.modifierActive") : t("halo.modifierIdle")}
       </span>
     </div>
   );
@@ -497,6 +503,7 @@ function HaloReadoutPortal({
   profile: PickerProfile | null;
   profileIdx: number | null;
 }) {
+  const { t } = useTranslation("picker");
   const cx = tileRect.left + tileRect.width / 2;
   const cy = tileRect.top + tileRect.height / 2;
   // Readout sits 200px above the wheel center. With the standard 152px
@@ -537,9 +544,10 @@ function HaloReadoutPortal({
           </>
         ) : (
           <span className="halo-readout-prompt">
-            {browser.name} · {browser.profiles.length} profiles ·{" "}
+            {browser.name} ·{" "}
+            {t("halo.profileCount", { count: browser.profiles.length })} ·{" "}
             <span className="halo-readout-hint">
-              release ⌥ or press 1–9
+              {t("halo.readoutHint")}
             </span>
           </span>
         )}
@@ -552,6 +560,7 @@ function HaloReadoutPortal({
 // -------- Launch toast --------------------------------------------------
 
 function LaunchToast({ event }: { event: LaunchEvent }) {
+  const { t } = useTranslation("picker");
   const idx = event.browser.profiles.findIndex((p) => p.id === event.profile.id);
   const color = idx >= 0 ? profileAccent(event.profile, idx) : "#6E6E73";
   const letter = event.profile.name.trim().charAt(0).toUpperCase() || "•";
@@ -562,7 +571,7 @@ function LaunchToast({ event }: { event: LaunchEvent }) {
       </span>
       <div className="wh-launch-text">
         <span className="wh-launch-line1">
-          Opening in {event.browser.name}
+          {t("halo.opening", { browser: event.browser.name })}
         </span>
         <span className="wh-launch-line2">
           {event.profile.name}

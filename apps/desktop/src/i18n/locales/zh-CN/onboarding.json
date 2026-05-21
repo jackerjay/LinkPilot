@@ -1,0 +1,84 @@
+{
+  "messages": {
+    "browserScanFailed": "浏览器扫描失败：{{error}}",
+    "defaultDone": "macOS 会提示你确认切换。",
+    "defaultConsent": "请在系统设置 > 桌面与程序坞中确认切换。",
+    "defaultUnsupported": "当前平台不支持默认浏览器 API。",
+    "failed": "失败：{{error}}",
+    "templateSaveFailed": "模板保存失败（{{error}}）。将不带模板继续。你可以稍后在规则页添加规则。"
+  },
+  "footer": {
+    "skip": "跳过设置",
+    "step": "第 {{step}} / {{total}} 步",
+    "back": "返回",
+    "saving": "保存中...",
+    "finish": "完成",
+    "continue": "继续"
+  },
+  "step1": {
+    "logoAlt": "LinkPilot",
+    "title": "欢迎使用 LinkPilot。",
+    "body": "把每个链接自动路由到正确的浏览器、配置档和工作区，无需反复思考。",
+    "features": {
+      "rules": {
+        "title": "规则引擎",
+        "detail": "按域名、来源应用或路径匹配。"
+      },
+      "browsers": {
+        "title": "多浏览器",
+        "detail": "Chrome、Arc、Safari、Firefox。"
+      },
+      "profiles": {
+        "title": "配置档",
+        "detail": "工作链接进 Work，娱乐链接进 Fun。"
+      },
+      "inspector": {
+        "title": "检查器",
+        "detail": "每一次路由决策都可审计。"
+      }
+    }
+  },
+  "step2": {
+    "title": "将 LinkPilot 设为默认浏览器",
+    "body": "macOS 会弹出确认对话框。LinkPilot 不渲染网页，只负责决定把每个链接交给哪个浏览器。",
+    "urlToken": "URL",
+    "alreadyDefault": "已是默认",
+    "working": "处理中...",
+    "setDefault": "设为默认浏览器...",
+    "help": "你可以随时在系统设置 > 桌面与程序坞中修改。"
+  },
+  "step3": {
+    "title": "选择 LinkPilot 可以路由到的浏览器",
+    "scanning": "扫描中...",
+    "found_one": "已扫描 /Applications，找到 {{count}} 个浏览器。",
+    "found_other": "已扫描 /Applications，找到 {{count}} 个浏览器。",
+    "noProfiles": "无配置档"
+  },
+  "step4": {
+    "title": "从模板开始",
+    "body": "我们已准备四条规则。打开你需要的模板，其他内容稍后可在规则页调整。",
+    "help": "你随时可以编辑、重排或删除规则。"
+  },
+  "templates": {
+    "work": {
+      "label": "工作 -> Chrome / Work",
+      "detail": "github.com、linear.app、notion.so、figma.com",
+      "note": "工作工具 -> Chrome / Work 配置档"
+    },
+    "oauth": {
+      "label": "OAuth -> 保持来源浏览器",
+      "detail": "/oauth/callback 路径会留在发起登录的浏览器中",
+      "note": "OAuth 重定向必须在来源浏览器中完成"
+    },
+    "media": {
+      "label": "媒体 -> Arc",
+      "detail": "youtube.com、twitch.tv",
+      "note": "流媒体 -> Arc"
+    },
+    "banking": {
+      "label": "银行 -> Safari",
+      "detail": "个人银行站点留在 Safari，以便使用钥匙串",
+      "note": "银行 -> Safari（钥匙串）"
+    }
+  }
+}

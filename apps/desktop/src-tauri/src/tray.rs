@@ -13,6 +13,7 @@
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use linkpilot_core::config::LanguagePref;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -31,6 +32,7 @@ const ANCHOR_GAP: f64 = 8.0;
 /// would fire focus-lost → hide → click → re-show, because focus-lost
 /// arrives *before* the click handler on macOS.
 const REOPEN_SUPPRESS_MS: u64 = 250;
+const MAIN_TRAY_ID: &str = "main-tray";
 
 /// Cross-thread bookkeeping for the popover's click-toggle behavior.
 /// `app.manage`-d so the focus-lost handler in `lib.rs` and the
@@ -43,15 +45,17 @@ pub struct TrayState {
 pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     app.manage(TrayState::default());
 
-    let show = MenuItem::with_id(app, "show", "Show LinkPilot", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit LinkPilot", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show, &quit])?;
+    let language = app
+        .try_state::<crate::state::AppState>()
+        .map(|state| state.config.document().settings.language)
+        .unwrap_or_default();
+    let menu = build_tray_menu(app, language)?;
 
     let icon_bytes = include_bytes!("../icons/tray.png");
     let icon = Image::from_bytes(icon_bytes)
         .map_err(|e| tauri::Error::AssetNotFound(format!("tray icon decode: {e}")))?;
 
-    let _tray = TrayIconBuilder::with_id("main-tray")
+    let _tray = TrayIconBuilder::with_id(MAIN_TRAY_ID)
         .icon(icon)
         .icon_as_template(true)
         .menu(&menu)
@@ -77,6 +81,58 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         })
         .build(app)?;
     Ok(())
+}
+
+pub fn update_menu_language<R: Runtime>(app: &AppHandle<R>, language: LanguagePref) {
+    let Some(tray) = app.tray_by_id(MAIN_TRAY_ID) else {
+        return;
+    };
+    let menu = match build_tray_menu(app, language) {
+        Ok(menu) => menu,
+        Err(err) => {
+            tracing::warn!(?err, "tray: localized menu build failed");
+            return;
+        }
+    };
+    if let Err(err) = tray.set_menu(Some(menu)) {
+        tracing::warn!(?err, "tray: localized menu update failed");
+    }
+}
+
+fn build_tray_menu<R: Runtime>(
+    app: &AppHandle<R>,
+    language: LanguagePref,
+) -> tauri::Result<Menu<R>> {
+    let labels = tray_menu_labels(language);
+    let show = MenuItem::with_id(app, "show", labels.show, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", labels.quit, true, None::<&str>)?;
+    Menu::with_items(app, &[&show, &quit])
+}
+
+struct TrayMenuLabels {
+    show: &'static str,
+    quit: &'static str,
+}
+
+fn tray_menu_labels(language: LanguagePref) -> TrayMenuLabels {
+    match language {
+        LanguagePref::ZhCn => TrayMenuLabels {
+            show: "显示 LinkPilot",
+            quit: "退出 LinkPilot",
+        },
+        LanguagePref::ZhTw => TrayMenuLabels {
+            show: "顯示 LinkPilot",
+            quit: "結束 LinkPilot",
+        },
+        LanguagePref::JaJp => TrayMenuLabels {
+            show: "LinkPilot を表示",
+            quit: "LinkPilot を終了",
+        },
+        LanguagePref::System | LanguagePref::En => TrayMenuLabels {
+            show: "Show LinkPilot",
+            quit: "Quit LinkPilot",
+        },
+    }
 }
 
 pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {

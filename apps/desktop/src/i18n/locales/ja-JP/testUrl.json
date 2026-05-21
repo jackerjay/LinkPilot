@@ -1,0 +1,25 @@
+{
+  "title": "URL テスト",
+  "subtitle": "ブラウザを開かずに、実行中のルーティングエンジンに URL を流します。ルールを編集してここに戻ると判定結果が即座に更新されます。",
+  "url": "URL",
+  "urlPlaceholder": "https://example.com/some/path",
+  "fromApp": "ソースアプリ（任意）",
+  "fromAppPlaceholder": "Slack、Terminal、VSCode…",
+  "fromBrowser": "ソースブラウザ（任意）",
+  "fromBrowserPlaceholder": "— なし —",
+  "fromBrowserNone": "— なし —",
+  "fromProfile": "ソース profile（任意）",
+  "fromProfilePlaceholder": "— 任意 —",
+  "fromProfileAny": "— 任意 —",
+  "errorTag": "エラー",
+  "result": {
+    "card": "結果",
+    "decision": "判定",
+    "rule": "ルール",
+    "rulePriorityTitle": "優先順位 —— リストの先頭が優先されます",
+    "ruleNoNote": "（メモなし）",
+    "ruleDefault": "— 既定のターゲット（一致するルールなし）",
+    "whyTitle": "この判定の理由",
+    "whyEmpty": "どのルールも一致せず、ルートは設定された default_target にフォールバックします。"
+  }
+}

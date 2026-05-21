@@ -1,0 +1,74 @@
+{
+  "halo": {
+    "openWith": "開啟方式",
+    "profileCount_one": "{{count}} 個 profile",
+    "profileCount_other": "{{count}} 個 profile",
+    "footer": {
+      "summon": "召喚",
+      "direct": "直達",
+      "default": "預設",
+      "cancel": "取消"
+    },
+    "modifierActive": "瞄準，放開即開啟",
+    "modifierIdle": "按住 ⌥ 選擇 profile",
+    "readoutHint": "放開 ⌥ 或按 1–9",
+    "opening": "正在用 {{browser}} 開啟",
+    "crownHint": "開啟 · 移動以切換"
+  },
+  "style": {
+    "variants": {
+      "frosted": { "name": "Frosted", "tagline": "玻璃分區，顏色集中在外環" },
+      "bezel": { "name": "Bezel", "tagline": "刻度與圓點，儀表盤質感" },
+      "crown": { "name": "Crown", "tagline": "Apple Watch 風格的中心顯示" }
+    },
+    "testUrl": "測試 URL",
+    "openTitle": "開啟 picker，並啟動選中的瀏覽器/profile",
+    "opening": "開啟中…",
+    "tryPicker": "試用 picker",
+    "hint": "會使用已安裝瀏覽器和儲存的 profile 順序開啟真實 picker。選擇後會開啟測試 URL。"
+  },
+  "profileOrder": {
+    "scanning": "正在掃描瀏覽器 profile…",
+    "noBrowsers": "還沒有偵測到瀏覽器。安裝 Chromium 系瀏覽器後即可自訂 profile 順序。",
+    "hiddenBanner_one": "在 {{browsers}} 中偵測到 <strong>{{count}} 個新 profile</strong>。新增前它們會一直隱藏在 Halo 轉盤外。",
+    "hiddenBanner_other": "在 {{browsers}} 中偵測到 <strong>{{count}} 個新 profile</strong>。新增前它們會一直隱藏在 Halo 轉盤外。",
+    "hiddenTitle_one": "{{count}} 個偵測到的 profile 尚未放入 Halo 轉盤",
+    "hiddenTitle_other": "{{count}} 個偵測到的 profile 尚未放入 Halo 轉盤",
+    "configureTitle": "在 Halo 轉盤中設定這個瀏覽器",
+    "unavailableTitle": "只有瀏覽器擁有多個 profile 時，才能設定 profile 順序",
+    "scanFailed": "Profile 掃描失敗",
+    "profileCount_one": "{{count}} 個 profile",
+    "profileCount_other": "{{count}} 個 profile",
+    "newChip": "+{{count}} 新",
+    "statusSaved": "已儲存",
+    "statusConfigure": "設定",
+    "statusUnavailable": "不可用",
+    "noneConfigurable": "至少偵測到一個擁有多個 profile 的瀏覽器後，才能設定 profile 順序。",
+    "keepOne": "Halo 設定中至少要保留一個可見 profile。",
+    "dialogTitle": "設定 profile Halo",
+    "dialogDescription": "{{browser}} · {{visible}} 個可見 / {{detected}} 個已偵測 profile",
+    "close": "關閉",
+    "hideSelected": "隱藏選中的 profile",
+    "mustRemain": "至少要保留一個可見 profile",
+    "haloEmpty": "使用新增扇區選擇一個可見 profile。",
+    "clearNote": "現在儲存會清除自訂順序，並使用瀏覽器預設順序。",
+    "reset": "重設",
+    "cancel": "取消",
+    "save": "儲存",
+    "saving": "儲存中…",
+    "chooseProfileAria": "選擇要新增的 profile",
+    "chooseProfile": "選擇 profile",
+    "closeChooser": "關閉 profile 選擇器",
+    "and": "和"
+  },
+  "preview": {
+    "addProfile": "新增設定檔",
+    "selectProfile": "選擇 {{profile}}",
+    "mockProfiles": {
+      "default": "預設",
+      "work": "工作",
+      "side": "副專案",
+      "personal": "個人"
+    }
+  }
+}

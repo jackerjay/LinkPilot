@@ -28,5 +28,8 @@
   },
   "errors": {
     "generic": "エラーが発生しました：{{message}}"
+  },
+  "appPicker": {
+    "tooltip": "インストール済みアプリから選択"
   }
 }

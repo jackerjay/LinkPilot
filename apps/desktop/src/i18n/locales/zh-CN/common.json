@@ -28,5 +28,8 @@
   },
   "errors": {
     "generic": "出错了：{{message}}"
+  },
+  "appPicker": {
+    "tooltip": "从已安装应用中选择"
   }
 }

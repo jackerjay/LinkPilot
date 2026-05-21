@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  English | <a href="README.zh.md">简体中文</a>
+  English | <a href="README.zh.md">简体中文</a> | <a href="README.zh-TW.md">繁體中文</a> | <a href="README.ja-JP.md">日本語</a>
 </p>
 
 LinkPilot is a macOS-first link router. It sits between macOS, your browsers,
@@ -38,6 +38,8 @@ The current app includes:
 - Ask picker with Halo profile wheel (Frosted / Bezel / Crown styles),
   keyboard shortcuts, per-browser profile ordering, dark mode, and a
   Settings test URL flow that opens real browsers.
+- Localized UI for English, Simplified Chinese, Traditional Chinese, and
+  Japanese, with a system-language option.
 - Automatic GitHub Release update checks with SHA-256 verified DMG
   downloads, then a manual installer-open step in Settings.
 - Background daemon with Unix socket IPC so routing keeps working after the
@@ -81,6 +83,29 @@ its local update cache, verifies the SHA-256 against the release's
 `checksums.txt`, and asks you to click "Open installer" before upgrading.
 A release without `checksums.txt` is treated as unverified and refused.
 You can turn this off under Settings → General → Updates.
+
+## Languages
+
+LinkPilot currently ships UI translations for:
+
+- English
+- 简体中文
+- 繁體中文
+- 日本語
+
+By default, LinkPilot follows the system language when it maps to one of the
+supported languages above. You can override this in Settings → Appearance →
+Language. The picker window reads the same preference the next time it opens.
+
+The same preference can be changed from the CLI:
+
+```sh
+lpt settings language system
+lpt settings language en
+lpt settings language zh-CN
+lpt settings language zh-TW
+lpt settings language ja-JP
+```
 
 ### CLI only
 
@@ -152,6 +177,7 @@ lpt settings smart-routing off
 lpt settings launch-at-login on
 lpt settings auto-updates off
 lpt settings picker-style crown        # frosted | bezel | crown
+lpt settings language zh-CN            # system | en | zh-CN | zh-TW | ja-JP
 lpt settings history-retention 30
 
 # Browsers
@@ -246,8 +272,8 @@ packaging/
 Maintainers publish releases by pushing a semver tag:
 
 ```sh
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 The release workflow builds universal macOS binaries for the CLI, daemon, and

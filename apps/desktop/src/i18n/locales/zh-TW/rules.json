@@ -1,0 +1,144 @@
+{
+  "title": "規則",
+  "subtitle": "按最高優先級優先評估。拖曳行可調整順序；點擊 <edit>編輯</edit> 或 <add>新增規則</add> 使用結構化編輯器。",
+  "copyToGui": {
+    "note": "從 ts-compiled 複製",
+    "noteWithExisting": "{{note}}（從 ts-compiled 複製）"
+  },
+  "list": {
+    "card": "規則（{{count}}）",
+    "cardFiltered": "規則（{{visible}} / {{total}}）",
+    "addRule": "新增規則",
+    "empty": "暫無規則 — 點擊 <add>新增規則</add>。",
+    "emptyFilterPrefix": "目前篩選下沒有規則。",
+    "showAll": "顯示全部"
+  },
+  "defaultTarget": {
+    "card": "預設目標",
+    "description": "沒有規則命中時生效。可在 <settings>設定</settings> 分頁修改。"
+  },
+  "advanced": {
+    "card": "進階：原始 JSON",
+    "show": "顯示",
+    "hide": "隱藏",
+    "errorTag": "錯誤",
+    "revert": "還原",
+    "save": "儲存",
+    "saving": "儲存中…"
+  },
+  "row": {
+    "dragDisabled": "啟用篩選時不能拖曳排序",
+    "priorityTitle": "優先級位置 — 列表頂部優先生效。拖曳可調整順序。",
+    "filterByWorkspaceTitle": "按此工作區篩選",
+    "filterByWorkspace": "按工作區篩選：{{name}}",
+    "workspaceOff": "已關閉",
+    "disabled": "已停用",
+    "compiled": "已編譯",
+    "compiledHelp": "來源於 <code>linkpilot.config.ts</code>。請在那裡編輯並重新執行 <compile>lpt config compile</compile>；也可以用複製按鈕派生一個可在 GUI 編輯的副本。",
+    "compiledReadonly": "已編譯規則唯讀。請編輯 <code>linkpilot.config.ts</code> 並重新執行 <compile>lpt config compile</compile>。",
+    "copyHelp": "複製為可在 GUI 編輯的規則。原規則仍保持編譯來源，並會在下次 <compile>lpt config compile</compile> 時被覆蓋。",
+    "compiledDeleteHelp": "已編譯規則不能從 GUI 刪除 — 請從 <code>linkpilot.config.ts</code> 移除並重新執行 <compile>lpt config compile</compile>。",
+    "editRule": "編輯規則",
+    "deleteRule": "刪除規則"
+  },
+  "workspaces": {
+    "card": "工作區（{{count}}）",
+    "new": "新增工作區",
+    "empty": "把規則分組到工作區（例如 <work>工作</work>、<side>副專案</side>），即可一鍵開關整組規則。編輯規則時可以指定工作區。",
+    "toggle": "切換 {{name}}",
+    "renameTitle": "點擊重新命名",
+    "hitsTitle": "最近歷史中命中此工作區規則的路由",
+    "delete": "刪除工作區（規則會變為未分組）",
+    "placeholder": "工作區名稱"
+  },
+  "filter": {
+    "all": "全部",
+    "ungrouped": "未分組"
+  },
+  "quickMove": {
+    "button": "移動到工作區",
+    "ungrouped": "— 未分組 —",
+    "noWorkspaces": "還沒有工作區",
+    "off": "（已關閉）"
+  },
+  "action": {
+    "open": "開啟 →",
+    "keepSource": "保留來源",
+    "ask": "詢問",
+    "block": "阻擋"
+  },
+  "counts": {
+    "rule_one": "{{count}} 條規則",
+    "rule_other": "{{count}} 條規則",
+    "hit_one": "{{count}} 次命中",
+    "hit_other": "{{count}} 次命中"
+  },
+  "editor": {
+    "editTitle": "編輯規則",
+    "newTitle": "新增規則",
+    "enabled": "啟用",
+    "priorityHint": "優先級由 Rules 頁面中的列表順序決定 — 拖曳即可調整。",
+    "when": "條件",
+    "then": "動作",
+    "workspace": "工作區",
+    "ungrouped": "— 未分組 —",
+    "off": "（已關閉）",
+    "note": "備註（可選，會顯示在 Inspector 中）",
+    "notePlaceholder": "這條規則存在的原因…",
+    "invalidTag": "無效",
+    "errorTag": "錯誤",
+    "cancel": "取消",
+    "save": "儲存",
+    "saving": "儲存中…",
+    "addChild": "新增子條件",
+    "removeChildTitle": "移除"
+  },
+  "target": {
+    "pickBrowser": "— 選擇瀏覽器 —",
+    "anyProfile": "（任意 profile）",
+    "incognito": "無痕"
+  },
+  "matcherHelp": {
+    "always": "（始終匹配）",
+    "all": "（所有子條件都必須匹配）",
+    "any": "（任一子條件匹配即可）",
+    "not": "（子條件必須不匹配）"
+  },
+  "matcherPlaceholders": {
+    "host": "github.com 或 *.corp.example.com",
+    "path": "/login 或 /oauth/callback",
+    "sourceApp": "Slack、VSCode、Terminal…",
+    "sourceProfile": "Work / Personal / Default"
+  },
+  "actionHelp": {
+    "keepSource": "（在來源瀏覽器內繼續導航，適合 OAuth）",
+    "ask": "（提示使用者選擇目標）",
+    "block": "（不開啟 URL）"
+  },
+  "validation": {
+    "needsChild": "{{op}} 至少需要一個子條件",
+    "patternEmpty": "{{op}} pattern 為空",
+    "sourceAppEmpty": "source-app 名稱為空",
+    "sourceBrowserEmpty": "source-browser 為空",
+    "sourceProfileEmpty": "source-profile 為空",
+    "openTargetMissing": "open 動作需要目標瀏覽器"
+  },
+  "matcherLabels": {
+    "always": "始終",
+    "path": "路徑",
+    "from": "來自",
+    "profile": "profile",
+    "not": "NOT",
+    "and": "AND",
+    "or": "OR",
+    "matched": "已匹配",
+    "notMatched": "未匹配",
+    "evalAnd": "AND（{{count}}）",
+    "evalOr": "OR（{{count}}）",
+    "hostEval": "host {{pattern}}",
+    "pathEval": "path {{pattern}}",
+    "fromAppEval": "from app {{name}}",
+    "fromBrowserEval": "from browser {{browser}}",
+    "fromProfileEval": "from profile {{profile}}"
+  }
+}

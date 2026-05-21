@@ -4,6 +4,7 @@
 // profile so ⏎ is unambiguous.
 
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import {
   polarToCart,
   sectorBoundaryAngle,
@@ -33,6 +34,7 @@ export function HaloCrownPortal({
   hoveredProfile,
   geometry,
 }: PortalProps) {
+  const { t } = useTranslation("picker");
   const half = W / 2;
   // Crown widens the inner radius — the center display lives inside it.
   const ri = Math.max(70, geometry.innerRadius + 30);
@@ -213,14 +215,16 @@ export function HaloCrownPortal({
           style={{ color: showAccent }}
         >
           {showProfile.name}
-          {isIdle && <span className="halo-crown-tag">DEFAULT</span>}
+          {isIdle && (
+            <span className="halo-crown-tag">{t("halo.footer.default")}</span>
+          )}
         </div>
         {showProfile.email && (
           <div className="halo-crown-email">{showProfile.email}</div>
         )}
         {isIdle && (
           <div className="halo-crown-hint">
-            <span className="pk-kbd">⏎</span> open · aim to switch
+            <span className="pk-kbd">⏎</span> {t("halo.crownHint")}
           </div>
         )}
       </div>

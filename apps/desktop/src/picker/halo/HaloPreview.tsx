@@ -11,6 +11,7 @@ import {
   type PointerEvent,
   type SVGProps,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { PickerStyle } from "@/lib/types";
 import {
   hitTestSector,
@@ -24,14 +25,6 @@ import {
   profileMonogram,
   type PickerProfile,
 } from "./types";
-
-const MOCK_PROFILES: PickerProfile[] = [
-  { id: "default", name: "Default", email: "you@gmail.com", is_default: true },
-  { id: "work", name: "Work", email: "you@company.example", is_default: false },
-  { id: "side", name: "Side", email: "side@me.com", is_default: false },
-  { id: "oss", name: "OSS", email: "you@oss.dev", is_default: false },
-  { id: "personal", name: "Personal", email: "you@me.com", is_default: false },
-];
 
 const HOVERED_IDX = 1;
 
@@ -59,6 +52,7 @@ interface SectorProps {
   draggingSlotId?: string | null;
   dropIndex?: number | null;
   interactive: boolean;
+  labels: InteractionLabels;
   onSelectIndex?: (index: number) => void;
 }
 
@@ -75,6 +69,11 @@ interface DragRef {
   targetIndex: number | null;
   pointerX: number;
   pointerY: number;
+}
+
+interface InteractionLabels {
+  addProfile: string;
+  selectProfile: (profile: string) => string;
 }
 
 interface DragState {
@@ -101,8 +100,44 @@ export function HaloPreview({
   onSelectIndex,
   onReorder,
 }: HaloPreviewProps) {
+  const { t } = useTranslation("picker");
+  const mockProfiles = useMemo<PickerProfile[]>(
+    () => [
+      {
+        id: "default",
+        name: t("preview.mockProfiles.default"),
+        email: "you@gmail.com",
+        is_default: true,
+      },
+      {
+        id: "work",
+        name: t("preview.mockProfiles.work"),
+        email: "you@company.example",
+        is_default: false,
+      },
+      {
+        id: "side",
+        name: t("preview.mockProfiles.side"),
+        email: "side@me.com",
+        is_default: false,
+      },
+      {
+        id: "oss",
+        name: "OSS",
+        email: "you@oss.dev",
+        is_default: false,
+      },
+      {
+        id: "personal",
+        name: t("preview.mockProfiles.personal"),
+        email: "you@me.com",
+        is_default: false,
+      },
+    ],
+    [t],
+  );
   const visibleProfiles =
-    profiles && profiles.length > 0 ? profiles : MOCK_PROFILES;
+    profiles && profiles.length > 0 ? profiles : mockProfiles;
   const slots: HaloSlot[] = [
     ...visibleProfiles.map((profile) => ({ kind: "profile" as const, profile })),
     ...(addSlot ? [{ kind: "add" as const, id: "__add_profile__" as const }] : []),
@@ -156,6 +191,13 @@ export function HaloPreview({
       : activeVisualIndex;
   const dropIndex = dragState?.moved ? dragVisualIndex : null;
   const activeSlot = visualSlots[displayActiveIndex];
+  const interactionLabels = useMemo<InteractionLabels>(
+    () => ({
+      addProfile: t("preview.addProfile"),
+      selectProfile: (profile) => t("preview.selectProfile", { profile }),
+    }),
+    [t],
+  );
 
   const hitTestClientPoint = useCallback(
     (clientX: number, clientY: number): number | null => {
@@ -349,6 +391,7 @@ export function HaloPreview({
             draggingSlotId={dragState?.moved ? dragSlotId : null}
             dropIndex={dropIndex}
             interactive={interactive}
+            labels={interactionLabels}
             onSelectIndex={onSelectIndex}
           />
         )}
@@ -361,6 +404,7 @@ export function HaloPreview({
             draggingSlotId={dragState?.moved ? dragSlotId : null}
             dropIndex={dropIndex}
             interactive={interactive}
+            labels={interactionLabels}
             onSelectIndex={onSelectIndex}
           />
         )}
@@ -373,6 +417,7 @@ export function HaloPreview({
             draggingSlotId={dragState?.moved ? dragSlotId : null}
             dropIndex={dropIndex}
             interactive={interactive}
+            labels={interactionLabels}
             onSelectIndex={onSelectIndex}
           />
         )}
@@ -411,6 +456,7 @@ function FrostedSectors({
   draggingSlotId,
   dropIndex,
   interactive,
+  labels,
   onSelectIndex,
 }: SectorProps) {
   const half = W / 2;
@@ -442,6 +488,7 @@ function FrostedSectors({
               slot,
               i,
               interactive,
+              labels,
               onSelectIndex,
             )}
           >
@@ -551,6 +598,7 @@ function BezelSectors({
   draggingSlotId,
   dropIndex,
   interactive,
+  labels,
   onSelectIndex,
 }: SectorProps) {
   const half = W / 2;
@@ -583,6 +631,7 @@ function BezelSectors({
               slot,
               i,
               interactive,
+              labels,
               onSelectIndex,
             )}
           />
@@ -640,6 +689,7 @@ function BezelSectors({
               slot,
               i,
               interactive,
+              labels,
               onSelectIndex,
             )}
           />
@@ -690,6 +740,7 @@ function CrownSectors({
   draggingSlotId,
   dropIndex,
   interactive,
+  labels,
   onSelectIndex,
 }: SectorProps) {
   const half = W / 2;
@@ -717,6 +768,7 @@ function CrownSectors({
               slot,
               i,
               interactive,
+              labels,
               onSelectIndex,
             )}
           >
@@ -875,6 +927,7 @@ function sectorInteraction<T extends SVGElement>(
   slot: HaloSlot,
   index: number,
   interactive: boolean,
+  labels: InteractionLabels,
   onSelectIndex?: (index: number) => void,
 ): HaloSlotInteractionProps<T> {
   if (!interactive) return {};
@@ -882,7 +935,9 @@ function sectorInteraction<T extends SVGElement>(
     role: "button",
     tabIndex: 0,
     "aria-label":
-      slot.kind === "add" ? "Add profile" : `Select ${slot.profile.name}`,
+      slot.kind === "add"
+        ? labels.addProfile
+        : labels.selectProfile(slot.profile.name),
     "data-halo-slot-index": String(index),
     style: { cursor: "pointer" },
     onKeyDown: (event: KeyboardEvent<T>) => {

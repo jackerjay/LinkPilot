@@ -1,0 +1,21 @@
+{
+  "status": "路由中 · 今日 {{count}} 条",
+  "openMain": "打开主窗口",
+  "workspaces": "工作空间",
+  "toggleWorkspace": "{{action}}工作空间「{{name}}」",
+  "enable": "启用",
+  "disable": "关闭",
+  "recent": "最近",
+  "emptyRecent": "暂无路由 — 打开一个链接后会显示在这里。",
+  "footer": {
+    "rules": "规则",
+    "history": "历史",
+    "settings": "设置"
+  },
+  "timeAgo": {
+    "seconds": "{{n}} 秒前",
+    "minutes": "{{n}} 分钟前",
+    "hours": "{{n}} 小时前",
+    "days": "{{n}} 天前"
+  }
+}

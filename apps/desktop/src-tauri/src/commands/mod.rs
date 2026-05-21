@@ -18,7 +18,7 @@ use linkpilot_core::rules::{Rule, RuleId};
 use tauri::{AppHandle, Emitter, State};
 use url::Url;
 
-use crate::state::AppState;
+use crate::{state::AppState, tray};
 
 // ----------------------------------------------------------------------------
 // config
@@ -133,13 +133,19 @@ pub fn set_smart_routing(state: State<'_, AppState>, enabled: bool) -> Result<()
 /// OS detection; explicit variants are hard overrides. The renderer reads
 /// `settings.language` and routes it through i18next.
 #[tauri::command]
-pub fn set_language(state: State<'_, AppState>, language: LanguagePref) -> Result<(), String> {
+pub fn set_language(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    language: LanguagePref,
+) -> Result<(), String> {
     let mut doc = state.config.document();
     doc.settings.language = language;
     state
         .config
         .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    tray::update_menu_language(&app, language);
+    Ok(())
 }
 
 /// Persist the user's picker variant choice (Frosted / Bezel / Crown).

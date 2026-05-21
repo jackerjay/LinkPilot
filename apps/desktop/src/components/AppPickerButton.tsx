@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { FolderSearch2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -20,8 +21,10 @@ interface Props {
 
 export function AppPickerButton({
   onPicked,
-  tooltip = "Pick from installed apps",
+  tooltip,
 }: Props) {
+  const { t } = useTranslation("common");
+  const label = tooltip ?? t("appPicker.tooltip");
   const [busy, setBusy] = useState(false);
   const open = async () => {
     setBusy(true);
@@ -42,12 +45,12 @@ export function AppPickerButton({
           size="icon"
           onClick={open}
           disabled={busy}
-          aria-label={tooltip}
+          aria-label={label}
         >
           <FolderSearch2 />
         </Button>
       </TooltipTrigger>
-      <TooltipContent>{tooltip}</TooltipContent>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
 }

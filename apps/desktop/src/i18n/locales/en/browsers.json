@@ -1,0 +1,15 @@
+{
+  "title": "Browsers",
+  "subtitle": "Detected browsers and the profiles LinkPilot can route to. Add a custom application if a browser isn't auto-detected.",
+  "rescan": "Rescan",
+  "addManually": "Add manually",
+  "choosing": "Choosing…",
+  "summary": "{{browsers}} browsers · {{profiles}} profiles",
+  "scanning": "Scanning…",
+  "emptyHint": "No browsers detected. Try <code>Add manually</code> to register one yourself.",
+  "errorTag": "error",
+  "customTag": "custom",
+  "customTagTitle": "Added manually — remove with the trash button",
+  "profilesErrorTag": "profiles",
+  "removeCustomTitle": "Remove \"{{name}}\" from custom browsers"
+}

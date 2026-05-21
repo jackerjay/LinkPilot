@@ -28,5 +28,8 @@
   },
   "errors": {
     "generic": "Something went wrong: {{message}}"
+  },
+  "appPicker": {
+    "tooltip": "Pick from installed apps"
   }
 }

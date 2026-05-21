@@ -1,0 +1,15 @@
+{
+  "title": "浏览器",
+  "subtitle": "已识别的浏览器和 LinkPilot 可路由到的 profile。如果某个浏览器没被自动识别，可以手动添加。",
+  "rescan": "重新扫描",
+  "addManually": "手动添加",
+  "choosing": "选择中…",
+  "summary": "{{browsers}} 个浏览器 · {{profiles}} 个 profile",
+  "scanning": "扫描中…",
+  "emptyHint": "未检测到浏览器。点击 <code>手动添加</code> 自行注册。",
+  "errorTag": "错误",
+  "customTag": "自定义",
+  "customTagTitle": "手动添加 —— 点击垃圾桶按钮移除",
+  "profilesErrorTag": "profile",
+  "removeCustomTitle": "从自定义浏览器中移除「{{name}}」"
+}

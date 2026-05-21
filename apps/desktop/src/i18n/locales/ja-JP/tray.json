@@ -1,0 +1,21 @@
+{
+  "status": "Routing · today {{count}}",
+  "openMain": "メインウィンドウを開く",
+  "workspaces": "ワークスペース",
+  "toggleWorkspace": "{{name}} ワークスペースを{{action}}",
+  "enable": "有効化",
+  "disable": "無効化",
+  "recent": "最近",
+  "emptyRecent": "ルートはまだありません — リンクを開くとここに表示されます。",
+  "footer": {
+    "rules": "ルール",
+    "history": "履歴",
+    "settings": "設定"
+  },
+  "timeAgo": {
+    "seconds": "{{n}}s ago",
+    "minutes": "{{n}}m ago",
+    "hours": "{{n}}h ago",
+    "days": "{{n}}d ago"
+  }
+}

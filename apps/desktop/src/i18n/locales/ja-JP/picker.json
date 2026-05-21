@@ -1,0 +1,74 @@
+{
+  "halo": {
+    "openWith": "開くアプリ",
+    "profileCount_one": "{{count}} profile",
+    "profileCount_other": "{{count}} profiles",
+    "footer": {
+      "summon": "SUMMON",
+      "direct": "DIRECT",
+      "default": "DEFAULT",
+      "cancel": "CANCEL"
+    },
+    "modifierActive": "狙って、離すと開きます",
+    "modifierIdle": "⌥ を押して profile を選択",
+    "readoutHint": "⌥ を離すか 1–9 を押す",
+    "opening": "{{browser}} で開いています",
+    "crownHint": "開く · 狙って切り替え"
+  },
+  "style": {
+    "variants": {
+      "frosted": { "name": "Frosted", "tagline": "ガラスのセクター、縁にカラー" },
+      "bezel": { "name": "Bezel", "tagline": "目盛りとドットの計器リング" },
+      "crown": { "name": "Crown", "tagline": "Apple Watch 風の中央表示" }
+    },
+    "testUrl": "テスト URL",
+    "openTitle": "picker を開き、選択したブラウザ/profile で起動",
+    "opening": "開いています…",
+    "tryPicker": "picker を試す",
+    "hint": "インストール済みブラウザと保存済み profile 順で実際の picker を開きます。選択するとテスト URL を開きます。"
+  },
+  "profileOrder": {
+    "scanning": "ブラウザ profile をスキャン中…",
+    "noBrowsers": "ブラウザはまだ検出されていません。Chromium 系ブラウザをインストールすると profile 順をカスタマイズできます。",
+    "hiddenBanner_one": "{{browsers}} で <strong>{{count}} 個の新しい profile</strong> を検出しました。追加するまで Halo ホイールには表示されません。",
+    "hiddenBanner_other": "{{browsers}} で <strong>{{count}} 個の新しい profiles</strong> を検出しました。追加するまで Halo ホイールには表示されません。",
+    "hiddenTitle_one": "{{count}} 個の検出済み profile が Halo ホイールに未配置です",
+    "hiddenTitle_other": "{{count}} 個の検出済み profiles が Halo ホイールに未配置です",
+    "configureTitle": "このブラウザを Halo ホイールで設定",
+    "unavailableTitle": "profile 順は、ブラウザに複数 profile がある場合だけ利用できます",
+    "scanFailed": "Profile スキャンに失敗しました",
+    "profileCount_one": "{{count}} profile",
+    "profileCount_other": "{{count}} profiles",
+    "newChip": "+{{count}} new",
+    "statusSaved": "保存済み",
+    "statusConfigure": "設定",
+    "statusUnavailable": "不可",
+    "noneConfigurable": "複数 profile を持つブラウザが少なくとも 1 つ検出されると、profile 順を設定できます。",
+    "keepOne": "Halo 設定には少なくとも 1 つの表示 profile が必要です。",
+    "dialogTitle": "profile Halo を設定",
+    "dialogDescription": "{{browser}} · {{visible}} visible / {{detected}} detected profiles",
+    "close": "閉じる",
+    "hideSelected": "選択した profile を隠す",
+    "mustRemain": "少なくとも 1 つの profile を表示する必要があります",
+    "haloEmpty": "追加セクターで表示する profile を選択してください。",
+    "clearNote": "今保存するとカスタム順をクリアし、ブラウザのデフォルト順を使います。",
+    "reset": "リセット",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "saving": "保存中…",
+    "chooseProfileAria": "追加する profile を選択",
+    "chooseProfile": "profile を選択",
+    "closeChooser": "profile chooser を閉じる",
+    "and": "と"
+  },
+  "preview": {
+    "addProfile": "プロファイルを追加",
+    "selectProfile": "{{profile}} を選択",
+    "mockProfiles": {
+      "default": "既定",
+      "work": "仕事",
+      "side": "副業",
+      "personal": "個人"
+    }
+  }
+}

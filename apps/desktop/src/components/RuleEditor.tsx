@@ -1,6 +1,8 @@
 // Structured editor for a single Rule. Replaces the JSON-textarea editor.
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Plus, X } from "lucide-react";
 import { AppIcon } from "@/components/AppIcon";
 import { AppPickerButton } from "@/components/AppPickerButton";
@@ -55,11 +57,12 @@ function newRule(): Rule {
 const NO_WORKSPACE = "__none__";
 
 export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: Props) {
+  const { t } = useTranslation("rules");
   const [draft, setDraft] = useState<Rule>(initial ?? newRule());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const issues = validate(draft);
+  const issues = validate(t, draft);
   const canSave = issues.length === 0 && !busy;
 
   const save = async () => {
@@ -77,14 +80,16 @@ export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: 
   return (
     <Card className="border-primary/40 ring-1 ring-primary/20">
       <CardHeader>
-        <CardTitle>{initial ? "Edit rule" : "New rule"}</CardTitle>
+        <CardTitle>
+          {initial ? t("editor.editTitle") : t("editor.newTitle")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
           <div className="space-y-0.5">
-            <Label className="text-sm">Enabled</Label>
+            <Label className="text-sm">{t("editor.enabled")}</Label>
             <p className="text-xs text-muted-foreground">
-              Priority is set by list order on the Rules page — drag to reorder.
+              {t("editor.priorityHint")}
             </p>
           </div>
           <Checkbox
@@ -96,7 +101,7 @@ export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: 
         </div>
 
         <div className="space-y-2">
-          <Label>When</Label>
+          <Label>{t("editor.when")}</Label>
           <MatcherEditor
             value={draft.when}
             browsers={browsers}
@@ -105,7 +110,7 @@ export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: 
         </div>
 
         <div className="space-y-2">
-          <Label>Then</Label>
+          <Label>{t("editor.then")}</Label>
           <ActionEditor
             value={draft.then}
             browsers={browsers}
@@ -114,7 +119,7 @@ export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: 
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="rule-workspace">Workspace</Label>
+          <Label htmlFor="rule-workspace">{t("editor.workspace")}</Label>
           <Select
             value={draft.workspace_id ?? NO_WORKSPACE}
             onValueChange={(v) =>
@@ -129,13 +134,17 @@ export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: 
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={NO_WORKSPACE}>
-                <span className="text-muted-foreground">— ungrouped —</span>
+                <span className="text-muted-foreground">
+                  {t("editor.ungrouped")}
+                </span>
               </SelectItem>
               {workspaces.map((w) => (
                 <SelectItem key={w.id} value={w.id}>
                   {w.display_name}
                   {!w.enabled && (
-                    <span className="ml-2 text-muted-foreground">(off)</span>
+                    <span className="ml-2 text-muted-foreground">
+                      {t("editor.off")}
+                    </span>
                   )}
                 </SelectItem>
               ))}
@@ -144,20 +153,22 @@ export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: 
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="rule-note">Note (optional, shown in Inspector)</Label>
+          <Label htmlFor="rule-note">{t("editor.note")}</Label>
           <Input
             id="rule-note"
             value={draft.note ?? ""}
             onChange={(e) =>
               setDraft({ ...draft, note: e.target.value || null })
             }
-            placeholder="Why this rule exists…"
+            placeholder={t("editor.notePlaceholder")}
           />
         </div>
 
         {issues.length > 0 && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-            <Badge variant="destructive" className="shrink-0">invalid</Badge>
+            <Badge variant="destructive" className="shrink-0">
+              {t("editor.invalidTag")}
+            </Badge>
             <span className="text-xs text-muted-foreground">
               {issues.join(" · ")}
             </span>
@@ -165,17 +176,19 @@ export function RuleEditor({ initial, browsers, workspaces, onSave, onCancel }: 
         )}
         {error && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5">
-            <Badge variant="destructive" className="shrink-0">error</Badge>
+            <Badge variant="destructive" className="shrink-0">
+              {t("editor.errorTag")}
+            </Badge>
             <span className="text-xs text-muted-foreground">{error}</span>
           </div>
         )}
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t("editor.cancel")}
           </Button>
           <Button onClick={save} disabled={!canSave}>
-            {busy ? "Saving…" : "Save"}
+            {busy ? t("editor.saving") : t("editor.save")}
           </Button>
         </div>
       </CardContent>
@@ -206,6 +219,7 @@ interface MatcherProps {
 }
 
 function MatcherEditor({ value, browsers, onChange, depth = 0 }: MatcherProps) {
+  const { t } = useTranslation("rules");
   const setOp = (op: MatcherTree["op"]) => onChange(matcherFromOp(op));
 
   return (
@@ -256,7 +270,7 @@ function MatcherEditor({ value, browsers, onChange, depth = 0 }: MatcherProps) {
                   })
                 }
                 className="text-muted-foreground hover:text-destructive"
-                title="Remove"
+                title={t("editor.removeChildTitle")}
               >
                 <X />
               </Button>
@@ -270,7 +284,7 @@ function MatcherEditor({ value, browsers, onChange, depth = 0 }: MatcherProps) {
             }
           >
             <Plus />
-            Add child
+            {t("editor.addChild")}
           </Button>
         </div>
       )}
@@ -298,6 +312,7 @@ function MatcherLeafFields({
   browsers: InstalledBrowser[];
   onChange: (next: MatcherTree) => void;
 }) {
+  const { t } = useTranslation("rules");
   switch (value.op) {
     case "always":
     case "all":
@@ -305,14 +320,14 @@ function MatcherLeafFields({
     case "not":
       return (
         <span className="text-xs text-muted-foreground">
-          {describeOp(value.op)}
+          {describeOp(t, value.op)}
         </span>
       );
 
     case "url-host":
       return (
         <Input
-          placeholder="github.com or *.corp.example.com"
+          placeholder={t("matcherPlaceholders.host")}
           value={value.pattern}
           onChange={(e) => onChange({ ...value, pattern: e.target.value })}
         />
@@ -321,7 +336,7 @@ function MatcherLeafFields({
     case "url-path":
       return (
         <Input
-          placeholder="/login or /oauth/callback"
+          placeholder={t("matcherPlaceholders.path")}
           value={value.pattern}
           onChange={(e) => onChange({ ...value, pattern: e.target.value })}
         />
@@ -331,7 +346,7 @@ function MatcherLeafFields({
       return (
         <>
           <Input
-            placeholder="Slack, VSCode, Terminal…"
+            placeholder={t("matcherPlaceholders.sourceApp")}
             value={value.name}
             onChange={(e) =>
               // Hand-typed input clears the stored bundle id — the user
@@ -360,7 +375,7 @@ function MatcherLeafFields({
           onValueChange={(v) => onChange({ ...value, browser: v })}
         >
           <SelectTrigger>
-            <SelectValue placeholder="— pick a browser —" />
+            <SelectValue placeholder={t("target.pickBrowser")} />
           </SelectTrigger>
           <SelectContent>
             {browsers.map((b) => (
@@ -383,7 +398,7 @@ function MatcherLeafFields({
     case "source-profile":
       return (
         <Input
-          placeholder="Work / Personal / Default"
+          placeholder={t("matcherPlaceholders.sourceProfile")}
           value={value.profile}
           onChange={(e) => onChange({ ...value, profile: e.target.value })}
         />
@@ -414,16 +429,19 @@ function matcherFromOp(op: MatcherTree["op"]): MatcherTree {
   }
 }
 
-function describeOp(op: "always" | "all" | "any" | "not"): string {
+function describeOp(
+  t: TFunction<"rules">,
+  op: "always" | "all" | "any" | "not",
+): string {
   switch (op) {
     case "always":
-      return "(always matches)";
+      return t("matcherHelp.always");
     case "all":
-      return "(every child must match)";
+      return t("matcherHelp.all");
     case "any":
-      return "(any child matches)";
+      return t("matcherHelp.any");
     case "not":
-      return "(child must NOT match)";
+      return t("matcherHelp.not");
   }
 }
 
@@ -444,6 +462,7 @@ const ACTION_KINDS: ReadonlyArray<Action["kind"]> = [
 ];
 
 function ActionEditor({ value, browsers, onChange }: ActionProps) {
+  const { t } = useTranslation("rules");
   const setKind = (kind: Action["kind"]) => {
     switch (kind) {
       case "open":
@@ -486,64 +505,79 @@ function ActionEditor({ value, browsers, onChange }: ActionProps) {
         />
       ) : (
         <span className="text-xs text-muted-foreground">
-          {describeActionKind(value.kind)}
+          {describeActionKind(t, value.kind)}
         </span>
       )}
     </div>
   );
 }
 
-function describeActionKind(k: "keep-source" | "ask" | "block"): string {
+function describeActionKind(
+  t: TFunction<"rules">,
+  k: "keep-source" | "ask" | "block",
+): string {
   switch (k) {
     case "keep-source":
-      return "(keep the navigation in the source browser — good for OAuth)";
+      return t("actionHelp.keepSource");
     case "ask":
-      return "(prompt the user to pick a target)";
+      return t("actionHelp.ask");
     case "block":
-      return "(do not open the URL)";
+      return t("actionHelp.block");
   }
 }
 
 // ---------------------------------------------------------------------------
 // Validation
 
-function validate(rule: Rule): string[] {
+function validate(t: TFunction<"rules">, rule: Rule): string[] {
   const issues: string[] = [];
-  collectMatcherIssues(rule.when, issues);
-  collectActionIssues(rule.then, issues);
+  collectMatcherIssues(t, rule.when, issues);
+  collectActionIssues(t, rule.then, issues);
   return issues;
 }
 
-function collectMatcherIssues(m: MatcherTree, into: string[]): void {
+function collectMatcherIssues(
+  t: TFunction<"rules">,
+  m: MatcherTree,
+  into: string[],
+): void {
   switch (m.op) {
     case "always":
       return;
     case "all":
     case "any":
-      if (m.of.length === 0) into.push(`${m.op} needs at least one child`);
-      m.of.forEach((c) => collectMatcherIssues(c, into));
+      if (m.of.length === 0) {
+        into.push(t("validation.needsChild", { op: m.op }));
+      }
+      m.of.forEach((c) => collectMatcherIssues(t, c, into));
       return;
     case "not":
-      collectMatcherIssues(m.of, into);
+      collectMatcherIssues(t, m.of, into);
       return;
     case "url-host":
     case "url-path":
-      if (m.pattern.trim() === "") into.push(`${m.op} pattern is empty`);
+      if (m.pattern.trim() === "") {
+        into.push(t("validation.patternEmpty", { op: m.op }));
+      }
       return;
     case "source-app":
-      if (m.name.trim() === "") into.push("source-app name is empty");
+      if (m.name.trim() === "") into.push(t("validation.sourceAppEmpty"));
       return;
     case "source-browser":
-      if (m.browser.trim() === "") into.push("source-browser is empty");
+      if (m.browser.trim() === "") into.push(t("validation.sourceBrowserEmpty"));
       return;
     case "source-profile":
-      if (m.profile.trim() === "") into.push("source-profile is empty");
+      if (m.profile.trim() === "") into.push(t("validation.sourceProfileEmpty"));
       return;
   }
 }
 
-function collectActionIssues(a: Action, into: string[]): void {
+function collectActionIssues(
+  t: TFunction<"rules">,
+  a: Action,
+  into: string[],
+): void {
   if (a.kind === "open" && a.target.browser.trim() === "") {
-    into.push("open action needs a target browser");
+    into.push(t("validation.openTargetMissing"));
   }
 }

@@ -1,0 +1,25 @@
+{
+  "title": "測試連結",
+  "subtitle": "把 URL 喂給執行中的路由引擎，不會真的開啟瀏覽器。編輯規則後切回這裡，決策結果會即時更新。",
+  "url": "URL",
+  "urlPlaceholder": "https://example.com/some/path",
+  "fromApp": "來源應用程式（選填）",
+  "fromAppPlaceholder": "Slack、Terminal、VSCode…",
+  "fromBrowser": "來源瀏覽器（選填）",
+  "fromBrowserPlaceholder": "— 無 —",
+  "fromBrowserNone": "— 無 —",
+  "fromProfile": "來源 profile（選填）",
+  "fromProfilePlaceholder": "— 任意 —",
+  "fromProfileAny": "— 任意 —",
+  "errorTag": "錯誤",
+  "result": {
+    "card": "結果",
+    "decision": "決策",
+    "rule": "規則",
+    "rulePriorityTitle": "優先級位置 —— 清單越靠前優先級越高",
+    "ruleNoNote": "（無備註）",
+    "ruleDefault": "— 預設目標（沒有規則命中）",
+    "whyTitle": "決策原因",
+    "whyEmpty": "沒有規則命中，路由會回落到設定的 default_target。"
+  }
+}

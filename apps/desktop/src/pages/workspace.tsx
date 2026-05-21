@@ -5,6 +5,8 @@
 // traffic it has attracted.
 
 import { useCallback, useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { ArrowRight, Pencil, Trash2 } from "lucide-react";
 import { BrowserBadge } from "@/components/BrowserBadge";
 import { Input } from "@/components/ui/input";
@@ -33,6 +35,7 @@ export function WorkspacePage({
   onOpenRulesFiltered,
   onDeleted,
 }: Props) {
+  const { t } = useTranslation("workspace");
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
   const [history, setHistory] = useState<RouteRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -79,11 +82,8 @@ export function WorkspacePage({
   if (!workspace && doc) {
     return (
       <div>
-        <h2 className="mac-h2">Workspace</h2>
-        <p className="mac-subtitle">
-          This workspace no longer exists. It may have been deleted from
-          the Rules tab.
-        </p>
+        <h2 className="mac-h2">{t("fallbackTitle")}</h2>
+        <p className="mac-subtitle">{t("deletedSubtitle")}</p>
       </div>
     );
   }
@@ -91,8 +91,8 @@ export function WorkspacePage({
   if (!workspace || !doc) {
     return (
       <div>
-        <h2 className="mac-h2">Workspace</h2>
-        <p className="mac-subtitle">Loading…</p>
+        <h2 className="mac-h2">{t("fallbackTitle")}</h2>
+        <p className="mac-subtitle">{t("loading")}</p>
       </div>
     );
   }
@@ -167,7 +167,7 @@ export function WorkspacePage({
                 setRenameValue(workspace.display_name);
                 setRenaming(true);
               }}
-              title="Click to rename"
+              title={t("renameTitle")}
               style={{ cursor: "text" }}
             >
               {workspace.display_name}
@@ -185,7 +185,7 @@ export function WorkspacePage({
           )}
           <p className="mac-subtitle" style={{ marginBottom: 0 }}>
             {workspace.description ||
-              "Group of rules that can be toggled together."}
+              t("defaultDescription")}
           </p>
         </div>
         <button
@@ -193,13 +193,13 @@ export function WorkspacePage({
           className={cn("mac-switch accent", workspace.enabled && "on")}
           aria-pressed={workspace.enabled}
           onClick={toggle}
-          title={workspace.enabled ? "Disable workspace" : "Enable workspace"}
+          title={workspace.enabled ? t("disableTitle") : t("enableTitle")}
         />
         <button
           type="button"
           className="mac-tbtn"
           onClick={remove}
-          title="Delete workspace (rules become ungrouped)"
+          title={t("deleteTitle")}
           style={{ color: "var(--mac-danger)" }}
         >
           <Trash2 size={13} strokeWidth={1.8} />
@@ -211,9 +211,9 @@ export function WorkspacePage({
       {/* Stat grid */}
       <div className="mac-stat-grid">
         <div className="mac-stat">
-          <div className="mac-stat-label">Status</div>
+          <div className="mac-stat-label">{t("stats.status")}</div>
           <div className="mac-stat-value" style={{ fontSize: 18 }}>
-            {workspace.enabled ? "Active" : "Paused"}
+            {workspace.enabled ? t("stats.active") : t("stats.paused")}
           </div>
           <div
             className="mac-stat-trend"
@@ -224,12 +224,12 @@ export function WorkspacePage({
             }}
           >
             {workspace.enabled
-              ? "Rules participate in routing"
-              : "Router skips these rules"}
+              ? t("stats.activeHint")
+              : t("stats.pausedHint")}
           </div>
         </div>
         <div className="mac-stat">
-          <div className="mac-stat-label">Rules</div>
+          <div className="mac-stat-label">{t("stats.rules")}</div>
           <div className="mac-stat-value">
             {enabledRules}
             <span
@@ -245,19 +245,19 @@ export function WorkspacePage({
           </div>
           <div className="mac-stat-trend">
             {rules.length === 0
-              ? "No rules yet"
+              ? t("stats.noRules")
               : enabledRules === rules.length
-              ? "All enabled"
-              : `${rules.length - enabledRules} disabled`}
+              ? t("stats.allEnabled")
+              : t("stats.disabled", { count: rules.length - enabledRules })}
           </div>
         </div>
         <div className="mac-stat">
-          <div className="mac-stat-label">Recent hits</div>
+          <div className="mac-stat-label">{t("stats.recentHits")}</div>
           <div className="mac-stat-value">{hitRecords.length}</div>
           <div className="mac-stat-trend">
             {hitRecords.length > 0
-              ? `Last ${history.length} routes scanned`
-              : "Awaiting traffic"}
+              ? t("stats.lastScanned", { count: history.length })
+              : t("stats.awaiting")}
           </div>
         </div>
       </div>
@@ -267,7 +267,7 @@ export function WorkspacePage({
         className="mac-card-title"
         style={{ display: "flex", alignItems: "center" }}
       >
-        <span>Rules · {rules.length}</span>
+        <span>{t("rules.card", { count: rules.length })}</span>
         <span style={{ flex: 1 }} />
         <button
           type="button"
@@ -283,7 +283,7 @@ export function WorkspacePage({
             letterSpacing: 0,
           }}
         >
-          Edit in Rules
+          {t("rules.edit")}
           <ArrowRight size={11} strokeWidth={2} />
         </button>
       </div>
@@ -293,11 +293,13 @@ export function WorkspacePage({
             className="mac-row mac-muted"
             style={{ justifyContent: "center", padding: "24px 18px" }}
           >
-            No rules in this workspace yet. Assign a rule's
-            <span className="mac-mono" style={{ margin: "0 4px" }}>
-              workspace_id
-            </span>
-            from the Rules tab.
+            <Trans
+              i18nKey="rules.empty"
+              ns="workspace"
+              components={{
+                code: <span className="mac-mono" style={{ margin: "0 4px" }} />,
+              }}
+            />
           </div>
         ) : (
           // List order in `doc.rules` IS priority; preserve it here.
@@ -318,7 +320,9 @@ export function WorkspacePage({
       {/* Recent activity attributed to this workspace */}
       {hitRecords.length > 0 && (
         <>
-          <div className="mac-card-title">Recent activity · {hitRecords.length}</div>
+          <div className="mac-card-title">
+            {t("activity.card", { count: hitRecords.length })}
+          </div>
           <div className="mac-card">
             {hitRecords.slice(0, 10).map((rec, i) => (
               <ActivityRow key={i} record={rec} rule={ruleById(rec, doc)} />
@@ -330,7 +334,7 @@ export function WorkspacePage({
       {error && (
         <div className="mac-card">
           <div className="mac-row">
-            <span className="mac-tag danger">error</span>
+            <span className="mac-tag danger">{t("errorTag")}</span>
             <span className="grow mac-muted">{error}</span>
           </div>
         </div>
@@ -360,6 +364,7 @@ function RuleRow({
   position: number;
   hits: number;
 }) {
+  const { t } = useTranslation("workspace");
   return (
     <div className="mac-row">
       <span
@@ -370,7 +375,7 @@ function RuleRow({
           fontVariantNumeric: "tabular-nums",
           textAlign: "right",
         }}
-        title="Priority position — top of the global rules list wins."
+        title={t("ruleRow.priorityTitle")}
       >
         #{position}
       </span>
@@ -378,26 +383,26 @@ function RuleRow({
         <div style={{ fontSize: 13 }}>
           {rule.note || (
             <span className="mac-muted">
-              (no note · rule id {rule.id.slice(0, 8)})
+              {t("ruleRow.noNote", { id: rule.id.slice(0, 8) })}
             </span>
           )}
         </div>
         <div className="mac-mono mac-muted" style={{ fontSize: 11, marginTop: 2 }}>
-          {describeWhenInline(rule)}
+          {describeWhenInline(t, rule)}
         </div>
       </div>
       <span
         className={`mac-tag ${rule.enabled ? "ok" : "neutral"}`}
-        title={rule.enabled ? "Enabled" : "Disabled"}
+        title={rule.enabled ? t("ruleRow.enabledTitle") : t("ruleRow.disabledTitle")}
       >
-        {rule.enabled ? "on" : "off"}
+        {rule.enabled ? t("ruleRow.on") : t("ruleRow.off")}
       </span>
       {hits > 0 && (
         <span
           className="mac-mono mac-muted"
           style={{ fontSize: 11, fontVariantNumeric: "tabular-nums" }}
         >
-          {hits} hit{hits === 1 ? "" : "s"}
+          {t("ruleRow.hit", { count: hits })}
         </span>
       )}
     </div>
@@ -411,6 +416,7 @@ function ActivityRow({
   record: RouteRecord;
   rule?: Rule;
 }) {
+  const { t } = useTranslation("workspace");
   return (
     <div className="mac-row">
       <span
@@ -422,7 +428,7 @@ function ActivityRow({
           flexShrink: 0,
         }}
       >
-        {timeAgo(record.timestamp_ms)}
+        {formatTimeAgo(t, record.timestamp_ms)}
       </span>
       <span
         className="grow mac-mono"
@@ -460,37 +466,37 @@ function ActivityRow({
   );
 }
 
-function timeAgo(ms: number): string {
+function formatTimeAgo(t: TFunction<"workspace">, ms: number): string {
   const s = Math.round((Date.now() - ms) / 1000);
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
+  if (s < 60) return t("timeAgo.seconds", { n: s });
+  if (s < 3600) return t("timeAgo.minutes", { n: Math.round(s / 60) });
+  if (s < 86400) return t("timeAgo.hours", { n: Math.round(s / 3600) });
+  return t("timeAgo.days", { n: Math.round(s / 86400) });
 }
 
-function describeWhenInline(rule: Rule): string {
-  return describeMatcher(rule.when);
+function describeWhenInline(t: TFunction<"workspace">, rule: Rule): string {
+  return describeMatcher(t, rule.when);
 }
 
-function describeMatcher(m: Rule["when"]): string {
+function describeMatcher(t: TFunction<"workspace">, m: Rule["when"]): string {
   switch (m.op) {
     case "always":
-      return "always";
+      return t("matcher.always");
     case "url-host":
-      return `host ${m.pattern}`;
+      return t("matcher.host", { pattern: m.pattern });
     case "url-path":
-      return `path ${m.pattern}`;
+      return t("matcher.path", { pattern: m.pattern });
     case "source-app":
-      return `from ${m.name}`;
+      return t("matcher.from", { name: m.name });
     case "source-browser":
-      return `from browser ${m.browser}`;
+      return t("matcher.fromBrowser", { browser: m.browser });
     case "source-profile":
-      return `from profile ${m.profile}`;
+      return t("matcher.fromProfile", { profile: m.profile });
     case "all":
-      return m.of.map(describeMatcher).join(" and ");
+      return m.of.map((child) => describeMatcher(t, child)).join(t("matcher.and"));
     case "any":
-      return m.of.map(describeMatcher).join(" or ");
+      return m.of.map((child) => describeMatcher(t, child)).join(t("matcher.or"));
     case "not":
-      return `not (${describeMatcher(m.of)})`;
+      return t("matcher.not", { value: describeMatcher(t, m.of) });
   }
 }

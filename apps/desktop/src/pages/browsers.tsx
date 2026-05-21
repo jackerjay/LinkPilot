@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Plus, RefreshCcw, Trash2, User } from "lucide-react";
 import { AppIcon } from "@/components/AppIcon";
 import { appPathFromExecutable } from "@/lib/browsers";
@@ -15,6 +16,7 @@ interface Entry {
 }
 
 export function BrowsersPage() {
+  const { t } = useTranslation("browsers");
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -116,10 +118,10 @@ export function BrowsersPage() {
   if (error && entries === null) {
     return (
       <div>
-        <h2 className="mac-h2">Browsers</h2>
+        <h2 className="mac-h2">{t("title")}</h2>
         <div className="mac-card">
           <div className="mac-row">
-            <span className="mac-tag danger">error</span>
+            <span className="mac-tag danger">{t("errorTag")}</span>
             <span className="grow mac-muted">{error}</span>
           </div>
         </div>
@@ -132,11 +134,8 @@ export function BrowsersPage() {
 
   return (
     <div>
-      <h2 className="mac-h2">Browsers</h2>
-      <p className="mac-subtitle">
-        Detected browsers and the profiles LinkPilot can route to. Add a
-        custom application if a browser isn't auto-detected.
-      </p>
+      <h2 className="mac-h2">{t("title")}</h2>
+      <p className="mac-subtitle">{t("subtitle")}</p>
 
       {/* Action bar */}
       <div
@@ -157,7 +156,7 @@ export function BrowsersPage() {
           disabled={busy}
         >
           <RefreshCcw size={12} strokeWidth={1.8} />
-          <span>Rescan</span>
+          <span>{t("rescan")}</span>
         </button>
         <button
           type="button"
@@ -166,12 +165,15 @@ export function BrowsersPage() {
           disabled={busy}
         >
           <Plus size={12} strokeWidth={2} />
-          <span>{busy ? "Choosing…" : "Add manually"}</span>
+          <span>{busy ? t("choosing") : t("addManually")}</span>
         </button>
         <span style={{ flex: 1 }} />
         {entries !== null && entries.length > 0 && (
           <span className="mac-muted" style={{ fontSize: 12 }}>
-            {entries.length} browsers · {totalProfiles} profiles
+            {t("summary", {
+              browsers: entries.length,
+              profiles: totalProfiles,
+            })}
           </span>
         )}
       </div>
@@ -179,7 +181,7 @@ export function BrowsersPage() {
       {error && (
         <div className="mac-card">
           <div className="mac-row">
-            <span className="mac-tag danger">error</span>
+            <span className="mac-tag danger">{t("errorTag")}</span>
             <span className="grow mac-muted">{error}</span>
           </div>
         </div>
@@ -191,7 +193,7 @@ export function BrowsersPage() {
             className="mac-row mac-muted"
             style={{ justifyContent: "center", padding: "24px 18px" }}
           >
-            Scanning…
+            {t("scanning")}
           </div>
         </div>
       ) : entries.length === 0 ? (
@@ -200,11 +202,13 @@ export function BrowsersPage() {
             className="mac-row mac-muted"
             style={{ justifyContent: "center", padding: "24px 18px" }}
           >
-            No browsers detected. Try{" "}
-            <span className="mac-mono" style={{ margin: "0 4px" }}>
-              Add manually
-            </span>{" "}
-            to register one yourself.
+            <Trans
+              i18nKey="emptyHint"
+              ns="browsers"
+              components={{
+                code: <span className="mac-mono" style={{ margin: "0 4px" }} />,
+              }}
+            />
           </div>
         </div>
       ) : (
@@ -229,6 +233,7 @@ function BrowserBlock({
   entry: Entry;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation("browsers");
   return (
     <>
       <div
@@ -251,9 +256,9 @@ function BrowserBlock({
             {e.custom && (
               <span
                 className="mac-tag neutral"
-                title="Added manually — remove with the trash button"
+                title={t("customTagTitle")}
               >
-                custom
+                {t("customTag")}
               </span>
             )}
           </div>
@@ -272,7 +277,7 @@ function BrowserBlock({
                 marginTop: 6,
               }}
             >
-              <span className="mac-tag danger">profiles</span>
+              <span className="mac-tag danger">{t("profilesErrorTag")}</span>
               <span className="mac-muted" style={{ fontSize: 11.5 }}>
                 {e.error}
               </span>
@@ -284,7 +289,7 @@ function BrowserBlock({
             type="button"
             className="mac-tbtn"
             onClick={onRemove}
-            title={`Remove "${e.browser.display_name}" from custom browsers`}
+            title={t("removeCustomTitle", { name: e.browser.display_name })}
             style={{ color: "var(--mac-danger)" }}
           >
             <Trash2 size={13} strokeWidth={1.8} />

@@ -12,6 +12,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { applyLanguage } from "@/i18n";
+import { ipc } from "@/lib/ipc";
 import { HaloShell } from "./halo/HaloShell";
 import { HaloFrostedPortal } from "./halo/HaloFrosted";
 import { HaloBezelPortal } from "./halo/HaloBezel";
@@ -29,6 +31,7 @@ export function PickerWindow() {
   const [session, setSession] = useState<PickerSession | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     // Keep every webview layer transparent; the picker paints its own
     // constrained glass instead of relying on a full-window AppKit material.
     document.documentElement.style.background = "transparent";
@@ -36,9 +39,21 @@ export function PickerWindow() {
     const root = document.getElementById("root");
     if (root) root.style.background = "transparent";
 
-    invoke<PickerSession | null>("picker_session")
-      .then((s) => setSession(s))
-      .catch(() => setSession(null));
+    const sessionPromise = invoke<PickerSession | null>("picker_session").catch(
+      () => null,
+    );
+    const languagePromise = ipc
+      .configGet()
+      .then((config) => applyLanguage(config.settings.language))
+      .catch(() => undefined);
+
+    Promise.all([sessionPromise, languagePromise]).then(([nextSession]) => {
+      if (!cancelled) setSession(nextSession);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

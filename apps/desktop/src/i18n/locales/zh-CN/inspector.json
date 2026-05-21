@@ -1,0 +1,20 @@
+{
+  "title": "路由 Inspector",
+  "subtitle": "LinkPilot 做出的每一个决策，按时间倒序。点击行查看规则命中原因。",
+  "emptyHint": "还没有路由记录。点击一些链接或在 daemon 运行时执行 <code>lp open …</code>。",
+  "selected": {
+    "card": "已选路由",
+    "url": "URL",
+    "source": "来源",
+    "decision": "决策",
+    "rule": "规则",
+    "rulePriorityTitle": "优先级位置 —— 列表越靠前优先级越高",
+    "ruleNoNote": "（无备注）",
+    "ruleDefault": "— 默认目标（没有规则命中）",
+    "whyTitle": "决策原因",
+    "whyEmpty": "没有规则命中，路由回落到配置的 default_target。",
+    "rawCaption": "原始记录（用于调试 / Bug 报告）",
+    "show": "展开",
+    "hide": "收起"
+  }
+}

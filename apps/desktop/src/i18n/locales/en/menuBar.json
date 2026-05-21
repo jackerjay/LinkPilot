@@ -1,0 +1,44 @@
+{
+  "title": "Overview",
+  "subtitle": "Daemon status and the most recent routing decisions.",
+  "stats": {
+    "routesToday": "Routes today",
+    "live": "Live",
+    "awaiting": "Awaiting clicks",
+    "activeRules": "Active rules",
+    "disabled": "{{count}} disabled",
+    "allEnabled": "All enabled",
+    "browsers": "Browsers",
+    "detected": "Detected"
+  },
+  "status": {
+    "card": "Status",
+    "daemon": "Daemon",
+    "daemonRunning": "running",
+    "daemonUnreachable": "unreachable",
+    "daemonTitleRunning": "Daemon is running",
+    "daemonTitleUnreachable": "Daemon is unreachable",
+    "defaultBrowser": "System default browser",
+    "defaultNotSet": "Not set",
+    "tagActive": "active",
+    "tagNotSet": "not set",
+    "browsersDetected": "Browsers detected",
+    "browsersCount": "{{count}} apps",
+    "configFile": "Configuration"
+  },
+  "recent": {
+    "card": "Recent routes",
+    "empty": "No routes yet. Try <code>lpt open …</code> or click a link."
+  },
+  "decision": {
+    "allow": "allow",
+    "block": "blocked",
+    "ask": "ask"
+  },
+  "timeAgo": {
+    "seconds": "{{n}}s ago",
+    "minutes": "{{n}}m ago",
+    "hours": "{{n}}h ago",
+    "days": "{{n}}d ago"
+  }
+}

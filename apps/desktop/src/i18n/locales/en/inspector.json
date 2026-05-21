@@ -1,0 +1,20 @@
+{
+  "title": "Route Inspector",
+  "subtitle": "Every decision LinkPilot makes, newest first. Click a row to see why the rule matched.",
+  "emptyHint": "No routes logged yet. Click some links or run <code>lp open …</code> while the daemon is up.",
+  "selected": {
+    "card": "Selected route",
+    "url": "URL",
+    "source": "Source",
+    "decision": "Decision",
+    "rule": "Rule",
+    "rulePriorityTitle": "Priority position — top of list wins",
+    "ruleNoNote": "(no note)",
+    "ruleDefault": "— default target (no rule matched)",
+    "whyTitle": "Why this decision",
+    "whyEmpty": "No rule fired. The route fell back to the configured default_target.",
+    "rawCaption": "Raw record (for debugging / bug reports)",
+    "show": "Show",
+    "hide": "Hide"
+  }
+}
