@@ -35,10 +35,11 @@ The current app includes:
   profile.
 - Browser/profile inventory for Chrome-family browsers, Arc, Firefox, Safari,
   and custom browser entries.
-- Ask picker with Halo profile wheel, keyboard shortcuts, profile ordering,
-  dark mode, and a Settings test URL flow that opens real browsers.
-- Automatic GitHub Release update checks and DMG downloads, with a manual
-  installer-open step in Settings.
+- Ask picker with Halo profile wheel (Frosted / Bezel / Crown styles),
+  keyboard shortcuts, per-browser profile ordering, dark mode, and a
+  Settings test URL flow that opens real browsers.
+- Automatic GitHub Release update checks with SHA-256 verified DMG
+  downloads, then a manual installer-open step in Settings.
 - Background daemon with Unix socket IPC so routing keeps working after the
   main window is closed.
 - Menu-bar tray, inspector, test URL simulator, browser manager, settings, and
@@ -75,8 +76,10 @@ After first launch, use the onboarding or Settings page to:
 3. Install the bundled `lpt` command to `~/.local/bin`.
 
 Settings checks GitHub Releases for newer LinkPilot builds on startup by
-default. When a newer macOS DMG is available, LinkPilot downloads it to its
-local update cache and asks you to click "Open installer" before upgrading.
+default. When a newer macOS DMG is available, LinkPilot downloads it to
+its local update cache, verifies the SHA-256 against the release's
+`checksums.txt`, and asks you to click "Open installer" before upgrading.
+A release without `checksums.txt` is treated as unverified and refused.
 You can turn this off under Settings → General → Updates.
 
 ### CLI only
@@ -103,10 +106,13 @@ opening the GUI.
 5. Use Inspector to watch real routing decisions as they happen.
 
 For Ask rules, LinkPilot opens a picker window. Hold Option over a
-multi-profile browser to summon the Halo wheel, aim at a profile, then release
-Option to open it. The Settings page includes a picker style test URL so you
-can verify focus, profile targeting, and visual style without creating a real
-rule.
+multi-profile browser to summon the Halo wheel, aim at a profile, then
+release Option to open it. Settings → Appearance lets you swap between
+the three Halo styles (Frosted, Bezel, Crown), reorder per-browser
+profiles (positions 1–9 map to keyboard shortcuts), and run a test URL
+against your real browser inventory without creating a rule. When a
+browser surfaces a profile that isn't placed in your saved order yet,
+Settings flags it with a `+N new` chip so it's never silently hidden.
 
 ### CLI
 
@@ -145,6 +151,7 @@ lpt settings show
 lpt settings smart-routing off
 lpt settings launch-at-login on
 lpt settings auto-updates off
+lpt settings picker-style crown        # frosted | bezel | crown
 lpt settings history-retention 30
 
 # Browsers
@@ -246,6 +253,10 @@ git push origin v0.2.0
 The release workflow builds universal macOS binaries for the CLI, daemon, and
 desktop app, patches the app bundle, wraps it in a DMG, and uploads release
 artifacts with checksums.
+
+## Changelog
+
+Release-by-release changes live in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
