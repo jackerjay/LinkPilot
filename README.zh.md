@@ -32,7 +32,8 @@ LinkPilot 当前聚焦 macOS。
 
 - 按 host、path、来源应用、来源浏览器、来源 profile 路由 URL。
 - Chrome 系浏览器、Arc、Firefox、Safari 和自定义浏览器的识别与 profile 枚举。
-- Ask picker：Halo profile 选择环、键盘快捷键、profile 排序、暗色模式，以及 Settings 里的真实测试 URL。
+- Ask picker：Halo profile 选择环（Frosted / Bezel / Crown 三种风格）、键盘快捷键、每浏览器 profile 排序、暗色模式，以及 Settings 里的真实测试 URL。
+- 自动检查 GitHub Release 更新，下载的 DMG 会校验 SHA-256，再由用户在 Settings 中手动打开安装包。
 - 后台 daemon 与 Unix socket IPC，主窗口关闭后仍可继续路由。
 - 菜单栏托盘、Inspector、Test URL 模拟器、浏览器管理、Settings 和 onboarding。
 - `lpt` CLI：打开 URL、管理规则、查看配置、安装 daemon、检查默认浏览器状态。
@@ -65,6 +66,12 @@ open /Applications/LinkPilot.app
 2. 安装后台 daemon LaunchAgent。
 3. 把内置的 `lpt` 命令安装到 `~/.local/bin`。
 
+Settings 默认会在启动后检查 GitHub Releases 中是否有新版本。如果发现新的
+macOS DMG，LinkPilot 会下载到本地更新缓存，比对 release 的 `checksums.txt`
+里的 SHA-256，再提示你点击 “Open installer” 手动升级。没有 `checksums.txt`
+的 release 会被视为未验证，自动下载会被拒绝。可以在
+Settings → General → Updates 中关闭这一行为。
+
 ### 仅 CLI
 
 CLI tarball 包含 `lpt` 和 `linkpilot-daemon`。
@@ -89,8 +96,11 @@ chmod +x ~/.local/bin/lpt
 
 对于 Ask 规则，LinkPilot 会打开 picker 窗口。在多 profile 浏览器上按住
 Option 会唤起 Halo 选择环；鼠标瞄准 profile 后松开 Option，就会直接打开。
-Settings 页面提供 picker style 的测试 URL，可以直接验证焦点切换、profile
-命中和视觉样式，不需要先创建真实规则。
+Settings → Appearance 可以切换三种 Halo 风格（Frosted / Bezel / Crown）、
+按浏览器自定义 profile 顺序（位置 1–9 对应键盘快捷键），并用测试 URL 真实
+打开浏览器验证焦点切换、profile 命中和视觉样式，不需要先创建真实规则。
+当某个浏览器新增了你尚未排进 Halo 的 profile，Settings 会用 `+N new`
+角标提示，避免新 profile 被静默隐藏。
 
 ### CLI
 
@@ -128,6 +138,8 @@ lpt config import ./linkpilot.backup.json
 lpt settings show
 lpt settings smart-routing off
 lpt settings launch-at-login on
+lpt settings auto-updates off
+lpt settings picker-style crown        # frosted | bezel | crown
 lpt settings history-retention 30
 
 # 浏览器
@@ -227,6 +239,10 @@ git push origin v0.2.0
 
 Release workflow 会构建 universal macOS CLI、daemon 和桌面应用，修补 app bundle，
 打包 DMG，并上传 release artifacts 与 checksums。
+
+## 更新日志
+
+按版本归档的变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 许可证
 

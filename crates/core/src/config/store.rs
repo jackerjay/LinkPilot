@@ -141,6 +141,18 @@ impl ConfigStore {
             .clone()
     }
 
+    /// Run `f` against the live document under the store's mutex
+    /// without cloning. Use this on hot paths (the Ask dispatch flow
+    /// runs once per URL open and can be invoked many times per
+    /// second) when you only need a small projection — picker style,
+    /// a single workspace, the default target — instead of the whole
+    /// rules array. The closure must be quick; while it runs, every
+    /// other `document()` / `replace()` call blocks.
+    pub fn with_document<R>(&self, f: impl FnOnce(&ConfigDocument) -> R) -> R {
+        let guard = self.state.lock().expect("config store mutex poisoned");
+        f(&guard.doc)
+    }
+
     /// Replace the in-memory document and persist it.
     pub fn replace(&self, doc: ConfigDocument, writer: WriterId) -> Result<()> {
         {

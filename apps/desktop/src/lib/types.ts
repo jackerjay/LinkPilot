@@ -98,6 +98,9 @@ export interface Settings {
   launch_at_login: boolean;
   history_retention_days?: number | null;
   record_query_strings: boolean;
+  /** When true, the desktop app checks GitHub Releases once on startup
+   *  and surfaces newer builds in Settings. */
+  auto_check_updates: boolean;
   /** Master kill-switch for rule evaluation. When false the router
    *  bypasses all rules and opens every link in `default_target`. The
    *  tray popover's "Smart routing" toggle flips this. */

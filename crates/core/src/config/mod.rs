@@ -127,6 +127,11 @@ pub struct Settings {
     pub history_retention_days: Option<u32>,
     #[serde(default)]
     pub record_query_strings: bool,
+    /// Check GitHub Releases for newer LinkPilot builds when the GUI app
+    /// starts. The app only reports availability; installation remains a
+    /// user-driven download flow while releases are unsigned.
+    #[serde(default = "default_auto_check_updates")]
+    pub auto_check_updates: bool,
     /// Master kill-switch for rule evaluation. When false the router
     /// skips every rule (and every workspace) and opens links straight
     /// in `default_target` — the tray popover's "Smart routing" toggle
@@ -175,12 +180,17 @@ fn default_smart_routing() -> bool {
     true
 }
 
+fn default_auto_check_updates() -> bool {
+    true
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
             launch_at_login: false,
             history_retention_days: None,
             record_query_strings: false,
+            auto_check_updates: true,
             smart_routing_enabled: true,
             picker_style: PickerStyle::Frosted,
             profile_orders: BTreeMap::new(),

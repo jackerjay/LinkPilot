@@ -80,6 +80,8 @@ export const ipc = {
   doctor: () => invoke<DoctorReport>("doctor"),
   importConfig: (path: string) => invoke<void>("import_config", { path }),
   exportConfig: (path: string) => invoke<void>("export_config", { path }),
+  updateDownload: (request: UpdateDownloadRequest) =>
+    invoke<UpdateDownload>("update_download", { request }),
 
   appIcon: (request: AppIconRequest) =>
     invoke<AppIcon | null>("app_icon", { request }),
@@ -117,6 +119,26 @@ export interface DaemonServiceStatus {
   /** Whether the GUI hosts the daemon itself ("in-process") or is
    *  talking to a separately-running `linkpilot-daemon` ("external"). */
   gui_mode: "in-process" | "external";
+}
+
+export interface UpdateDownloadRequest {
+  url: string;
+  version: string;
+  asset_name: string;
+  expected_bytes?: number | null;
+  /** Lowercase hex SHA-256 from `checksums.txt`. Forwarded to the
+   *  daemon so it can verify the downloaded DMG before moving it into
+   *  place. `null` makes the daemon refuse to write — we never auto-
+   *  install an unverified binary. */
+  expected_sha256?: string | null;
+}
+
+export interface UpdateDownload {
+  version: string;
+  asset_name: string;
+  path: string;
+  already_downloaded: boolean;
+  bytes: number;
 }
 
 export interface AppIconRequest {

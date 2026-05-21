@@ -138,17 +138,42 @@ pub fn show_picker(
     // sync mpsc — we're already on a worker thread, blocking is fine
     // and dodges the tokio dependency.
     let (tx, rx) = mpsc::channel::<Option<PickerPick>>();
+    // Atomic claim of the picker slot. Ask is a high-frequency action
+    // (multiple URLs arriving back-to-back, or a Test URL simulator
+    // racing with a real deep-link), and we previously overwrote the
+    // pending sender silently — the *first* caller's mpsc::recv would
+    // then block until the 60s timeout, and the picked target would
+    // route to the wrong URL.
+    //
+    // We take both locks at once so a competing show_picker call on
+    // another thread can't slip between them. On contention we return
+    // None — dispatch treats that as "user cancelled / no target", which
+    // matches macOS's own behavior when something steals key focus.
     {
-        if let Ok(mut s) = state.session.lock() {
-            *s = Some(PickerSession {
-                url: url.to_string(),
-                choices,
-                style,
-            });
+        let mut pending = match state.pending.lock() {
+            Ok(p) => p,
+            Err(_) => {
+                tracing::warn!("picker: pending lock poisoned, refusing");
+                return None;
+            }
+        };
+        if pending.is_some() {
+            tracing::warn!("picker: another ask is in flight, dropping this one");
+            return None;
         }
-        if let Ok(mut p) = state.pending.lock() {
-            *p = Some(tx);
-        }
+        let mut session = match state.session.lock() {
+            Ok(s) => s,
+            Err(_) => {
+                tracing::warn!("picker: session lock poisoned, refusing");
+                return None;
+            }
+        };
+        *session = Some(PickerSession {
+            url: url.to_string(),
+            choices,
+            style,
+        });
+        *pending = Some(tx);
     }
 
     // Close any leftover picker window (previous ask crashed mid-flow).
@@ -485,9 +510,15 @@ pub fn picker_preview(app: AppHandle, test_url: Option<String>) -> Result<(), St
         return Err("Another picker is already open — finish the current ask first.".into());
     }
 
-    let doc = state.config.document();
-    let order_map = doc.settings.profile_orders.clone();
-    let style = doc.settings.picker_style;
+    // Project out just the two settings we need; the rest of the
+    // document stays behind the store mutex. Mirrors the same trick
+    // dispatch::resolve_ask uses on its hot path.
+    let (order_map, style) = state.config.with_document(|doc| {
+        (
+            doc.settings.profile_orders.clone(),
+            doc.settings.picker_style,
+        )
+    });
     let inventory = state.platform.browser_inventory();
     let parsed_url = normalize_preview_url(test_url.as_deref())?;
     let url = parsed_url.to_string();

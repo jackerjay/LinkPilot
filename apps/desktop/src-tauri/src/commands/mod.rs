@@ -2,6 +2,7 @@
 //! boundary; everything below them is plain Rust the daemon owns.
 
 use std::path::PathBuf;
+use std::process::Command;
 
 use linkpilot_core::browser::{BrowserId, BrowserProfile, InstalledBrowser};
 use linkpilot_core::config::{ConfigDocument, PickerStyle, Workspace, WriterId};
@@ -15,6 +16,7 @@ use linkpilot_core::routing::{
 use crate::dispatch::{self, LaunchOutcome};
 use linkpilot_core::rules::{Rule, RuleId};
 use tauri::{AppHandle, Emitter, State};
+use url::Url;
 
 use crate::state::AppState;
 
@@ -155,7 +157,18 @@ pub fn set_profile_order(
     if profile_ids.is_empty() {
         doc.settings.profile_orders.remove(&browser);
     } else {
-        doc.settings.profile_orders.insert(browser, profile_ids);
+        // Dedup while preserving first-seen order. A duplicate id never
+        // makes semantic sense (a profile can only sit in one wheel
+        // slot) and would otherwise persist verbatim to disk; the
+        // picker's `apply_profile_order` silently dedups via HashMap
+        // remove, but we shouldn't write garbage to the config.
+        let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        let deduped: Vec<String> = profile_ids
+            .iter()
+            .filter(|id| seen.insert(id.as_str()))
+            .cloned()
+            .collect();
+        doc.settings.profile_orders.insert(browser, deduped);
     }
     state
         .config
@@ -375,6 +388,227 @@ pub fn export_config(state: State<'_, AppState>, path: PathBuf) -> Result<(), St
     let doc = state.config.document();
     let json = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| e.to_string())
+}
+
+// ----------------------------------------------------------------------------
+// updates — discover happens in the renderer so Settings can show release
+// metadata immediately; the native side owns download-to-disk because DMGs are
+// too large to shuttle through the WebView IPC boundary.
+
+#[derive(serde::Deserialize)]
+pub struct UpdateDownloadRequest {
+    pub url: String,
+    pub version: String,
+    pub asset_name: String,
+    #[serde(default)]
+    pub expected_bytes: Option<u64>,
+    /// Lowercase hex SHA-256 of the asset, sourced from the `checksums.txt`
+    /// uploaded alongside the release. Required when the release ships a
+    /// `checksums.txt`; without it the daemon refuses to write the file so
+    /// an unsigned DMG never ends up in the updates dir unverified.
+    #[serde(default)]
+    pub expected_sha256: Option<String>,
+}
+
+/// The repo whose release assets we trust. Pinned here (not just inferred
+/// from the URL) so a compromised renderer can't redirect the download to
+/// a fork. Keep in sync with the frontend's `LATEST_RELEASE_API` URL.
+const TRUSTED_REPO_PATH_PREFIX: &str = "/jackerjay/LinkPilot/releases/download/";
+
+#[derive(serde::Serialize)]
+pub struct UpdateDownload {
+    pub version: String,
+    pub asset_name: String,
+    pub path: String,
+    pub already_downloaded: bool,
+    pub bytes: u64,
+}
+
+#[tauri::command]
+pub async fn update_download(
+    state: State<'_, AppState>,
+    request: UpdateDownloadRequest,
+) -> Result<UpdateDownload, String> {
+    let parsed = Url::parse(&request.url).map_err(|e| format!("invalid update URL: {e}"))?;
+    if parsed.scheme() != "https" || parsed.host_str() != Some("github.com") {
+        return Err("update downloads must come from GitHub release assets".to_string());
+    }
+    // Path pinning. The previous host-only check let any github.com URL
+    // through — including arbitrary forks. Releases live at
+    // `/jackerjay/LinkPilot/releases/download/<tag>/<asset>`, so anchor
+    // there. (After this initial request curl --location follows the
+    // redirect to objects.githubusercontent.com; we only need to anchor
+    // the *first* hop, which is the one the renderer could influence.)
+    if !parsed.path().starts_with(TRUSTED_REPO_PATH_PREFIX) {
+        return Err(
+            "update downloads must come from the official LinkPilot release path".to_string(),
+        );
+    }
+
+    let asset_name = safe_update_asset_name(&request.asset_name)?;
+    let expected_sha256 = normalize_expected_sha256(request.expected_sha256.as_deref())?;
+    let Some(config_dir) = state.config.path().parent().map(PathBuf::from) else {
+        return Err("could not locate LinkPilot config directory".to_string());
+    };
+    let updates_dir = config_dir.join("updates");
+    std::fs::create_dir_all(&updates_dir)
+        .map_err(|e| format!("creating {}: {e}", updates_dir.display()))?;
+
+    let destination = updates_dir.join(&asset_name);
+    if let Ok(meta) = std::fs::metadata(&destination) {
+        let bytes = meta.len();
+        let size_match = request.expected_bytes.map(|n| n == bytes).unwrap_or(true);
+        // A cached file is only reusable if its SHA-256 still matches the
+        // expected one. Otherwise (corrupted, half-overwritten, or the
+        // tag was force-pushed) fall through to re-download.
+        let hash_match = if let Some(expected) = expected_sha256.as_deref() {
+            match sha256_of_file(&destination) {
+                Ok(actual) => actual == expected,
+                Err(_) => false,
+            }
+        } else {
+            true
+        };
+        if bytes > 0 && size_match && hash_match {
+            return Ok(UpdateDownload {
+                version: request.version,
+                asset_name,
+                path: destination.display().to_string(),
+                already_downloaded: true,
+                bytes,
+            });
+        }
+    }
+
+    let tmp = destination.with_extension("download");
+    let url = request.url;
+    let download_path = destination.clone();
+    let expected_for_task = expected_sha256.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        download_update_asset(&url, &tmp, &download_path, expected_for_task.as_deref())
+    })
+    .await
+    .map_err(|e| format!("download task failed: {e}"))??;
+
+    let bytes = std::fs::metadata(&destination)
+        .map_err(|e| format!("reading {}: {e}", destination.display()))?
+        .len();
+    Ok(UpdateDownload {
+        version: request.version,
+        asset_name,
+        path: destination.display().to_string(),
+        already_downloaded: false,
+        bytes,
+    })
+}
+
+/// Normalize a hex SHA-256 (any case, no whitespace) and reject anything
+/// that isn't exactly 64 hex chars. The expected value comes from
+/// `checksums.txt`, which the renderer parses — we re-validate so a
+/// compromised renderer can't slip a bogus expected hash through.
+fn normalize_expected_sha256(raw: Option<&str>) -> Result<Option<String>, String> {
+    let Some(raw) = raw else {
+        return Ok(None);
+    };
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if trimmed.len() != 64 || !trimmed.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err("expected_sha256 must be a 64-character hex string".to_string());
+    }
+    Ok(Some(trimmed.to_ascii_lowercase()))
+}
+
+/// Compute the SHA-256 of `path` via `/usr/bin/shasum`, mirroring the
+/// curl shell-out path used for the download itself. Avoids pulling in a
+/// fresh Rust crate for a single use site on a macOS-only feature.
+fn sha256_of_file(path: &std::path::Path) -> Result<String, String> {
+    let output = Command::new("/usr/bin/shasum")
+        .arg("-a")
+        .arg("256")
+        .arg(path)
+        .output()
+        .map_err(|e| format!("starting shasum: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "shasum exited with {}: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    // shasum prints "<hex>  <path>\n"; the hash is the leading token.
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let hex = stdout
+        .split_whitespace()
+        .next()
+        .ok_or_else(|| "shasum produced no output".to_string())?;
+    if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(format!("unexpected shasum output: {stdout:?}"));
+    }
+    Ok(hex.to_ascii_lowercase())
+}
+
+fn safe_update_asset_name(name: &str) -> Result<String, String> {
+    if name.contains('/') || name.contains('\\') {
+        return Err("update asset name must be a plain filename".to_string());
+    }
+    let file_name = name.trim();
+    if file_name.is_empty() {
+        return Err("update asset name is empty".to_string());
+    }
+    if !file_name.ends_with(".dmg") {
+        return Err("LinkPilot can only auto-download macOS DMG assets".to_string());
+    }
+    Ok(file_name.to_string())
+}
+
+fn download_update_asset(
+    url: &str,
+    tmp: &PathBuf,
+    destination: &PathBuf,
+    expected_sha256: Option<&str>,
+) -> Result<(), String> {
+    if tmp.exists() {
+        std::fs::remove_file(tmp).map_err(|e| format!("removing {}: {e}", tmp.display()))?;
+    }
+    let status = Command::new("/usr/bin/curl")
+        .arg("--fail")
+        .arg("--location")
+        .arg("--silent")
+        .arg("--show-error")
+        .arg("--output")
+        .arg(tmp)
+        .arg(url)
+        .status()
+        .map_err(|e| format!("starting curl: {e}"))?;
+    if !status.success() {
+        let _ = std::fs::remove_file(tmp);
+        return Err(format!("curl exited with {status}"));
+    }
+    // Verify SHA-256 BEFORE rename. The freshly-downloaded file lives in
+    // `tmp` so a mismatch is a no-op for the destination — the user's
+    // previous "good" download (if any) stays untouched.
+    if let Some(expected) = expected_sha256 {
+        match sha256_of_file(tmp) {
+            Ok(actual) if actual == expected => {}
+            Ok(actual) => {
+                let _ = std::fs::remove_file(tmp);
+                return Err(format!(
+                    "checksum mismatch: expected {expected}, got {actual}"
+                ));
+            }
+            Err(err) => {
+                let _ = std::fs::remove_file(tmp);
+                return Err(format!("hashing downloaded file failed: {err}"));
+            }
+        }
+    }
+    // POSIX rename(2) is an atomic replace on the same filesystem — no
+    // need to remove `destination` first. Doing so would open a window
+    // where the destination is gone but the rename hasn't completed.
+    std::fs::rename(tmp, destination)
+        .map_err(|e| format!("moving update to {}: {e}", destination.display()))
 }
 
 // ----------------------------------------------------------------------------

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import {
   Compass,
@@ -22,6 +23,7 @@ import { BrowsersPage } from "@/pages/browsers";
 import { SettingsPage } from "@/pages/settings";
 import { WorkspacePage } from "@/pages/workspace";
 import { ipc, onConfigChanged, onRouteLogged } from "@/lib/ipc";
+import { checkForUpdates, type UpdateCheckState } from "@/lib/update";
 import type {
   ConfigDocument,
   DoctorReport,
@@ -55,12 +57,24 @@ const TABS: Tab[] = [
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
+function isUpdateActionable(state: UpdateCheckState): boolean {
+  return (
+    state.status === "downloading" ||
+    state.status === "downloaded" ||
+    (state.status === "error" && !!state.result?.available)
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState<TabId>("menu-bar");
   const [configEpoch, setConfigEpoch] = useState(0);
   const [config, setConfig] = useState<ConfigDocument | null>(null);
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
   const [recentRoutes, setRecentRoutes] = useState<RouteRecord[]>([]);
+  const [updateCheck, setUpdateCheck] = useState<UpdateCheckState>({
+    status: "idle",
+  });
+  const autoUpdateCheckStartedRef = useRef(false);
   // When non-null, the main content area renders the workspace detail
   // page for this id instead of whatever `tab` is. Sidebar workspace
   // clicks set this; sidebar tab clicks clear it.
@@ -103,6 +117,68 @@ export default function App() {
   useEffect(() => {
     refreshSidebarData();
   }, [refreshSidebarData, configEpoch]);
+
+  const runUpdateCheck = useCallback(async () => {
+    setUpdateCheck({ status: "checking" });
+    try {
+      const currentVersion = await getVersion();
+      const result = await checkForUpdates(currentVersion);
+      if (!result.available) {
+        setUpdateCheck({ status: "up-to-date", result });
+        return;
+      }
+
+      if (!result.asset.sha256) {
+        // Refuse to auto-download an unverified DMG. Releases ship a
+        // `checksums.txt`; if it's missing or doesn't list our asset,
+        // the user can still grab the installer manually from the
+        // release page — but we never write an unverified binary to
+        // the updates dir on their behalf.
+        setUpdateCheck({
+          status: "error",
+          error:
+            "Release is missing a checksums.txt entry for the macOS DMG; refusing to auto-download an unverified installer.",
+          checkedAt: Date.now(),
+          result,
+        });
+        return;
+      }
+      setUpdateCheck({ status: "downloading", result });
+      try {
+        const download = await ipc.updateDownload({
+          url: result.asset.downloadUrl,
+          version: result.latestVersion,
+          asset_name: result.asset.name,
+          expected_bytes: result.asset.size,
+          expected_sha256: result.asset.sha256,
+        });
+        setUpdateCheck({ status: "downloaded", result, download });
+      } catch (downloadErr) {
+        const error =
+          downloadErr instanceof Error ? downloadErr.message : String(downloadErr);
+        setUpdateCheck({
+          status: "error",
+          error,
+          checkedAt: Date.now(),
+          result,
+        });
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      setUpdateCheck({ status: "error", error, checkedAt: Date.now() });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showOnboarding) return;
+    if (!config?.settings.auto_check_updates) {
+      autoUpdateCheckStartedRef.current = false;
+      return;
+    }
+    if (autoUpdateCheckStartedRef.current) return;
+    autoUpdateCheckStartedRef.current = true;
+    void runUpdateCheck();
+  }, [config?.settings.auto_check_updates, runUpdateCheck, showOnboarding]);
 
   useEffect(() => {
     let unlistenConfig: (() => void) | undefined;
@@ -249,6 +325,14 @@ export default function App() {
               >
                 <Icon className="mac-symbol-icon h-[15px] w-[15px]" />
                 <span>{t.label}</span>
+                {t.id === "settings" && isUpdateActionable(updateCheck) && (
+                  <span
+                    className="mac-tag"
+                    style={{ marginLeft: "auto", fontSize: 10 }}
+                  >
+                    update
+                  </span>
+                )}
               </button>
             );
           })}
@@ -369,7 +453,11 @@ export default function App() {
                 {tab === "inspector" && <InspectorPage />}
                 {tab === "browsers" && <BrowsersPage />}
                 {tab === "settings" && (
-                  <SettingsPage configEpoch={configEpoch} />
+                  <SettingsPage
+                    configEpoch={configEpoch}
+                    updateCheck={updateCheck}
+                    onCheckForUpdates={runUpdateCheck}
+                  />
                 )}
               </>
             )}
