@@ -93,6 +93,35 @@ export function ProfileOrderEditor({
     (row) => row.profiles.length > 1,
   ).length;
 
+  // Per-browser: profiles the user has detected but never placed into the
+  // saved Halo order. This happens organically when someone creates a new
+  // Chrome profile after customizing their LinkPilot wheel — without this
+  // signal the new profile would stay invisible in the picker until the
+  // user remembered to come back here.
+  const hiddenByBrowser = useMemo(() => {
+    const out = new Map<string, number>();
+    for (const row of catalog) {
+      const saved = doc?.settings.profile_orders?.[row.browser.id];
+      if (!saved || saved.length === 0) continue;
+      const savedSet = new Set(saved);
+      const hidden = row.profiles.filter((p) => !savedSet.has(p.id)).length;
+      if (hidden > 0) out.set(row.browser.id, hidden);
+    }
+    return out;
+  }, [catalog, doc]);
+  const hiddenSummary = useMemo(() => {
+    let total = 0;
+    const browserNames: string[] = [];
+    for (const row of catalog) {
+      const n = hiddenByBrowser.get(row.browser.id) ?? 0;
+      if (n > 0) {
+        total += n;
+        browserNames.push(row.browser.display_name);
+      }
+    }
+    return { total, browserNames };
+  }, [catalog, hiddenByBrowser]);
+
   if (loading) {
     return <div className="profile-order-empty">Scanning browser profiles…</div>;
   }
@@ -114,23 +143,47 @@ export function ProfileOrderEditor({
       }}
     >
       <div className="profile-order-editor">
+        {hiddenSummary.total > 0 && (
+          <div
+            className="profile-order-hidden-banner"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="profile-order-hidden-banner-dot" aria-hidden />
+            <span className="profile-order-hidden-banner-copy">
+              <strong>
+                {hiddenSummary.total} new profile
+                {hiddenSummary.total === 1 ? "" : "s"} detected
+              </strong>{" "}
+              in {formatBrowserList(hiddenSummary.browserNames)}. They stay
+              hidden from the Halo wheel until you add them.
+            </span>
+          </div>
+        )}
         <div className="profile-order-browser-grid">
           {catalog.map((row) => {
             const canConfigure = row.profiles.length > 1;
             const saved = hasSavedOrder(doc, row.browser.id);
+            const hiddenCount = hiddenByBrowser.get(row.browser.id) ?? 0;
             return (
               <button
                 key={row.browser.id}
                 type="button"
                 className={`profile-order-browser-card${
                   canConfigure ? "" : " disabled"
-                }${saved ? " saved" : ""}`}
+                }${saved ? " saved" : ""}${
+                  hiddenCount > 0 ? " has-hidden" : ""
+                }`}
                 disabled={!canConfigure}
                 onClick={() => setEditingBrowserId(row.browser.id)}
                 title={
-                  canConfigure
-                    ? "Configure this browser in the Halo wheel"
-                    : "Profile order is available only when a browser has more than one profile"
+                  hiddenCount > 0
+                    ? `${hiddenCount} detected profile${
+                        hiddenCount === 1 ? "" : "s"
+                      } not yet placed in the Halo wheel`
+                    : canConfigure
+                      ? "Configure this browser in the Halo wheel"
+                      : "Profile order is available only when a browser has more than one profile"
                 }
               >
                 <span className="profile-order-browser-icon">
@@ -153,6 +206,16 @@ export function ProfileOrderEditor({
                         }`}
                   </span>
                 </span>
+                {hiddenCount > 0 && (
+                  <span
+                    className="profile-order-hidden-chip"
+                    aria-label={`${hiddenCount} unplaced profile${
+                      hiddenCount === 1 ? "" : "s"
+                    }`}
+                  >
+                    +{hiddenCount} new
+                  </span>
+                )}
                 <span className="profile-order-browser-status">
                   {saved ? "Saved" : canConfigure ? "Configure" : "Unavailable"}
                 </span>
@@ -543,6 +606,16 @@ function ProfileChooserOverlay({
       </div>
     </div>
   );
+}
+
+/** Render a list of browser names as "A", "A and B", or "A, B and C".
+ *  Kept inline because Intl.ListFormat isn't worth a runtime config dep
+ *  for this single call site. */
+function formatBrowserList(names: string[]): string {
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
 function hasSavedOrder(doc: ConfigDocument | null, browserId: string): boolean {
