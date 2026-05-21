@@ -5,40 +5,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LinkPilot</title>
     <!--
-      Synchronous picker-mode bootstrap. The picker window's
-      <NSVisualEffectView> backdrop only shows through when html, body
-      and #root are transparent. The bundled CSS achieves that via
-      `html.picker-root { background: transparent !important; }`, but
-      the bundle isn't parsed until after the webview's first paint —
-      which means a white flash between window show and React mount.
-      Setting both the class *and* an inline <style> from the head
-      inline script lands the transparency before the first paint,
-      killing the flicker.
+      Synchronous picker-mode bootstrap. Picker/tray windows are transparent
+      Tauri webviews; html, body, and #root must be transparent before the
+      bundled CSS is parsed. Picker also gets a tiny prepaint frost layer so
+      the first visible frame is already lightly blurred instead of pure
+      transparent, then React replaces it with the real picker shell.
     -->
     <script>
-      // Picker AND tray are popover-style windows backed by an
-      // NSVisualEffectView; both need html/body/#root transparent
-      // before the first paint, and both follow the macOS system
-      // appearance rather than LinkPilot's in-app theme (vibrancy
-      // material can't be theme-toggled at runtime, so the surface
-      // colors must match what the backdrop is rendering).
+      // Picker AND tray are popover-style transparent windows; both need
+      // html/body/#root transparent before the first paint. They still
+      // follow LinkPilot's persisted theme mode so manual Light/Dark
+      // overrides match the main settings window.
       (function () {
         const view = new URLSearchParams(location.search).get("view");
         if (view !== "picker" && view !== "tray") return;
         const root = document.documentElement;
         root.classList.add(view + "-root");
-        const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const rawTheme = localStorage.getItem("linkpilot.theme");
+        const themeMode =
+          rawTheme === "light" || rawTheme === "dark" || rawTheme === "system"
+            ? rawTheme
+            : "system";
+        const dark =
+          themeMode === "dark" ||
+          (themeMode === "system" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
         root.classList.toggle("dark", dark);
         root.setAttribute("data-theme", dark ? "dark" : "light");
         const s = document.createElement("style");
         s.textContent =
-          "html,body,#root{background:transparent!important;margin:0;height:100%;}";
+          "html,body,#root{background:transparent!important;margin:0;height:100%;}" +
+          (view === "picker"
+            ? [
+                "html.picker-root{--picker-halo-center-tint:rgba(20,20,24,.085);--picker-halo-mid-tint:rgba(20,20,24,.026);--picker-halo-core-tint:rgba(244,244,247,.30);--picker-halo-core-mid-tint:rgba(244,244,247,.14);--picker-halo-core-blur:18px;--picker-halo-start-blur:5px;--picker-halo-end-blur:14px;--picker-halo-start-saturate:1.04;--picker-halo-end-saturate:1.16}",
+                "html.picker-root.dark{--picker-halo-center-tint:rgba(0,0,0,.15);--picker-halo-mid-tint:rgba(0,0,0,.052);--picker-halo-core-tint:rgba(28,28,32,.32);--picker-halo-core-mid-tint:rgba(28,28,32,.16)}",
+                "html.picker-root #root{position:relative;z-index:1}",
+                ".picker-prepaint{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:1;transition:opacity 140ms cubic-bezier(.2,0,0,1)}",
+                ".picker-prepaint.leaving{opacity:0}",
+                ".picker-prepaint:before,.picker-prepaint:after{content:\"\";position:absolute;left:50%;top:50%;pointer-events:none;transform:translate(-50%,-50%)}",
+                ".picker-prepaint:before{width:min(590px,86vw);height:min(360px,76vh);background:radial-gradient(ellipse 55% 50% at center,var(--picker-halo-center-tint) 0%,var(--picker-halo-mid-tint) 52%,transparent 100%);-webkit-backdrop-filter:blur(var(--picker-halo-end-blur)) saturate(var(--picker-halo-end-saturate));backdrop-filter:blur(var(--picker-halo-end-blur)) saturate(var(--picker-halo-end-saturate));-webkit-mask:radial-gradient(ellipse 55% 50% at center,#000 0%,#000 38%,transparent 92%);mask:radial-gradient(ellipse 55% 50% at center,#000 0%,#000 38%,transparent 92%);animation:picker-prepaint-settle 300ms cubic-bezier(.16,1,.3,1)}",
+                ".picker-prepaint:after{width:min(510px,78vw);height:min(300px,66vh);background:radial-gradient(ellipse 48% 42% at center,var(--picker-halo-core-tint) 0%,var(--picker-halo-core-mid-tint) 44%,transparent 82%);-webkit-backdrop-filter:blur(var(--picker-halo-core-blur)) saturate(var(--picker-halo-end-saturate));backdrop-filter:blur(var(--picker-halo-core-blur)) saturate(var(--picker-halo-end-saturate));-webkit-mask:radial-gradient(ellipse 48% 42% at center,#000 0%,#000 36%,transparent 88%);mask:radial-gradient(ellipse 48% 42% at center,#000 0%,#000 36%,transparent 88%);animation:picker-prepaint-core-settle 300ms cubic-bezier(.16,1,.3,1)}",
+                "@keyframes picker-prepaint-settle{from{-webkit-backdrop-filter:blur(var(--picker-halo-start-blur)) saturate(var(--picker-halo-start-saturate));backdrop-filter:blur(var(--picker-halo-start-blur)) saturate(var(--picker-halo-start-saturate))}to{-webkit-backdrop-filter:blur(var(--picker-halo-end-blur)) saturate(var(--picker-halo-end-saturate));backdrop-filter:blur(var(--picker-halo-end-blur)) saturate(var(--picker-halo-end-saturate))}}",
+                "@keyframes picker-prepaint-core-settle{from{-webkit-backdrop-filter:blur(var(--picker-halo-start-blur)) saturate(var(--picker-halo-start-saturate));backdrop-filter:blur(var(--picker-halo-start-blur)) saturate(var(--picker-halo-start-saturate))}to{-webkit-backdrop-filter:blur(var(--picker-halo-core-blur)) saturate(var(--picker-halo-end-saturate));backdrop-filter:blur(var(--picker-halo-core-blur)) saturate(var(--picker-halo-end-saturate))}}",
+              ].join("")
+            : "");
         document.head.appendChild(s);
       })();
     </script>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (function () {
+        const view = new URLSearchParams(location.search).get("view");
+        if (view !== "picker") return;
+        if (!document.getElementById("picker-prepaint")) {
+          const prepaint = document.createElement("div");
+          prepaint.id = "picker-prepaint";
+          prepaint.className = "picker-prepaint";
+          document.body.appendChild(prepaint);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -22,9 +22,7 @@ class LinkpilotCli < Formula
   url "https://github.com/jackerjay/LinkPilot/releases/download/v0.2.0-alpha.3/lpt-macos.tar.gz"
   version "0.2.0-alpha.3"
   sha256 "257620b1ff016bbc4fe8dd95f7fc279524b65a6959d90de6c308f3a341832558"
-  # The repo dual-licenses MIT/Apache-2.0; Homebrew wants this expressed
-  # as an `any_of:` array rather than the SPDX "MIT OR Apache-2.0" string.
-  license any_of: ["MIT", "Apache-2.0"]
+  license "MIT"
 
   depends_on :macos
 

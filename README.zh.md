@@ -5,219 +5,229 @@
 <h1 align="center">LinkPilot</h1>
 
 <p align="center">
-  <em>把每个链接路由到该去的浏览器、用户配置和工作空间。</em>
+  <em>把每个链接路由到正确的浏览器、用户配置和工作空间。</em>
 </p>
 
 <p align="center">
   <a href="README.md">English</a> | 简体中文
 </p>
 
-LinkPilot 是一个 macOS 优先（Windows / Linux 后续跟进）的链接路由器：它坐在操作系统、浏览器和会打开 URL 的应用之间，把每条链接按你配的规则派发到对应的浏览器 + 用户配置。
+LinkPilot 是一个 macOS 优先的链接路由器。它位于 macOS、浏览器和会打开
+URL 的应用之间，根据规则把每个链接送到最合适的浏览器和用户配置。
 
-## 状态
+LinkPilot 不是浏览器，而是一层轻量调度器，适合同时使用多个 Chrome
+Profile、Arc、Safari、Firefox、工作空间，以及 Slack、Lark、Terminal、IDE
+等来源应用的人。
 
-**v0.1 — 功能完整。** 工作空间、带菜单栏托盘的 Tauri 外壳、基于 fsnotify 的配置存储、路由历史、五个 GUI 页面，以及端到端的 macOS `lp open` 流程。品牌素材已就绪（`docs/brand/icon.png` 出的全套图标矩阵 + `docs/brand/tray-template.svg` 出的单色菜单栏模板）；结构化规则编辑器替换了 JSON-textarea fallback（仍可在"高级：原始 JSON"下使用）。`设为默认浏览器`（LaunchServices）、`登录时启动`（LaunchAgent plist）以及 daemon 的 Unix-socket IPC 服务端均已打通。
+## 当前状态
 
-设计细节见 `docs/linkpilot-design-v0.1.md`（PRD）。
+LinkPilot 当前聚焦 macOS。
+
+- macOS 桌面应用：可用并持续迭代。
+- CLI 与后台 daemon：可用并持续迭代。
+- Windows / Linux 平台 crate：目前是占位实现。
+- 浏览器扩展：预留给后续里程碑。
+
+当前应用包含：
+
+- 按 host、path、来源应用、来源浏览器、来源 profile 路由 URL。
+- Chrome 系浏览器、Arc、Firefox、Safari 和自定义浏览器的识别与 profile 枚举。
+- Ask picker：Halo profile 选择环、键盘快捷键、profile 排序、暗色模式，以及 Settings 里的真实测试 URL。
+- 后台 daemon 与 Unix socket IPC，主窗口关闭后仍可继续路由。
+- 菜单栏托盘、Inspector、Test URL 模拟器、浏览器管理、Settings 和 onboarding。
+- `lpt` CLI：打开 URL、管理规则、查看配置、安装 daemon、检查默认浏览器状态。
 
 ## 安装
 
-同一个 release 提供两条安装路径，任挑或都装。
+当前 release 产物未签名，macOS 首次启动时可能会加 quarantine。安装后如无法打开，
+可以移除 quarantine 标记。
 
-### 仅 CLI
+Homebrew 目前还不是可用安装渠道。在 tap 发布并验证之前，请使用下面的 DMG 或
+CLI tarball。
 
-无头模式 —— 适合终端工作流、脚本，或者与不同版本的 GUI 并行使用。`lp` 是一个独立可执行文件，不依赖 daemon（没有 daemon 时本地路由；GUI 在跑时通过 Unix socket 与之对话）。
+### GUI 应用
 
-```sh
-# 从 release artifact 安装：
-curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/lp-macos.tar.gz \
-  | tar -xz -C ~/.local/bin
-chmod +x ~/.local/bin/lp
-# 如果还没把 ~/.local/bin 加入 PATH，去 shell rc 里加一行
-```
-
-### GUI + CLI
-
-装 `.app` 时 `lp` 二进制一起来。启动 LinkPilot 后打开 Settings → Command-line tool，点 **Install to ~/.local/bin** 就会把 `lp` symlink 到 PATH（幂等；版本升级后重跑一次即可）。`lp` 在 `.app` 内的实际位置是 `/Applications/LinkPilot.app/Contents/MacOS/lp` —— 也可以把这个目录直接加到 PATH 而不做 symlink。
+从最新 GitHub Release 下载 universal DMG，把 `LinkPilot.app` 复制到
+`/Applications` 后打开：
 
 ```sh
 curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/LinkPilot_<version>_universal.dmg -o LinkPilot.dmg
 hdiutil attach LinkPilot.dmg
 cp -R "/Volumes/LinkPilot/LinkPilot.app" /Applications/
 hdiutil detach "/Volumes/LinkPilot"
-xattr -dr com.apple.quarantine /Applications/LinkPilot.app   # 未签名版本
+xattr -dr com.apple.quarantine /Applications/LinkPilot.app
 open /Applications/LinkPilot.app
 ```
 
-## 快速开始（macOS）
+首次启动后，通过 onboarding 或 Settings 完成：
 
-### CLI —— 不需要 GUI
+1. 把 LinkPilot 注册为系统默认浏览器。
+2. 安装后台 daemon LaunchAgent。
+3. 把内置的 `lpt` 命令安装到 `~/.local/bin`。
 
-```sh
-cargo build -p linkpilot-cli
-./target/debug/lp doctor              # 写入默认配置 + 列出浏览器
-./target/debug/lp rules list
-./target/debug/lp open https://github.com/anthropics/anthropic-cookbook
-./target/debug/lp open https://figma.com --dry-run
-./target/debug/lp open https://github.com --from-app Slack
-```
+### 仅 CLI
 
-当 daemon 在运行时，`lp` 走 Unix socket
-（`~/Library/Application Support/LinkPilot/linkpilot.sock`）；否则回退到本地直接执行。`--local` 可强制走本地路径。写入操作始终走本地配置文件 —— daemon 的 fsnotify watcher 通过 anti-echo token 自动拾取变更，运行中的 GUI 一帧内就能刷新。
-
-首次运行会在
-`~/Library/Application Support/LinkPilot/linkpilot.config.json` 写入一份起始配置（PRD §22 示例：github / notion → Chrome Default，figma / youtube → Arc）。编辑后再跑一次即可。
-
-CLI 已覆盖 GUI 所有可配置项 —— 用 `lp <command> --help` 查看完整参数：
+CLI tarball 包含 `lpt` 和 `linkpilot-daemon`。
 
 ```sh
-# 规则
-lp rules add --host "*.figma.com" --target arc --priority 20
-lp rules add --host github.com --path "/oauth/*" --keep-source --priority 50
-lp rules add --from-app Slack --ask
-lp rules list --all                      # 包含已禁用的规则
-lp rules disable <id 前缀>               # 8 位前缀足够
-lp rules set-priority <id 前缀> 99
-lp rules delete <id 前缀>
-lp rules add --when-json '{"op":"any","of":[...]}' --then-json '{"kind":"block"}'
-
-# 工作空间（批量开关一组规则）
-lp workspaces add work --name Work
-lp workspaces disable work               # 所有 workspace_id=work 的规则跳过
-
-# 配置查看 + 导入/导出
-lp config show                           # 整份配置 JSON
-lp config path
-lp config set-default-target arc --profile Personal
-lp config export ./backup.json
-lp config import ./backup.json
-
-# 设置
-lp settings show
-lp settings smart-routing off            # 路由总开关
-lp settings launch-at-login on
-lp settings history-retention 30         # 或 `clear` 表示无限
-
-# 浏览器
-lp browsers list                         # 自动发现 + 自定义，合并后
-lp browsers profiles chrome
-lp browsers custom add --id devbuild --name "Chrome Canary" \
-    --kind chromium --exec /Applications/Google\ Chrome\ Canary.app
-
-# 默认浏览器注册
-lp default-browser status
-lp default-browser set                   # macOS 会弹系统确认
+curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/lpt-macos.tar.gz \
+  | tar -xz -C ~/.local/bin
+chmod +x ~/.local/bin/lpt
 ```
+
+如果只需要终端自动化，或者只想运行后台 daemon，可以走 CLI-only 安装。
+
+## 快速开始
 
 ### 桌面应用
 
-```sh
-# 在仓库根目录
-cd apps/desktop
-npm install                          # 本地安装 @tauri-apps/cli
-npx tauri dev                        # 同时拉起 Vite + Tauri
-```
+1. 打开 LinkPilot。
+2. 在 onboarding 或 Settings 里把 LinkPilot 设为默认浏览器。
+3. 在 Rules 页面新增或编辑规则。
+4. 用 Test URL 对真实路由引擎做 dry-run。
+5. 用 Inspector 查看实时路由决策。
 
-> **注意：** 用 `npx tauri …`（或 `npm run tauri -- …`）。Tauri CLI 是 npm devDependency；`cargo tauri …` 需要你额外 `cargo install tauri-cli`，本仓库**不要求**这么做。
+对于 Ask 规则，LinkPilot 会打开 picker 窗口。在多 profile 浏览器上按住
+Option 会唤起 Halo 选择环；鼠标瞄准 profile 后松开 Option，就会直接打开。
+Settings 页面提供 picker style 的测试 URL，可以直接验证焦点切换、profile
+命中和视觉样式，不需要先创建真实规则。
 
-可以试试：
-
-- 关掉窗口后菜单栏图标还在 —— daemon 仍在运行。
-- 从 Slack / Terminal 打开 https://github.com → LinkPilot 应当出现在应用选择器里（前提是已在系统设置里把它设为默认）。
-- 在 JSON 编辑器里粘贴一份新配置 → 原子重写；外部 `vim` 改动会被自动重载（anti-echo token 防止循环）。
-- Inspector 标签页通过 `route-logged` Tauri 事件实时展示每次路由决策。
-
-### 生产打包
+### CLI
 
 ```sh
-cd apps/desktop
-npm run bundle:mac      # tauri build + 对 .app 跑 patch-info-plist.sh
-open ../../target/release/bundle/macos/LinkPilot.app
+cargo build -p linkpilot-cli
+./target/debug/lpt doctor
+./target/debug/lpt open https://github.com
+./target/debug/lpt open https://figma.com --dry-run
+./target/debug/lpt open https://github.com --from-app Slack
 ```
 
-`bundle:mac` 在 `tauri build` 之后修补 `.app` 里的 Info.plist，让 macOS"默认浏览器"选择器能识别 LinkPilot（细节见 `apps/desktop/scripts/patch-info-plist.sh`）。它同时产出的 DMG 是**未打 patch** 的 —— 要拿到带 plist patch 的 DMG，请推一个 `v*.*.*` tag，从 `release.yml` 产物里下载（见下文"发布"）。
-
-品牌素材已经在 `apps/desktop/src-tauri/icons/` 备齐（从 `docs/brand/icon.png` + `docs/brand/tray-template.svg` 生成）。重新生成方法见 `apps/desktop/src-tauri/icons/README.md`。
-
-## 仓库结构
-
-```
-crates/
-  core/                # 路由引擎、规则模型、配置存储、fsnotify、
-                       #   路由历史、平台 trait、IPC 协议类型
-  platform-mac/        # macOS 后端（v0.1 真实实现）
-  platform-win/        # Windows 占位（v0.5 真实实现）
-  platform-linux/      # Linux 占位（v0.6+ 真实实现）
-  ipc/                 # Unix socket / Named pipe 上的 length-prefixed JSON
-                       #   （传输层就绪；服务端在后续切片上线）
-  native-host/         # NMH stdio 桥（v0.3）
-  cli/                 # `lp` 命令行客户端
-  headless-daemon/     # 预留给未来 GUI-less daemon 二进制
-apps/
-  desktop/             # Tauri 2 应用
-    src-tauri/         # Rust：tray、deep-link、commands、fsnotify 接线
-    src/               # React + TypeScript 前端
-      pages/           # menu-bar、rules、inspector、browsers、settings
-      lib/             # 强类型 Tauri 命令封装
-  extension/           # MV3 浏览器扩展（v0.3）
-packages/
-  config-dsl/          # @linkpilot/config TS DSL（v0.2+）
-```
-
-## 开发构建
+常用命令：
 
 ```sh
-cargo check --workspace --exclude linkpilot-desktop   # 核心栈，任何 OS 都能跑
-cargo test  -p linkpilot-core                         # 路由 + 历史 + 配置
-cargo check -p linkpilot-desktop                      # Tauri 应用，需要 macOS
-                                                      # （或装了 GTK/WebKit
-                                                      #  开发库的 Linux）
+# 规则
+lpt rules list --all
+lpt rules add --host "*.figma.com" --target arc --priority 20
+lpt rules add --host github.com --path "/oauth/*" --keep-source --priority 50
+lpt rules add --from-app Slack --ask
+lpt rules disable <id-prefix>
+lpt rules delete <id-prefix>
+
+# 工作空间
+lpt workspaces add work --name Work
+lpt workspaces disable work
+
+# 配置
+lpt config show
+lpt config path
+lpt config set-default-target chrome --profile Default
+lpt config export ./linkpilot.backup.json
+lpt config import ./linkpilot.backup.json
+
+# 设置
+lpt settings show
+lpt settings smart-routing off
+lpt settings launch-at-login on
+lpt settings history-retention 30
+
+# 浏览器
+lpt browsers list
+lpt browsers profiles chrome
+lpt browsers custom add --id devbuild --name "Chrome Canary" \
+  --kind chromium --exec /Applications/Google\ Chrome\ Canary.app
+
+# 默认浏览器和 daemon
+lpt default-browser status
+lpt default-browser set
+lpt daemon status
+lpt daemon install
+lpt daemon logs --follow
 ```
 
-在 Linux 上交叉检查 macOS-only 的 Rust 代码：
+`lpt` 会优先连接运行中的 daemon：
+
+```text
+~/Library/Application Support/LinkPilot/linkpilot.sock
+```
+
+没有 daemon 时，可本地执行的命令会回退到本地路径。配置文件位置：
+
+```text
+~/Library/Application Support/LinkPilot/linkpilot.config.json
+```
+
+## 开发
+
+要求：
+
+- Rust 1.80+
+- 推荐 Node.js 22
+- npm
+- 完整 Tauri 桌面应用需要 macOS
+
+仓库根目录：
 
 ```sh
-rustup target add x86_64-apple-darwin
-cargo check --target x86_64-apple-darwin -p linkpilot-platform-mac -p linkpilot-cli
+cargo check --workspace --exclude linkpilot-desktop
+cargo test -p linkpilot-core
+cargo check -p linkpilot-desktop
 ```
-
-（Tauri 外壳无法从 Linux 交叉检查，因为它通过 cc 链接真实的 Cocoa 框架；那部分得在 Mac 上构建。）
 
 前端：
 
 ```sh
 cd apps/desktop
 npm install
-npm run build       # tsc --noEmit + vite build → apps/desktop/dist/
+npm run build
+npx tauri dev
 ```
 
-## 参与贡献
+生产打包：
 
-LinkPilot 在 MIT OR Apache-2.0 双协议下开源。本地搭建、PR 期望、发布流程见 `CONTRIBUTING.md`。安全问题请走私密渠道上报，见 `SECURITY.md`。
+```sh
+cd apps/desktop
+npm run bundle:mac
+open ../../target/release/bundle/macos/LinkPilot.app
+```
+
+`bundle:mac` 会先运行 `tauri build`，再修补生成的 `Info.plist`，让 macOS 能把
+LinkPilot 识别为 HTTP/HTTPS 浏览器处理器。
+
+## 仓库结构
+
+```text
+crates/
+  core/                 # 路由引擎、规则模型、ConfigStore、历史、IPC 协议类型
+  platform-mac/         # macOS 后端：浏览器枚举、启动器、默认浏览器注册
+  platform-win/         # Windows 占位
+  platform-linux/       # Linux 占位
+  ipc/                  # Unix socket / named pipe 上的 length-prefixed JSON
+  cli/                  # lpt 命令行客户端
+  headless-daemon/      # 后台 daemon 二进制
+  native-host/          # 预留给浏览器扩展的 native messaging 桥
+apps/
+  desktop/              # Tauri 2 桌面应用
+    src-tauri/          # Rust shell、tray、deep links、commands、picker
+    src/                # React + TypeScript UI
+  extension/            # 浏览器扩展占位
+packages/
+  config-dsl/           # linkpilot.config.ts 的 TypeScript DSL
+packaging/
+  homebrew/             # 未发布的 Formula/cask 模板；当前还不是安装渠道
+```
 
 ## 发布
 
-维护者通过推 semver tag 触发发布：
+维护者通过推 semver tag 发布：
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
-tag 触发 `.github/workflows/release.yml`，在 `macos-latest` 上：
+Release workflow 会构建 universal macOS CLI、daemon 和桌面应用，修补 app bundle，
+打包 DMG，并上传 release artifacts 与 checksums。
 
-1. 把 `lp` CLI 同时编出 `x86_64-apple-darwin` 与 `aarch64-apple-darwin` 两份，再用 `lipo` 合成一个 universal 二进制。
-2. 用 `--target universal-apple-darwin --bundles app` 跑 Tauri，让 `.app` 也是 universal。
-3. 对产出的 `.app` 跑 `apps/desktop/scripts/patch-info-plist.sh` —— 把 `tauri-plugin-deep-link` 自动注入的 `CFBundleURLTypes` 改成 Viewer/`Default`，并加上 HTML 的 `CFBundleDocumentTypes`，让 macOS"默认浏览器"选择器真的能看到 LinkPilot。
-4. 用 `hdiutil` 把打了 patch 的 `.app` 包成 `LinkPilot_<version>_universal.dmg`（如果第二次再跑 `tauri build --bundles dmg`，会重新生成 `.app` 把 patch 覆盖掉，所以这里走手工 `hdiutil`）。
-5. 把 `lp-macos`、`lp-macos.tar.gz`、DMG 以及 `checksums.txt` 上传到 GitHub Release。
+## 许可证
 
-一份 universal DMG 同时支持 Apple Silicon 和 Intel Mac。
-
-每个 PR 还会在 `macos-latest` 上跑 `desktop-bundle` 烟雾测试（`tauri build --debug --bundles app`），打包流水线一旦坏掉，在出 tag 前就会被发现。
-
-当前的发布产物**未签名也未公证**。macOS 上首次启动可能需要先解除隔离：
-
-```sh
-xattr -dr com.apple.quarantine LinkPilot.app
-```
+LinkPilot 使用 MIT License。见 [LICENSE](LICENSE)。

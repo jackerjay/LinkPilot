@@ -3,13 +3,13 @@
 
 use std::collections::HashMap;
 
-use linkpilot_core::browser::BrowserTarget;
+use linkpilot_core::browser::{apply_profile_order, BrowserTarget};
 use linkpilot_core::platform::UrlLauncher;
 use linkpilot_core::routing::RoutingDecision;
 use tauri::AppHandle;
 use url::Url;
 
-use crate::picker::{self, PickerChoice};
+use crate::picker::{self, PickerChoice, PickerProfile};
 use crate::state::AppState;
 
 #[derive(Debug)]
@@ -176,9 +176,14 @@ fn resolve_ask(
 
     // Parallel: choices for the picker UI + lookup back to the full
     // BrowserTarget (so we preserve any profile / new-window / incognito
-    // hints the original rule specified).
+    // hints the original rule specified). Each choice also carries the
+    // browser's known profiles so the Halo wheel can render — see
+    // picker.rs::PickerProfile.
     let mut target_by_id: HashMap<String, BrowserTarget> = HashMap::new();
     let mut choices: Vec<PickerChoice> = Vec::with_capacity(source.len());
+    let inventory = state.platform.browser_inventory();
+    let doc = state.config.document();
+    let order_map = &doc.settings.profile_orders;
     for target in source {
         let info = installed.iter().find(|b| b.id == target.browser);
         let name = info
@@ -187,6 +192,41 @@ fn resolve_ask(
         let bundle_id = info.and_then(|b| b.platform_app_id.clone());
         let app_path = info.map(|b| app_path_from_executable(&b.executable));
         let id = target.browser.0.clone();
+
+        // Enumerate profiles for the Halo wheel. Errors are logged
+        // and turn into "single-profile" tiles (the picker treats an
+        // empty list as a plain click target). We deliberately do NOT
+        // fail the whole ask flow just because one browser's profile
+        // cache is unreadable.
+        let raw_profiles = inventory
+            .profiles(&target.browser)
+            .map_err(|err| {
+                tracing::warn!(?err, browser = %target.browser, "ask: profile enum failed");
+                err
+            })
+            .unwrap_or_default();
+
+        // Apply the user's saved visible order for this browser. Empty/missing
+        // means default sort; a non-empty saved list is the complete visible
+        // Halo inventory, so omitted profiles stay hidden until added back in
+        // Settings.
+        let ordered = apply_profile_order(raw_profiles, order_map.get(&id).map(|v| v.as_slice()));
+        let profiles: Vec<PickerProfile> = ordered
+            .into_iter()
+            .map(|p| PickerProfile {
+                id: p.id,
+                name: p.display_name,
+                email: p.email,
+                accent_color: p.accent_color,
+                is_default: p.is_default,
+            })
+            .collect();
+        let default_profile_id = profiles
+            .iter()
+            .find(|p| p.is_default)
+            .or_else(|| profiles.first())
+            .map(|p| p.id.clone());
+
         target_by_id.insert(id.clone(), target);
         choices.push(PickerChoice {
             id,
@@ -196,11 +236,26 @@ fn resolve_ask(
             // Filled in by `show_picker` itself (pre-rendered base64).
             // Dispatch doesn't have to know about pixel data.
             icon_data_url: None,
+            profiles,
+            default_profile_id,
         });
     }
 
-    let picked_id = picker::show_picker(app, url, choices)?;
-    target_by_id.remove(&picked_id)
+    // Look up the user's current picker style so the renderer can
+    // open in the right Halo variant. Read once at ask-time — flipping
+    // the setting mid-pick would force a remount of the wheel which
+    // isn't worth the complexity.
+    let style = doc.settings.picker_style;
+    let picked = picker::show_picker(app, url, choices, style)?;
+    let mut target = target_by_id.remove(&picked.browser_id)?;
+    // Apply the chosen profile to the BrowserTarget. We don't overwrite
+    // an explicitly-set profile from the original rule (rule candidates
+    // can specify a profile), but only the picker UI normally surfaces
+    // that field — so the rule of thumb is: picker wins for ask flows.
+    if let Some(profile_id) = picked.profile_id {
+        target.profile = Some(profile_id);
+    }
+    Some(target)
 }
 
 /// `/Applications/Foo.app/Contents/MacOS/Foo` → `/Applications/Foo.app`.

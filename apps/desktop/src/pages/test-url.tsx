@@ -42,6 +42,11 @@ const NONE = "__none";
 export function TestUrlPage({ configEpoch }: Props) {
   const [url, setUrl] = useState("https://github.com/anthropics/anthropic-cookbook");
   const [fromApp, setFromApp] = useState("");
+  // Tracks the bundle id captured by AppPickerButton — kept in sync with
+  // `fromApp` so manual typing (which can't know the bundle id) clears it,
+  // and the routing backend then falls back to name matching. See
+  // `routing::eval_matcher` for the matching rules.
+  const [fromAppBundleId, setFromAppBundleId] = useState<string | null>(null);
   const [fromBrowser, setFromBrowser] = useState("");
   const [fromProfile, setFromProfile] = useState("");
 
@@ -92,6 +97,7 @@ export function TestUrlPage({ configEpoch }: Props) {
       const out = await ipc.routeEvaluate({
         url: url.trim(),
         from_app: fromApp.trim() || null,
+        from_app_bundle_id: fromAppBundleId || null,
         from_browser: fromBrowser || null,
         from_profile: fromProfile || null,
       });
@@ -101,7 +107,7 @@ export function TestUrlPage({ configEpoch }: Props) {
       setResult(null);
       setError(String(e));
     }
-  }, [url, fromApp, fromBrowser, fromProfile]);
+  }, [url, fromApp, fromAppBundleId, fromBrowser, fromProfile]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -151,10 +157,22 @@ export function TestUrlPage({ configEpoch }: Props) {
                 <Input
                   id="from-app"
                   value={fromApp}
-                  onChange={(e) => setFromApp(e.target.value)}
+                  onChange={(e) => {
+                    setFromApp(e.target.value);
+                    // Manual edit drops the bundle id (we don't know which
+                    // app the typed name refers to). Backend then matches
+                    // by name only — which is exactly the desired behavior
+                    // for hand-written rules.
+                    setFromAppBundleId(null);
+                  }}
                   placeholder="Slack, Terminal, VSCode…"
                 />
-                <AppPickerButton onPicked={(p) => setFromApp(p.name)} />
+                <AppPickerButton
+                  onPicked={(p) => {
+                    setFromApp(p.name);
+                    setFromAppBundleId(p.bundleId || null);
+                  }}
+                />
               </div>
             </div>
             <div className="space-y-1.5">

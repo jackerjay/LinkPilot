@@ -9,7 +9,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
 use linkpilot_core::browser::{
     BrowserId, BrowserKind, BrowserProfile, BrowserTarget, InstalledBrowser,
@@ -326,6 +326,9 @@ enum SettingsAction {
     RecordQueryStrings { value: OnOff },
     /// Set history retention in days, or `clear` to keep forever.
     HistoryRetention { value: String },
+    /// Set the visual style of the browser+profile picker wheel.
+    /// One of `frosted` (default), `bezel`, or `crown`.
+    PickerStyle { value: String },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -559,6 +562,17 @@ fn main() -> Result<()> {
                     )
                 };
                 run_settings_set(cli.config, |s| s.history_retention_days = parsed)
+            }
+            SettingsAction::PickerStyle { value } => {
+                let style = match value.to_ascii_lowercase().as_str() {
+                    "frosted" => linkpilot_core::config::PickerStyle::Frosted,
+                    "bezel" => linkpilot_core::config::PickerStyle::Bezel,
+                    "crown" => linkpilot_core::config::PickerStyle::Crown,
+                    other => {
+                        bail!("unknown picker style '{other}' (expected frosted | bezel | crown)")
+                    }
+                };
+                run_settings_set(cli.config, |s| s.picker_style = style)
             }
         },
         Command::Browsers { action } => match action {

@@ -54,5 +54,5 @@ The release workflow builds artifacts and creates a GitHub Release from the tag.
 
 ## License
 
-Unless explicitly stated otherwise, contributions are licensed under either MIT
-or Apache-2.0, at the contributor's option.
+Unless explicitly stated otherwise, contributions are licensed under the MIT
+License.

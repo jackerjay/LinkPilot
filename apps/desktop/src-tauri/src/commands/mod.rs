@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use linkpilot_core::browser::{BrowserId, BrowserProfile, InstalledBrowser};
-use linkpilot_core::config::{ConfigDocument, Workspace, WriterId};
+use linkpilot_core::config::{ConfigDocument, PickerStyle, Workspace, WriterId};
 use linkpilot_core::history::RouteRecord;
 use linkpilot_core::platform::SetDefaultOutcome;
 use linkpilot_core::protocol::DoctorReport;
@@ -127,6 +127,42 @@ pub fn set_smart_routing(state: State<'_, AppState>, enabled: bool) -> Result<()
         .map_err(|e| e.to_string())
 }
 
+/// Persist the user's picker variant choice (Frosted / Bezel / Crown).
+/// The picker window reads `Settings.picker_style` on open, so this
+/// only affects future Ask flows — no live-reload across an open
+/// picker session.
+#[tauri::command]
+pub fn set_picker_style(state: State<'_, AppState>, style: PickerStyle) -> Result<(), String> {
+    let mut doc = state.config.document();
+    doc.settings.picker_style = style;
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
+/// Persist a user-customized visible profile ordering for one browser. An
+/// empty `profile_ids` list deletes the entry — the picker then falls back to
+/// the default ordering (`is_default` first, then alphabetical) and shows every
+/// detected profile.
+#[tauri::command]
+pub fn set_profile_order(
+    state: State<'_, AppState>,
+    browser: String,
+    profile_ids: Vec<String>,
+) -> Result<(), String> {
+    let mut doc = state.config.document();
+    if profile_ids.is_empty() {
+        doc.settings.profile_orders.remove(&browser);
+    } else {
+        doc.settings.profile_orders.insert(browser, profile_ids);
+    }
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
 // ----------------------------------------------------------------------------
 // inventory
 
@@ -206,6 +242,13 @@ pub struct RouteRequest {
     pub url: String,
     #[serde(default)]
     pub from_app: Option<String>,
+    /// Bundle id of the source app, when known (the Test URL page captures
+    /// this via AppPickerButton). Lets source-app rules with `bundle_id`
+    /// match correctly across localized names — "Lark" vs "飞书" both
+    /// resolve to `com.electron.lark`. When absent we fall back to plain
+    /// name matching in `routing::eval_matcher` for `MatcherTree::SourceApp`.
+    #[serde(default)]
+    pub from_app_bundle_id: Option<String>,
     /// Simulate a route arriving from a browser extension (Test-URL panel).
     /// Together with `from_profile` these populate `Source.browser/profile`
     /// so rules with source-browser / source-profile matchers can be tested
@@ -264,7 +307,7 @@ fn build_context(req: &RouteRequest) -> RoutingContext {
         source: Source {
             kind,
             app_name: req.from_app.clone(),
-            bundle_id: None,
+            bundle_id: req.from_app_bundle_id.clone(),
             browser: req.from_browser.clone(),
             profile: req.from_profile.clone(),
         },

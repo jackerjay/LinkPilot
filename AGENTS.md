@@ -32,20 +32,7 @@
     every rolled-back transaction, every constraint violation.
     Never report success when something was bypassed.
 
-## Project-specific rules below this line
-
-## UI interaction feedback
-
-- Profile Halo configuration controls must stay attached to the wheel's
-  actual sectors: adding belongs to a reserved `+` sector, deletion belongs
-  near the active profile sector, and reordering should use direct sector
-  drag. Avoid detached side panels or global controls when they make the
-  action target ambiguous.
-- Halo drag editing must show a real drag state: active sector, pointer-following
-  profile ghost, and live slot reflow while dragging. Do not rely on a
-  click-then-button move model or on commit-only reordering feedback.
-
-# LinkPilot — Claude Code project notes
+# LinkPilot — Codex project notes
 
 Per-link router that sits between macOS, browsers, and apps that open URLs,
 and dispatches each link to the browser + profile that matches user rules.
@@ -161,7 +148,7 @@ the release workflow uses `hdiutil create` instead.
 
 ## Project skills
 
-`.claude/skills/` ships Claude Code skills scoped to this repo:
+`.Codex/skills/` ships Codex skills scoped to this repo:
 
 - **`add-config-capability`** — invoke when extending the user-configurable
   surface (new `MatcherTree` variant, `Action` variant, `Settings` field,

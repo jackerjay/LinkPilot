@@ -15,13 +15,10 @@ const view = new URLSearchParams(window.location.search).get("view");
 const isPicker = view === "picker";
 const isTray = view === "tray";
 
-// Apply the persisted theme on the main window. Picker / tray follow
-// the system appearance via the inline script in index.html so their
-// vibrancy backdrop and text contrast match the OS chrome — overriding
-// that here re-introduces the light/dark mismatch.
-if (!isPicker && !isTray) {
-  bootstrapTheme();
-}
+// Apply the persisted theme in every Tauri window. index.html does the same
+// synchronously for picker/tray to avoid first-paint flashes; this keeps the
+// runtime DOM in sync if the bootstrap path changes.
+bootstrapTheme();
 
 // Belt-and-suspenders: the inline head script in index.html already
 // added `picker-root` / `tray-root` synchronously to prevent a white

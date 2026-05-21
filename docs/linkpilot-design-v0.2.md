@@ -253,7 +253,7 @@ class LinkpilotCli < Formula
   homepage "https://github.com/jackerjay/LinkPilot"
   url "https://github.com/jackerjay/LinkPilot/releases/download/v0.2.0/lp-macos.tar.gz"
   sha256 "..."
-  license "MIT OR Apache-2.0"
+  license "MIT"
 
   def install
     bin.install "lp-macos" => "lp"
@@ -822,4 +822,3 @@ M1 (headless daemon) ──┬──> M2 (daemon CLI)  ──┐
 - M6 依赖全部前序里程碑，是发布操作本身。
 
 并行策略：M1 完成后，M2/M3/M4 可三路并行。每路独立 PR、独立测试矩阵。汇合到 M5（同一 release.yml 内多 job）和 M6（同一 tag）。
-
