@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +21,12 @@ import type {
   BrowserTarget,
   ConfigDocument,
   InstalledBrowser,
+  LanguagePref,
   PickerStyle,
   SetDefaultOutcome,
 } from "@/lib/types";
 import type { CliInstallStatus, DaemonServiceStatus } from "@/lib/ipc";
+import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/i18n/languages";
 import brandIcon from "@/assets/brand.png";
 
 interface Props {
@@ -36,6 +40,7 @@ export function SettingsPage({
   updateCheck,
   onCheckForUpdates,
 }: Props) {
+  const { t } = useTranslation("settings");
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
   const [configPath, setConfigPath] = useState<string | null>(null);
   const [isDefault, setIsDefault] = useState<boolean | null>(null);
@@ -92,15 +97,17 @@ export function SettingsPage({
     try {
       const outcome: SetDefaultOutcome = await ipc.requestSetDefaultBrowser();
       if (outcome.kind === "done") {
-        setMessage("Set successfully. macOS may show a confirmation dialog.");
+        setMessage(t("defaultBrowser.successDefault"));
       } else if (outcome.kind === "user-consent-required") {
         setMessage(
           outcome.instructions_url
-            ? `Open ${outcome.instructions_url} to finish setting LinkPilot as default.`
-            : "Please finish the default-browser switch in System Settings.",
+            ? t("defaultBrowser.successOtherWithUrl", {
+                url: outcome.instructions_url,
+              })
+            : t("defaultBrowser.successOther"),
         );
       } else {
-        setMessage("This platform doesn't expose a programmatic 'set default'.");
+        setMessage(t("defaultBrowser.unsupported"));
       }
       await refresh();
     } catch (err) {
@@ -111,6 +118,15 @@ export function SettingsPage({
   const changePickerStyle = async (next: PickerStyle) => {
     try {
       await ipc.setPickerStyle(next);
+      await refresh();
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const changeLanguage = async (next: LanguagePref) => {
+    try {
+      await ipc.setLanguage(next);
       await refresh();
     } catch (err) {
       setError(String(err));
@@ -148,7 +164,7 @@ export function SettingsPage({
     setMessage(null);
     try {
       await ipc.importConfig(importPath);
-      setMessage(`Imported ${importPath}`);
+      setMessage(t("io.successImported", { path: importPath }));
       await refresh();
     } catch (err) {
       setError(String(err));
@@ -160,7 +176,7 @@ export function SettingsPage({
     setMessage(null);
     try {
       await ipc.exportConfig(exportPath);
-      setMessage(`Exported to ${exportPath}`);
+      setMessage(t("io.successExported", { path: exportPath }));
     } catch (err) {
       setError(String(err));
     }
@@ -171,9 +187,7 @@ export function SettingsPage({
     setMessage(null);
     try {
       const installed = await ipc.cliInstallToPath();
-      setMessage(
-        `Installed: ${installed}. Add ~/.local/bin to your PATH if it isn't already.`,
-      );
+      setMessage(t("cli.successInstalled", { path: installed }));
       await refresh();
     } catch (err) {
       setError(String(err));
@@ -186,9 +200,7 @@ export function SettingsPage({
     try {
       const next = await ipc.daemonServiceInstall();
       setDaemonStatus(next);
-      setMessage(
-        "Background service installed. The daemon will start now and on every login.",
-      );
+      setMessage(t("daemon.successInstalled"));
     } catch (err) {
       setError(String(err));
     }
@@ -200,9 +212,7 @@ export function SettingsPage({
     try {
       const next = await ipc.daemonServiceUninstall();
       setDaemonStatus(next);
-      setMessage(
-        "Background service removed. The daemon won't auto-start anymore.",
-      );
+      setMessage(t("daemon.successUninstalled"));
     } catch (err) {
       setError(String(err));
     }
@@ -236,12 +246,10 @@ export function SettingsPage({
 
   return (
     <div>
-      <h2 className="mac-h2">Settings</h2>
-      <p className="mac-subtitle">
-        Default browser, autostart, appearance, and config IO.
-      </p>
+      <h2 className="mac-h2">{t("title")}</h2>
+      <p className="mac-subtitle">{t("subtitle")}</p>
 
-      <div className="mac-card-title">Default browser</div>
+      <div className="mac-card-title">{t("defaultBrowser.card")}</div>
       <div className="mac-card">
         <div className="mac-row">
           <img
@@ -258,45 +266,51 @@ export function SettingsPage({
           <div className="grow">
             <div>
               {isDefault
-                ? "LinkPilot is the system default browser"
-                : "LinkPilot is not the default browser"}
+                ? t("defaultBrowser.isDefault")
+                : t("defaultBrowser.isNotDefault")}
             </div>
             <div className="mac-muted" style={{ fontSize: 11.5 }}>
-              All URLs route through LinkPilot's rules engine.
+              {t("defaultBrowser.summary")}
             </div>
           </div>
           <span className={`mac-tag ${isDefault ? "ok" : "danger"}`}>
-            {isDefault === null ? "…" : isDefault ? "active" : "not set"}
+            {isDefault === null
+              ? t("defaultBrowser.tagLoading")
+              : isDefault
+                ? t("defaultBrowser.tagActive")
+                : t("defaultBrowser.tagNotSet")}
           </span>
         </div>
         {!isDefault && (
           <div className="mac-row">
             <span className="grow mac-muted" style={{ fontSize: 12 }}>
-              macOS will prompt to confirm. On Windows you'll be sent to
-              Settings → Default apps.
+              {t("defaultBrowser.hint")}
             </span>
             <button
               type="button"
               className="mac-tbtn primary"
               onClick={setAsDefault}
             >
-              Change…
+              {t("defaultBrowser.change")}
             </button>
           </div>
         )}
       </div>
 
-      <div className="mac-card-title">Default target</div>
+      <div className="mac-card-title">{t("defaultTarget.card")}</div>
       <div className="mac-card">
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
           <div className="grow">
-            <div className="mac-row-label">Default target</div>
+            <div className="mac-row-label">{t("defaultTarget.label")}</div>
             <div
               className="mac-muted"
               style={{ fontSize: 11.5, marginTop: 2 }}
             >
-              Where to open links when <strong>no rule matches</strong>.
-              Changing this rewrites the config file.
+              <Trans
+                i18nKey="defaultTarget.description"
+                ns="settings"
+                components={{ strong: <strong /> }}
+              />
             </div>
           </div>
           {doc ? (
@@ -321,22 +335,28 @@ export function SettingsPage({
               />
             </div>
           ) : (
-            <span className="mac-muted">Loading…</span>
+            <span className="mac-muted">{t("common:status.loading", "Loading…")}</span>
           )}
         </div>
       </div>
 
-      <div className="mac-card-title">Appearance</div>
+      <div className="mac-card-title">{t("appearance.card")}</div>
       <div className="mac-card">
         <div className="mac-row">
           <span className="grow mac-row-label">
-            Theme
+            {t("appearance.themeLabel")}
             {themeMode === "system" && (
               <span
                 className="mac-muted"
                 style={{ marginLeft: 6, fontSize: 11.5 }}
               >
-                — currently <span className="mac-mono">{themeActive}</span>
+                {" "}
+                <Trans
+                  i18nKey="appearance.themeCurrent"
+                  ns="settings"
+                  values={{ value: themeActive }}
+                  components={{ code: <span className="mac-mono" /> }}
+                />
               </span>
             )}
           </span>
@@ -348,9 +368,38 @@ export function SettingsPage({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="system">System</SelectItem>
-              <SelectItem value="light">Light</SelectItem>
-              <SelectItem value="dark">Dark</SelectItem>
+              <SelectItem value="system">{t("appearance.themeSystem")}</SelectItem>
+              <SelectItem value="light">{t("appearance.themeLight")}</SelectItem>
+              <SelectItem value="dark">{t("appearance.themeDark")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="mac-row">
+          <span className="grow">
+            <span className="mac-row-label">{t("appearance.languageLabel")}</span>
+            <div
+              className="mac-muted"
+              style={{ fontSize: 11.5, marginTop: 2 }}
+            >
+              {t("appearance.languageDescription")}
+            </div>
+          </span>
+          <Select
+            value={doc?.settings.language ?? "system"}
+            onValueChange={(v) => void changeLanguage(v as LanguagePref)}
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="system">
+                {t("appearance.languageSystem")}
+              </SelectItem>
+              {SUPPORTED_LANGUAGES.map((code) => (
+                <SelectItem key={code} value={code}>
+                  {LANGUAGE_LABELS[code]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -359,15 +408,12 @@ export function SettingsPage({
           style={{ alignItems: "flex-start", flexDirection: "column", gap: 4 }}
         >
           <div style={{ width: "100%" }}>
-            <div className="mac-row-label">Browser picker style</div>
+            <div className="mac-row-label">{t("appearance.pickerStyleLabel")}</div>
             <div
               className="mac-muted"
               style={{ fontSize: 11.5, marginTop: 2 }}
             >
-              The wheel that appears for Ask rules. Hold ⌥ over a
-              multi-profile browser in the picker to summon it. Click a
-              preview below to switch — the change applies the next time
-              the picker opens.
+              {t("appearance.pickerStyleDescription")}
             </div>
           </div>
           <PickerStyleChooser
@@ -380,13 +426,12 @@ export function SettingsPage({
           style={{ alignItems: "flex-start", flexDirection: "column", gap: 4 }}
         >
           <div style={{ width: "100%" }}>
-            <div className="mac-row-label">Profile order</div>
+            <div className="mac-row-label">{t("appearance.profileOrderLabel")}</div>
             <div
               className="mac-muted"
               style={{ fontSize: 11.5, marginTop: 2 }}
             >
-              Customize which profiles appear in the Halo wheel and the order
-              they occupy. Position 1–9 maps to keyboard shortcuts.
+              {t("appearance.profileOrderDescription")}
             </div>
           </div>
           <ProfileOrderEditor
@@ -397,16 +442,16 @@ export function SettingsPage({
         </div>
       </div>
 
-      <div className="mac-card-title">General</div>
+      <div className="mac-card-title">{t("general.card")}</div>
       <div className="mac-card">
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
           <div className="grow">
-            <div className="mac-row-label">Updates</div>
+            <div className="mac-row-label">{t("general.updatesLabel")}</div>
             <div
               className="mac-muted"
               style={{ fontSize: 11.5, marginTop: 2 }}
             >
-              {describeUpdateCheck(updateCheck)}
+              {describeUpdateCheck(t, updateCheck)}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -420,10 +465,10 @@ export function SettingsPage({
               }
             >
               {updateCheck.status === "checking"
-                ? "Checking…"
+                ? t("general.checking")
                 : updateCheck.status === "downloading"
-                  ? "Downloading…"
-                  : "Check now"}
+                  ? t("general.downloading")
+                  : t("general.checkNow")}
             </button>
             {updateCheck.status === "downloaded" && (
               <button
@@ -431,7 +476,7 @@ export function SettingsPage({
                 className="mac-tbtn primary"
                 onClick={() => void openDownloadedInstaller()}
               >
-                Open installer
+                {t("general.openInstaller")}
               </button>
             )}
             {updateCheck.status === "error" && updateCheck.result && (
@@ -440,15 +485,13 @@ export function SettingsPage({
                 className="mac-tbtn"
                 onClick={() => void openReleasePage()}
               >
-                Open release
+                {t("general.openRelease")}
               </button>
             )}
           </div>
         </div>
         <div className="mac-row">
-          <span className="grow mac-row-label">
-            Automatically check and download updates
-          </span>
+          <span className="grow mac-row-label">{t("general.autoUpdate")}</span>
           <button
             type="button"
             className={`mac-switch accent ${doc?.settings.auto_check_updates ? "on" : ""}`}
@@ -459,7 +502,7 @@ export function SettingsPage({
           />
         </div>
         <div className="mac-row">
-          <span className="grow mac-row-label">Launch at login</span>
+          <span className="grow mac-row-label">{t("general.launchAtLogin")}</span>
           <button
             type="button"
             className={`mac-switch accent ${doc?.settings.launch_at_login ? "on" : ""}`}
@@ -468,7 +511,7 @@ export function SettingsPage({
           />
         </div>
         <div className="mac-row">
-          <span className="grow mac-row-label">Configuration file</span>
+          <span className="grow mac-row-label">{t("general.configFile")}</span>
           <span
             className="select-text mac-mono mac-muted"
             style={{ fontSize: 11 }}
@@ -479,7 +522,7 @@ export function SettingsPage({
         </div>
       </div>
 
-      <div className="mac-card-title">Background service</div>
+      <div className="mac-card-title">{t("daemon.card")}</div>
       <div className="mac-card">
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
           <div className="grow">
@@ -487,13 +530,14 @@ export function SettingsPage({
               <span className="mac-mono">linkpilot-daemon</span>
               {daemonStatus?.loaded && (
                 <span className="mac-tag ok" style={{ marginLeft: 8 }}>
-                  running
-                  {daemonStatus.pid ? ` · pid ${daemonStatus.pid}` : ""}
+                  {daemonStatus.pid
+                    ? t("daemon.tagRunningWithPid", { pid: daemonStatus.pid })
+                    : t("daemon.tagRunning")}
                 </span>
               )}
               {daemonStatus?.plist_exists && !daemonStatus.loaded && (
                 <span className="mac-tag" style={{ marginLeft: 8 }}>
-                  installed · not loaded
+                  {t("daemon.tagInstalledNotLoaded")}
                 </span>
               )}
             </div>
@@ -503,9 +547,9 @@ export function SettingsPage({
             >
               {daemonStatus?.bundled_path
                 ? daemonStatus.plist_exists
-                  ? `LaunchAgent loads at every login. GUI runs in "${daemonStatus.gui_mode}" mode.`
-                  : "Install the LaunchAgent so the router keeps working when LinkPilot.app is closed."
-                : "No bundled daemon found — you're on a dev build. Releases ship the daemon embedded in the .app."}
+                  ? t("daemon.descLoaded", { mode: daemonStatus.gui_mode })
+                  : t("daemon.descInstall")
+                : t("daemon.descDev")}
             </div>
           </div>
           {daemonStatus?.plist_exists ? (
@@ -514,7 +558,7 @@ export function SettingsPage({
               className="mac-tbtn"
               onClick={uninstallDaemonService}
             >
-              Uninstall
+              {t("daemon.uninstall")}
             </button>
           ) : (
             <button
@@ -523,13 +567,13 @@ export function SettingsPage({
               onClick={installDaemonService}
               disabled={!daemonStatus?.bundled_path}
             >
-              Install background service
+              {t("daemon.install")}
             </button>
           )}
         </div>
         {daemonStatus?.bundled_path && (
           <div className="mac-row">
-            <span className="grow mac-row-label">Bundled at</span>
+            <span className="grow mac-row-label">{t("daemon.bundledAt")}</span>
             <span
               className="select-text mac-mono mac-muted"
               style={{ fontSize: 11 }}
@@ -540,15 +584,19 @@ export function SettingsPage({
         )}
       </div>
 
-      <div className="mac-card-title">Command-line tool</div>
+      <div className="mac-card-title">{t("cli.card")}</div>
       <div className="mac-card">
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
           <div className="grow">
             <div className="mac-row-label">
-              <span className="mac-mono">lpt</span> CLI
+              <Trans
+                i18nKey="cli.label"
+                ns="settings"
+                components={{ code: <span className="mac-mono" /> }}
+              />
               {cliStatus?.already_installed && (
                 <span className="mac-tag ok" style={{ marginLeft: 8 }}>
-                  installed
+                  {t("cli.tagInstalled")}
                 </span>
               )}
             </div>
@@ -557,8 +605,8 @@ export function SettingsPage({
               style={{ fontSize: 11.5, marginTop: 2 }}
             >
               {cliStatus?.bundled_path
-                ? "The bundled binary lives inside this .app. Installing creates a symlink at ~/.local/bin/lpt so `lpt` works from any shell."
-                : "No bundled `lpt` found — you're on a dev build. Releases ship the CLI embedded in the .app."}
+                ? t("cli.descBundled")
+                : t("cli.descDev")}
             </div>
           </div>
           <button
@@ -568,13 +616,13 @@ export function SettingsPage({
             disabled={!cliStatus?.bundled_path}
           >
             {cliStatus?.already_installed
-              ? "Reinstall"
-              : "Install to ~/.local/bin"}
+              ? t("cli.reinstall")
+              : t("cli.install")}
           </button>
         </div>
         {cliStatus?.bundled_path && (
           <div className="mac-row">
-            <span className="grow mac-row-label">Bundled at</span>
+            <span className="grow mac-row-label">{t("cli.bundledAt")}</span>
             <span
               className="select-text mac-mono mac-muted"
               style={{ fontSize: 11 }}
@@ -585,16 +633,16 @@ export function SettingsPage({
         )}
       </div>
 
-      <div className="mac-card-title">Import / Export</div>
+      <div className="mac-card-title">{t("io.card")}</div>
       <div className="mac-card mac-card-pad" style={{ display: "grid", gap: 12 }}>
         <div>
           <div className="mac-muted" style={{ fontSize: 11, marginBottom: 4 }}>
-            Import config from path
+            {t("io.importLabel")}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <Input
               value={importPath}
-              placeholder="/absolute/path/to/some.json"
+              placeholder={t("io.importPlaceholder")}
               onChange={(e) => setImportPath(e.target.value)}
             />
             <Button
@@ -602,18 +650,18 @@ export function SettingsPage({
               onClick={doImport}
               disabled={!importPath}
             >
-              Import
+              {t("io.importButton")}
             </Button>
           </div>
         </div>
         <div>
           <div className="mac-muted" style={{ fontSize: 11, marginBottom: 4 }}>
-            Export config to path
+            {t("io.exportLabel")}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <Input
               value={exportPath}
-              placeholder="/absolute/path/to/save.json"
+              placeholder={t("io.exportPlaceholder")}
               onChange={(e) => setExportPath(e.target.value)}
             />
             <Button
@@ -621,7 +669,7 @@ export function SettingsPage({
               onClick={doExport}
               disabled={!exportPath}
             >
-              Export
+              {t("io.exportButton")}
             </Button>
           </div>
         </div>
@@ -630,7 +678,7 @@ export function SettingsPage({
       {message && (
         <div className="mac-card">
           <div className="mac-row">
-            <span className="mac-tag ok">info</span>
+            <span className="mac-tag ok">{t("feedback.infoTag")}</span>
             <span className="grow mac-muted">{message}</span>
           </div>
         </div>
@@ -638,7 +686,7 @@ export function SettingsPage({
       {error && (
         <div className="mac-card">
           <div className="mac-row">
-            <span className="mac-tag danger">error</span>
+            <span className="mac-tag danger">{t("feedback.errorTag")}</span>
             <span className="grow mac-muted">{error}</span>
           </div>
         </div>
@@ -647,23 +695,36 @@ export function SettingsPage({
   );
 }
 
-function describeUpdateCheck(state: UpdateCheckState): string {
+function describeUpdateCheck(
+  t: TFunction<"settings">,
+  state: UpdateCheckState,
+): string {
   switch (state.status) {
     case "idle":
-      return "No update check has run in this session.";
+      return t("updateState.idle");
     case "checking":
-      return "Checking GitHub Releases…";
+      return t("updateState.checking");
     case "downloading":
-      return `Version ${displayVersion(state.result.latestVersion)} is available. Downloading ${state.result.asset.name}…`;
+      return t("updateState.downloading", {
+        version: displayVersion(state.result.latestVersion),
+        asset: state.result.asset.name,
+      });
     case "downloaded":
-      return `Version ${displayVersion(state.result.latestVersion)} is downloaded. Click Open installer to upgrade.`;
+      return t("updateState.downloaded", {
+        version: displayVersion(state.result.latestVersion),
+      });
     case "up-to-date":
-      return `LinkPilot is up to date at ${displayVersion(state.result.currentVersion)}.`;
+      return t("updateState.upToDate", {
+        version: displayVersion(state.result.currentVersion),
+      });
     case "error":
       if (state.result?.available) {
-        return `Version ${displayVersion(state.result.latestVersion)} is available, but the installer download failed: ${state.error}`;
+        return t("updateState.errorWithVersion", {
+          version: displayVersion(state.result.latestVersion),
+          error: state.error,
+        });
       }
-      return `Update check failed: ${state.error}`;
+      return t("updateState.errorPlain", { error: state.error });
   }
 }
 
