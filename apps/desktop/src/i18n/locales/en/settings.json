@@ -1,0 +1,100 @@
+{
+  "title": "Settings",
+  "subtitle": "Default browser, autostart, appearance, and config IO.",
+  "defaultBrowser": {
+    "card": "Default browser",
+    "isDefault": "LinkPilot is the system default browser",
+    "isNotDefault": "LinkPilot is not the default browser",
+    "summary": "All URLs route through LinkPilot's rules engine.",
+    "tagLoading": "…",
+    "tagActive": "active",
+    "tagNotSet": "not set",
+    "hint": "macOS will prompt to confirm. On Windows you'll be sent to Settings → Default apps.",
+    "change": "Change…",
+    "successDefault": "Set successfully. macOS may show a confirmation dialog.",
+    "successOther": "Please finish the default-browser switch in System Settings.",
+    "successOtherWithUrl": "Open {{url}} to finish setting LinkPilot as default.",
+    "unsupported": "This platform doesn't expose a programmatic 'set default'."
+  },
+  "defaultTarget": {
+    "card": "Default target",
+    "label": "Default target",
+    "description": "Where to open links when <strong>no rule matches</strong>. Changing this rewrites the config file."
+  },
+  "appearance": {
+    "card": "Appearance",
+    "themeLabel": "Theme",
+    "themeCurrent": "— currently <code>{{value}}</code>",
+    "themeSystem": "System",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "languageLabel": "Language",
+    "languageDescription": "Display language for the LinkPilot UI. The picker window picks this up the next time it opens.",
+    "languageSystem": "System",
+    "pickerStyleLabel": "Browser picker style",
+    "pickerStyleDescription": "The wheel that appears for Ask rules. Hold ⌥ over a multi-profile browser in the picker to summon it. Click a preview below to switch — the change applies the next time the picker opens.",
+    "profileOrderLabel": "Profile order",
+    "profileOrderDescription": "Customize which profiles appear in the Halo wheel and the order they occupy. Position 1–9 maps to keyboard shortcuts."
+  },
+  "general": {
+    "card": "General",
+    "updatesLabel": "Updates",
+    "checkNow": "Check now",
+    "checking": "Checking…",
+    "downloading": "Downloading…",
+    "openInstaller": "Open installer",
+    "openRelease": "Open release",
+    "autoUpdate": "Automatically check and download updates",
+    "launchAtLogin": "Launch at login",
+    "configFile": "Configuration file"
+  },
+  "daemon": {
+    "card": "Background service",
+    "tagRunning": "running",
+    "tagRunningWithPid": "running · pid {{pid}}",
+    "tagInstalledNotLoaded": "installed · not loaded",
+    "descLoaded": "LaunchAgent loads at every login. GUI runs in \"{{mode}}\" mode.",
+    "descInstall": "Install the LaunchAgent so the router keeps working when LinkPilot.app is closed.",
+    "descDev": "No bundled daemon found — you're on a dev build. Releases ship the daemon embedded in the .app.",
+    "uninstall": "Uninstall",
+    "install": "Install background service",
+    "successInstalled": "Background service installed. The daemon will start now and on every login.",
+    "successUninstalled": "Background service removed. The daemon won't auto-start anymore.",
+    "bundledAt": "Bundled at"
+  },
+  "cli": {
+    "card": "Command-line tool",
+    "label": "<code>lpt</code> CLI",
+    "tagInstalled": "installed",
+    "descBundled": "The bundled binary lives inside this .app. Installing creates a symlink at ~/.local/bin/lpt so `lpt` works from any shell.",
+    "descDev": "No bundled `lpt` found — you're on a dev build. Releases ship the CLI embedded in the .app.",
+    "reinstall": "Reinstall",
+    "install": "Install to ~/.local/bin",
+    "bundledAt": "Bundled at",
+    "successInstalled": "Installed: {{path}}. Add ~/.local/bin to your PATH if it isn't already."
+  },
+  "io": {
+    "card": "Import / Export",
+    "importLabel": "Import config from path",
+    "importPlaceholder": "/absolute/path/to/some.json",
+    "importButton": "Import",
+    "exportLabel": "Export config to path",
+    "exportPlaceholder": "/absolute/path/to/save.json",
+    "exportButton": "Export",
+    "successImported": "Imported {{path}}",
+    "successExported": "Exported to {{path}}"
+  },
+  "feedback": {
+    "infoTag": "info",
+    "errorTag": "error"
+  },
+  "updateState": {
+    "idle": "No update check has run in this session.",
+    "checking": "Checking GitHub Releases…",
+    "downloading": "Version {{version}} is available. Downloading {{asset}}…",
+    "downloaded": "Version {{version}} is downloaded. Click Open installer to upgrade.",
+    "upToDate": "LinkPilot is up to date at {{version}}.",
+    "errorWithVersion": "Version {{version}} is available, but the installer download failed: {{error}}",
+    "errorPlain": "Update check failed: {{error}}"
+  }
+}

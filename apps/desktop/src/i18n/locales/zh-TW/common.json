@@ -1,0 +1,32 @@
+{
+  "actions": {
+    "save": "儲存",
+    "cancel": "取消",
+    "delete": "刪除",
+    "reset": "重設",
+    "import": "匯入",
+    "export": "匯出",
+    "close": "關閉",
+    "open": "開啟",
+    "add": "新增",
+    "remove": "移除",
+    "edit": "編輯",
+    "configure": "設定",
+    "test": "測試",
+    "retry": "重試"
+  },
+  "status": {
+    "loading": "載入中…",
+    "saving": "儲存中…",
+    "saved": "已儲存",
+    "pending": "等待中",
+    "unavailable": "無法使用"
+  },
+  "toggle": {
+    "on": "開",
+    "off": "關"
+  },
+  "errors": {
+    "generic": "發生錯誤：{{message}}"
+  }
+}

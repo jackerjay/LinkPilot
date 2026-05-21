@@ -1,0 +1,20 @@
+{
+  "tabs": {
+    "overview": "概览",
+    "rules": "规则",
+    "testUrl": "测试链接",
+    "inspector": "Inspector",
+    "browsers": "浏览器",
+    "settings": "设置"
+  },
+  "sidebar": {
+    "workspaces": "工作空间",
+    "workspaceOpenTitle": "打开「{{name}}」工作空间",
+    "daemon": "Daemon",
+    "workspaceFallbackTitle": "工作空间"
+  },
+  "updates": {
+    "tag": "更新",
+    "checksumMissing": "该发行版缺少 macOS DMG 的 checksums.txt 校验项；拒绝自动下载未经校验的安装包。"
+  }
+}

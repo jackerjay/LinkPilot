@@ -1,0 +1,100 @@
+{
+  "title": "設定",
+  "subtitle": "既定のブラウザ、自動起動、外観、設定のインポート／エクスポート。",
+  "defaultBrowser": {
+    "card": "既定のブラウザ",
+    "isDefault": "LinkPilot はシステムの既定のブラウザです",
+    "isNotDefault": "LinkPilot は既定のブラウザではありません",
+    "summary": "すべての URL は LinkPilot のルールエンジンを経由します。",
+    "tagLoading": "…",
+    "tagActive": "有効",
+    "tagNotSet": "未設定",
+    "hint": "macOS は確認ダイアログを表示します。Windows では「設定 → 既定のアプリ」にリダイレクトされます。",
+    "change": "変更…",
+    "successDefault": "設定しました。macOS が確認ダイアログを表示する場合があります。",
+    "successOther": "「システム設定」で既定のブラウザの切り替えを完了してください。",
+    "successOtherWithUrl": "{{url}} を開いて LinkPilot を既定のブラウザに設定してください。",
+    "unsupported": "このプラットフォームでは既定のブラウザをプログラムから設定できません。"
+  },
+  "defaultTarget": {
+    "card": "既定のターゲット",
+    "label": "既定のターゲット",
+    "description": "<strong>どのルールにも一致しない</strong>とき、リンクを開く場所。変更すると設定ファイルが書き換えられます。"
+  },
+  "appearance": {
+    "card": "外観",
+    "themeLabel": "テーマ",
+    "themeCurrent": "— 現在 <code>{{value}}</code>",
+    "themeSystem": "システムに合わせる",
+    "themeLight": "ライト",
+    "themeDark": "ダーク",
+    "languageLabel": "言語",
+    "languageDescription": "LinkPilot UI の表示言語。Picker ウィンドウは次に開いたときにこの設定を読み込みます。",
+    "languageSystem": "システムに合わせる",
+    "pickerStyleLabel": "Picker スタイル",
+    "pickerStyleDescription": "Ask ルールで表示されるホイール。picker で複数 profile のブラウザに ⌥ を押しながらホバーすると呼び出せます。下のプレビューをクリックして切り替え —— 変更は次に picker を開いたときに反映されます。",
+    "profileOrderLabel": "Profile の順序",
+    "profileOrderDescription": "Halo ホイールに表示する profile と並び順をカスタマイズします。位置 1–9 はキーボードショートカットに対応します。"
+  },
+  "general": {
+    "card": "一般",
+    "updatesLabel": "更新",
+    "checkNow": "今すぐ確認",
+    "checking": "確認中…",
+    "downloading": "ダウンロード中…",
+    "openInstaller": "インストーラーを開く",
+    "openRelease": "リリースページを開く",
+    "autoUpdate": "更新を自動でチェックしてダウンロード",
+    "launchAtLogin": "ログイン時に起動",
+    "configFile": "設定ファイル"
+  },
+  "daemon": {
+    "card": "バックグラウンドサービス",
+    "tagRunning": "実行中",
+    "tagRunningWithPid": "実行中 · pid {{pid}}",
+    "tagInstalledNotLoaded": "インストール済み · 未ロード",
+    "descLoaded": "LaunchAgent はログインごとに自動でロードされます。GUI 実行モード：「{{mode}}」。",
+    "descInstall": "LaunchAgent をインストールして、LinkPilot.app を閉じてもルーティングを継続させます。",
+    "descDev": "バンドルされた daemon が見つかりません —— 開発ビルドです。リリース版は daemon が .app に同梱されます。",
+    "uninstall": "アンインストール",
+    "install": "バックグラウンドサービスをインストール",
+    "successInstalled": "バックグラウンドサービスをインストールしました。Daemon はすぐに起動し、以後ログイン時に自動起動します。",
+    "successUninstalled": "バックグラウンドサービスを削除しました。Daemon は自動起動しません。",
+    "bundledAt": "バンドル場所"
+  },
+  "cli": {
+    "card": "コマンドラインツール",
+    "label": "<code>lpt</code> CLI",
+    "tagInstalled": "インストール済み",
+    "descBundled": "バイナリは .app 内に同梱されています。インストールすると ~/.local/bin/lpt にシンボリックリンクが作成され、どのシェルからでも `lpt` が使えます。",
+    "descDev": "バンドルされた `lpt` が見つかりません —— 開発ビルドです。リリース版は CLI が .app に同梱されます。",
+    "reinstall": "再インストール",
+    "install": "~/.local/bin にインストール",
+    "bundledAt": "バンドル場所",
+    "successInstalled": "インストールしました：{{path}}。~/.local/bin が PATH に含まれていない場合は追加してください。"
+  },
+  "io": {
+    "card": "インポート / エクスポート",
+    "importLabel": "パスから設定をインポート",
+    "importPlaceholder": "/絶対パス/some.json",
+    "importButton": "インポート",
+    "exportLabel": "パスに設定をエクスポート",
+    "exportPlaceholder": "/絶対パス/save.json",
+    "exportButton": "エクスポート",
+    "successImported": "{{path}} をインポートしました",
+    "successExported": "{{path}} にエクスポートしました"
+  },
+  "feedback": {
+    "infoTag": "情報",
+    "errorTag": "エラー"
+  },
+  "updateState": {
+    "idle": "このセッションではまだ更新チェックを実行していません。",
+    "checking": "GitHub Releases を確認中…",
+    "downloading": "バージョン {{version}} が利用可能です。{{asset}} をダウンロード中…",
+    "downloaded": "{{version}} をダウンロードしました。「インストーラーを開く」をクリックしてアップグレード。",
+    "upToDate": "LinkPilot は {{version}} で最新の状態です。",
+    "errorWithVersion": "バージョン {{version}} が利用可能ですが、インストーラーのダウンロードに失敗しました：{{error}}",
+    "errorPlain": "更新チェックに失敗しました：{{error}}"
+  }
+}

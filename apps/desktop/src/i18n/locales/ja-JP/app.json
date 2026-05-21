@@ -1,0 +1,20 @@
+{
+  "tabs": {
+    "overview": "概要",
+    "rules": "ルール",
+    "testUrl": "URL テスト",
+    "inspector": "Inspector",
+    "browsers": "ブラウザ",
+    "settings": "設定"
+  },
+  "sidebar": {
+    "workspaces": "ワークスペース",
+    "workspaceOpenTitle": "「{{name}}」ワークスペースを開く",
+    "daemon": "Daemon",
+    "workspaceFallbackTitle": "ワークスペース"
+  },
+  "updates": {
+    "tag": "更新",
+    "checksumMissing": "このリリースには macOS DMG の checksums.txt エントリがないため、未検証のインストーラーの自動ダウンロードを拒否しました。"
+  }
+}
