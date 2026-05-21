@@ -46,9 +46,7 @@ pub fn execute(
     // Avoid deep-cloning the entire ConfigDocument just to read the
     // default target. dispatch::execute runs once per URL open, which
     // for power users routing many links a minute adds up.
-    let default_target = state
-        .config
-        .with_document(|doc| doc.default_target.clone());
+    let default_target = state.config.with_document(|doc| doc.default_target.clone());
 
     match decision {
         RoutingDecision::Open { target, .. } => {
