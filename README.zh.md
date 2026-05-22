@@ -31,13 +31,25 @@ LinkPilot 当前聚焦 macOS。
 当前应用包含：
 
 - 按 host、path、来源应用、来源浏览器、来源 profile 路由 URL。
-- Chrome 系浏览器、Arc、Firefox、Safari 和自定义浏览器的识别与 profile 枚举。
+- 常见 Chromium / Firefox 系浏览器、Arc、Safari 类应用路由和自定义浏览器的识别与 profile 枚举。
 - Ask picker：Halo profile 选择环（Frosted / Bezel / Crown 三种风格）、键盘快捷键、每浏览器 profile 排序、暗色模式，以及 Settings 里的真实测试 URL。
 - 界面语言支持 English、简体中文、繁體中文、日本語，并可选择跟随系统语言。
 - 自动检查 GitHub Release 更新，下载的 DMG 会校验 SHA-256，再由用户在 Settings 中手动打开安装包。
 - 后台 daemon 与 Unix socket IPC，主窗口关闭后仍可继续路由。
 - 菜单栏托盘、Inspector、Test URL 模拟器、浏览器管理、Settings 和 onboarding。
 - `lpt` CLI：打开 URL、管理规则、查看配置、安装 daemon、检查默认浏览器状态。
+
+## 支持浏览器
+
+在 macOS 上，LinkPilot 会自动识别已安装的以下浏览器：
+
+- 支持 profile 枚举的 Chromium 系：Google Chrome、Microsoft Edge、Brave Browser、
+  Vivaldi、Opera、Opera GX、Dia、ChatGPT Atlas、Perplexity Comet、Yandex Browser、
+  Naver Whale。
+- 支持 profile 枚举的 Firefox 系：Firefox、Zen Browser、LibreWolf、Waterfox、Floorp、
+  Mullvad Browser、Tor Browser。
+- 以应用路由为主：Arc、Safari、Orion、DuckDuckGo Browser 和自定义浏览器。Arc
+  可读取 profile 数据用于 picker 展示，但外部 Space/profile 选择仍交给 Arc 自己处理。
 
 ## 安装
 

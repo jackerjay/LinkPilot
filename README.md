@@ -33,8 +33,8 @@ The current app includes:
 
 - Rule-based URL routing by host, path, source app, source browser, and source
   profile.
-- Browser/profile inventory for Chrome-family browsers, Arc, Firefox, Safari,
-  and custom browser entries.
+- Browser/profile inventory for common Chromium and Firefox-family browsers,
+  Arc, Safari-like app routing, and custom browser entries.
 - Ask picker with Halo profile wheel (Frosted / Bezel / Crown styles),
   keyboard shortcuts, per-browser profile ordering, dark mode, and a
   Settings test URL flow that opens real browsers.
@@ -48,6 +48,19 @@ The current app includes:
   onboarding.
 - `lpt` CLI for opening URLs, managing rules, inspecting config, installing
   the daemon, and checking default-browser state.
+
+## Supported Browsers
+
+On macOS, LinkPilot auto-detects these installed browsers:
+
+- Chromium profile-capable: Google Chrome, Microsoft Edge, Brave Browser,
+  Vivaldi, Opera, Opera GX, Dia, ChatGPT Atlas, Perplexity Comet, Yandex
+  Browser, and Naver Whale.
+- Firefox profile-capable: Firefox, Zen Browser, LibreWolf, Waterfox, Floorp,
+  Mullvad Browser, and Tor Browser.
+- App-routing focused: Arc, Safari, Orion, DuckDuckGo Browser, and custom
+  browser entries. Arc exposes profile data for picker display, but external
+  Space/profile selection is still owned by Arc.
 
 ## Install
 
