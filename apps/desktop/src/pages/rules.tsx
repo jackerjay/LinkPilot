@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { DragEvent, MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -17,7 +24,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
+// Lazy-load the JSON editor: CodeMirror + lang-json + lint adds ~140KB
+// gzipped that the user only needs when they expand "Advanced: raw JSON".
+const AdvancedJsonEditor = lazy(
+  () => import("@/components/AdvancedJsonEditor"),
+);
 import {
   Tooltip,
   TooltipContent,
@@ -452,7 +464,15 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
         </CardHeader>
         {showAdvanced && doc && (
           <CardContent>
-            <AdvancedJsonEditor doc={doc} onSaved={refresh} />
+            <Suspense
+              fallback={
+                <div className="text-xs text-muted-foreground py-8 text-center">
+                  {t("advanced.loadingEditor")}
+                </div>
+              }
+            >
+              <AdvancedJsonEditor doc={doc} onSaved={refresh} />
+            </Suspense>
           </CardContent>
         )}
       </Card>
@@ -707,66 +727,6 @@ function RuleRow({
           <TooltipContent>{t("row.deleteRule")}</TooltipContent>
         </Tooltip>
       )}
-    </div>
-  );
-}
-
-function AdvancedJsonEditor({
-  doc,
-  onSaved,
-}: {
-  doc: ConfigDocument;
-  onSaved: () => Promise<void>;
-}) {
-  const { t } = useTranslation("rules");
-  const [draft, setDraft] = useState(() => JSON.stringify(doc, null, 2));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDraft(JSON.stringify(doc, null, 2));
-  }, [doc]);
-
-  const save = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const parsed = JSON.parse(draft) as ConfigDocument;
-      await ipc.configReplace(parsed);
-      await onSaved();
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <Textarea
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        spellCheck={false}
-        rows={16}
-      />
-      {error && (
-        <div className="flex items-center gap-2">
-          <Badge variant="destructive">{t("advanced.errorTag")}</Badge>
-          <span className="text-xs text-muted-foreground">{error}</span>
-        </div>
-      )}
-      <div className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          onClick={() => setDraft(JSON.stringify(doc, null, 2))}
-          disabled={busy}
-        >
-          {t("advanced.revert")}
-        </Button>
-        <Button onClick={save} disabled={busy}>
-          {busy ? t("advanced.saving") : t("advanced.save")}
-        </Button>
-      </div>
     </div>
   );
 }
