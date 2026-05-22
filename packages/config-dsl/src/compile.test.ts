@@ -56,6 +56,29 @@ describe("compile()", () => {
     });
   });
 
+  test("expanded browser shortcuts serialise to stable ids", () => {
+    for (const [id, target] of [
+      ["vivaldi", browser.vivaldi()],
+      ["opera", browser.opera()],
+      ["opera-gx", browser.operaGx()],
+      ["dia", browser.dia()],
+      ["atlas", browser.atlas()],
+      ["comet", browser.comet()],
+      ["zen", browser.zen()],
+      ["orion", browser.orion()],
+      ["duckduckgo", browser.duckduckgo()],
+      ["librewolf", browser.librewolf()],
+      ["waterfox", browser.waterfox()],
+      ["floorp", browser.floorp()],
+      ["mullvad-browser", browser.mullvad()],
+      ["tor-browser", browser.tor()],
+      ["yandex", browser.yandex()],
+      ["whale", browser.whale()],
+    ] as const) {
+      expect(target.toJSON().browser).toBe(id);
+    }
+  });
+
   test("rules stamp source: ts-compiled + random v4 UUIDs", () => {
     const out = compile(
       defineConfig({
@@ -244,10 +267,10 @@ describe("compile()", () => {
     expect(out.rules[0]!.when).toEqual({ op: "url-host", pattern: "example.com" });
   });
 
-  test("v0.1 demo config: structurally equivalent to daemon's built-in demo", () => {
-    // The Rust ConfigDocument::demo() produces 4 rules: github/notion ->
-    // chrome.Default and figma/youtube -> arc. The DSL version below
-    // must produce the same shape (modulo random UUIDs and source).
+  test("v0.1 demo config: structurally equivalent rule set", () => {
+    // The demo rule set routes github/notion -> chrome.Default and
+    // figma/youtube -> arc. The DSL version below must produce the same
+    // shape (modulo random UUIDs and source).
     const out = compile(
       defineConfig({
         defaultTarget: browser.arc(),
