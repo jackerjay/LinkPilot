@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Bolt, FileText, Globe, Layout } from "lucide-react";
+import { AlertTriangle, Bolt, FileText, Globe, Layout } from "lucide-react";
+import { AppIcon } from "@/components/AppIcon";
 import { BrowserBadge } from "@/components/BrowserBadge";
+import { TargetEditor } from "@/components/TargetEditor";
 import brandIcon from "@/assets/brand.png";
+import { appPathFromExecutable } from "@/lib/browsers";
 import { ipc, onRouteLogged } from "@/lib/ipc";
 import type {
+  BrowserTarget,
   ConfigDocument,
   DoctorReport,
+  InstalledBrowser,
   RouteRecord,
   RoutingDecision,
 } from "@/lib/types";
@@ -19,17 +24,23 @@ export function MenuBarPage({ configEpoch }: Props) {
   const { t } = useTranslation("menuBar");
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
   const [config, setConfig] = useState<ConfigDocument | null>(null);
+  const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
   const [recent, setRecent] = useState<RouteRecord[]>([]);
+  const [defaultTargetError, setDefaultTargetError] = useState<string | null>(
+    null,
+  );
 
   const refresh = useCallback(async () => {
-    const [d, c, h] = await Promise.all([
+    const [d, c, h, b] = await Promise.all([
       ipc.doctor(),
       ipc.configGet(),
       ipc.routeHistory(5),
+      ipc.listBrowsers().catch(() => [] as InstalledBrowser[]),
     ]);
     setDoctor(d);
     setConfig(c);
     setRecent(h);
+    setBrowsers(b);
   }, []);
 
   useEffect(() => {
@@ -55,6 +66,38 @@ export function MenuBarPage({ configEpoch }: Props) {
     /^linkpilot-daemon\s+/,
     "v",
   );
+  const defaultTargetAvailable =
+    !!config && browsers.some((b) => b.id === config.default_target.browser);
+  const needsDefaultTarget =
+    !!config &&
+    (config.default_target.browser === "system" || !defaultTargetAvailable);
+  const defaultTargetValue: BrowserTarget =
+    config && defaultTargetAvailable
+      ? config.default_target
+      : { browser: "", profile: null, incognito: false, new_window: false };
+
+  const updateDefaultTarget = async (next: BrowserTarget) => {
+    if (!config || !next.browser) return;
+    setDefaultTargetError(null);
+    try {
+      await ipc.configReplace({ ...config, default_target: next });
+      await refresh();
+    } catch (err) {
+      setDefaultTargetError(String(err));
+    }
+  };
+
+  if (needsDefaultTarget && config) {
+    return (
+      <SetupHero
+        config={config}
+        browsers={browsers}
+        defaultTargetValue={defaultTargetValue}
+        error={defaultTargetError}
+        onPick={(next) => void updateDefaultTarget(next)}
+      />
+    );
+  }
 
   return (
     <div>
@@ -274,6 +317,230 @@ export function DecisionPill({ decision }: { decision: RoutingDecision }) {
 // `DecisionLine` from this module. New code should use `DecisionPill`.
 export const DecisionLine = DecisionPill;
 
+interface SetupHeroProps {
+  config: ConfigDocument;
+  browsers: InstalledBrowser[];
+  defaultTargetValue: BrowserTarget;
+  error: string | null;
+  onPick: (next: BrowserTarget) => void;
+}
+
+function SetupHero({
+  config,
+  browsers,
+  defaultTargetValue,
+  error,
+  onPick,
+}: SetupHeroProps) {
+  const { t } = useTranslation("menuBar");
+  const hasBrowsers = browsers.length > 0;
+  const currentMissing =
+    config.default_target.browser !== "system" &&
+    !browsers.some((b) => b.id === config.default_target.browser);
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 14,
+        }}
+      >
+        <img
+          src={brandIcon}
+          width={40}
+          height={40}
+          alt="LinkPilot"
+          style={{
+            borderRadius: 9,
+            flex: "0 0 40px",
+            boxShadow: "0 0 0 0.5px rgba(0,0,0,0.08)",
+          }}
+        />
+        <div>
+          <h2 className="mac-h2" style={{ margin: 0 }}>
+            {t("setupDefaultTarget.heroTitle")}
+          </h2>
+          <p className="mac-subtitle" style={{ margin: "2px 0 0" }}>
+            {t("setupDefaultTarget.heroSubtitle")}
+          </p>
+        </div>
+      </div>
+
+      <div className="mac-card" style={{ padding: "14px 16px" }}>
+        {currentMissing && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 8,
+              padding: "10px 12px",
+              marginBottom: 12,
+              borderRadius: 8,
+              background:
+                "color-mix(in srgb, var(--mac-warn) 14%, transparent)",
+              color: "var(--mac-warn)",
+              fontSize: 12,
+            }}
+          >
+            <AlertTriangle size={14} strokeWidth={2} style={{ marginTop: 1 }} />
+            <span>
+              {t("setupDefaultTarget.currentMissing", {
+                browser: config.default_target.browser,
+              })}
+            </span>
+          </div>
+        )}
+
+        {hasBrowsers ? (
+          <>
+            <div
+              className="mac-row-label"
+              style={{ marginBottom: 8, fontSize: 12 }}
+            >
+              {t("setupDefaultTarget.quickPickLabel")}
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+                gap: 8,
+                marginBottom: 16,
+              }}
+            >
+              {browsers.map((b) => (
+                <QuickPickTile
+                  key={b.id}
+                  browser={b}
+                  onPick={() =>
+                    onPick({
+                      browser: b.id,
+                      profile: null,
+                      incognito: false,
+                      new_window: false,
+                    })
+                  }
+                />
+              ))}
+            </div>
+
+            <div
+              className="mac-row-label"
+              style={{ marginBottom: 8, fontSize: 12 }}
+            >
+              {t("setupDefaultTarget.advancedLabel")}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <TargetEditor
+                value={defaultTargetValue}
+                browsers={browsers}
+                onChange={onPick}
+              />
+            </div>
+          </>
+        ) : (
+          <div
+            className="mac-muted"
+            style={{ fontSize: 12, padding: "8px 0" }}
+          >
+            {t("setupDefaultTarget.noBrowsers")}
+          </div>
+        )}
+
+        {error && (
+          <div
+            style={{
+              color: "var(--mac-danger)",
+              fontSize: 11.5,
+              marginTop: 10,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 14,
+            paddingTop: 10,
+            borderTop: "0.5px solid var(--mac-border-soft)",
+            fontSize: 11.5,
+          }}
+        >
+          <span className="grow mac-muted">
+            {t("setupDefaultTarget.askFallback")}
+          </span>
+          <span className="mac-tag warn">{t("decision.ask")}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface QuickPickTileProps {
+  browser: InstalledBrowser;
+  onPick: () => void;
+}
+
+function QuickPickTile({ browser, onPick }: QuickPickTileProps) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "8px 10px",
+        borderRadius: 8,
+        border: "0.5px solid var(--mac-border-soft)",
+        background: "var(--mac-card-fill)",
+        color: "inherit",
+        cursor: "pointer",
+        textAlign: "left",
+        fontSize: 12.5,
+        width: "100%",
+        transition: "background 120ms ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background =
+          "color-mix(in srgb, var(--mac-card-fill) 88%, var(--mac-accent) 12%)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "var(--mac-card-fill)";
+      }}
+    >
+      <AppIcon
+        bundleId={browser.platform_app_id ?? undefined}
+        appPath={appPathFromExecutable(browser.executable)}
+        size={20}
+        alt={browser.display_name}
+      />
+      <span
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {browser.display_name}
+      </span>
+    </button>
+  );
+}
+
 function formatTimeAgo(
   t: (key: string, opts?: Record<string, unknown>) => string,
   ms: number,
@@ -284,4 +551,3 @@ function formatTimeAgo(
   if (s < 86400) return t("timeAgo.hours", { n: Math.round(s / 3600) });
   return t("timeAgo.days", { n: Math.round(s / 86400) });
 }
-

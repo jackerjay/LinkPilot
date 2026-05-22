@@ -426,12 +426,10 @@ mod tests {
 
     #[test]
     fn route_open_headless_errors_on_ask() {
-        // Demo config has no Ask rules, so we can't easily reach Ask via
-        // a real routing decision. Instead, test the path that's most
-        // exercised in the headless smoke tests: a URL that hits the
-        // default target (no rule) — StubProvider's launcher returns
-        // NotSupported, which the handler should surface as launch-failed
-        // (not crash, not silently succeed).
+        // Fresh demo configs intentionally leave the fallback target
+        // unconfigured (`system`). A no-rule URL therefore resolves to Ask.
+        // Headless mode has no GUI picker, so the daemon must surface a
+        // visible ask-unsupported error instead of pretending it launched.
         let rt = fixture();
         let resp = rt.handle(Request::RouteOpen {
             request_id: "ro".into(),
@@ -450,9 +448,9 @@ mod tests {
         });
         match resp {
             Response::Error { code, .. } => {
-                assert_eq!(code, "launch-failed", "StubProvider can't launch URLs");
+                assert_eq!(code, "ask-unsupported-headless");
             }
-            other => panic!("expected launch-failed Error, got {other:?}"),
+            other => panic!("expected ask-unsupported-headless Error, got {other:?}"),
         }
     }
 

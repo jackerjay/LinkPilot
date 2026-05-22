@@ -1,7 +1,7 @@
 //! Decision → action helper shared by every URL-launch entry point
 //! (system URL handler, `route_open` Tauri command, IPC RouteOpen).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use linkpilot_core::browser::{apply_profile_order, BrowserTarget};
 use linkpilot_core::platform::UrlLauncher;
@@ -29,6 +29,13 @@ pub enum LaunchOutcome {
     Failed(String),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OpenPlan {
+    Primary,
+    Default,
+    Ask,
+}
+
 /// Carry out the launch side of a routing decision. Pure plumbing — the
 /// decision is assumed already logged to history by the caller.
 pub fn execute(
@@ -50,63 +57,137 @@ pub fn execute(
 
     match decision {
         RoutingDecision::Open { target, .. } => {
-            match open_with_default_fallback(
-                state.platform.url_launcher(),
-                target,
-                &default_target,
-                &parsed,
-            ) {
-                Ok(launched) => LaunchOutcome::Launched(launched),
-                Err(err) => LaunchOutcome::Failed(err),
+            let installed_ids = installed_browser_ids(state);
+            match plan_open_target(target, &default_target, &installed_ids) {
+                OpenPlan::Primary => {
+                    let default_available = installed_ids.contains(&default_target.browser.0);
+                    if default_available || target.browser == default_target.browser {
+                        match open_with_default_fallback(
+                            state.platform.url_launcher(),
+                            target,
+                            &default_target,
+                            &parsed,
+                        ) {
+                            Ok(launched) => LaunchOutcome::Launched(launched),
+                            Err(err) => LaunchOutcome::Failed(err),
+                        }
+                    } else {
+                        match state.platform.url_launcher().open(target, &parsed) {
+                            Ok(()) => LaunchOutcome::Launched(target.clone()),
+                            Err(err) => {
+                                tracing::warn!(
+                                    error = %err,
+                                    primary = ?target,
+                                    default = ?default_target,
+                                    "dispatch: primary failed and default target is not installed — falling back to ask"
+                                );
+                                spawn_ask(app, state, &[], raw_url, &default_target)
+                            }
+                        }
+                    }
+                }
+                OpenPlan::Default => {
+                    match state.platform.url_launcher().open(&default_target, &parsed) {
+                        Ok(()) => LaunchOutcome::Launched(default_target.clone()),
+                        Err(err) => {
+                            tracing::warn!(
+                                error = %err,
+                                primary = ?target,
+                                default = ?default_target,
+                                "dispatch: unavailable primary fell back to default, but default launch failed — falling back to ask"
+                            );
+                            spawn_ask(app, state, &[], raw_url, &default_target)
+                        }
+                    }
+                }
+                OpenPlan::Ask => spawn_ask(app, state, &[], raw_url, &default_target),
             }
         }
 
         RoutingDecision::Ask { candidates, .. } => {
-            tracing::info!(
-                candidate_count = candidates.len(),
-                %raw_url,
-                "dispatch: ask — spawning picker thread"
-            );
-            // Detach to a worker thread: opening the picker window +
-            // blocking-recv on the user's pick would otherwise tie up
-            // the caller (main thread for deep-link callback / sync
-            // Tauri command), and then `picker_resolve` (also a sync
-            // command, also on main thread) could never run — classic
-            // deadlock that froze the UI for 60s on the first attempt.
-            let app = app.clone();
-            let state = state.clone();
-            let candidates = candidates.clone();
-            let url = raw_url.to_string();
-            std::thread::spawn(move || {
-                let target = match resolve_ask(&app, &state, &candidates, &url) {
-                    Some(t) => t,
-                    None => {
-                        tracing::info!("dispatch: ask cancelled");
-                        return;
-                    }
-                };
-                let parsed = match Url::parse(&url) {
-                    Ok(u) => u,
-                    Err(err) => {
-                        tracing::error!(?err, %url, "ask: bad URL after pick");
-                        return;
-                    }
-                };
-                tracing::info!(?target, "dispatch: ask resolved — launching");
-                if let Err(err) = open_with_default_fallback(
-                    state.platform.url_launcher(),
-                    &target,
-                    &default_target,
-                    &parsed,
-                ) {
-                    tracing::error!(err, "ask: launcher failed (default fallback exhausted)");
-                }
-            });
-            LaunchOutcome::Pending
+            spawn_ask(app, state, candidates, raw_url, &default_target)
         }
 
         RoutingDecision::Allow { .. } | RoutingDecision::Block { .. } => LaunchOutcome::Skipped,
     }
+}
+
+fn installed_browser_ids(state: &AppState) -> HashSet<String> {
+    state
+        .platform
+        .browser_inventory()
+        .installed_browsers()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|b| b.id.0)
+        .collect()
+}
+
+fn plan_open_target(
+    primary: &BrowserTarget,
+    default_target: &BrowserTarget,
+    installed_ids: &HashSet<String>,
+) -> OpenPlan {
+    if installed_ids.contains(&primary.browser.0) {
+        return OpenPlan::Primary;
+    }
+    if primary.browser != default_target.browser
+        && installed_ids.contains(&default_target.browser.0)
+    {
+        return OpenPlan::Default;
+    }
+    OpenPlan::Ask
+}
+
+fn spawn_ask(
+    app: &AppHandle,
+    state: &AppState,
+    candidates: &[BrowserTarget],
+    raw_url: &str,
+    default_target: &BrowserTarget,
+) -> LaunchOutcome {
+    tracing::info!(
+        candidate_count = candidates.len(),
+        %raw_url,
+        "dispatch: ask — spawning picker thread"
+    );
+    // Detach to a worker thread: opening the picker window +
+    // blocking-recv on the user's pick would otherwise tie up
+    // the caller (main thread for deep-link callback / sync
+    // Tauri command), and then `picker_resolve` (also a sync
+    // command, also on main thread) could never run — classic
+    // deadlock that froze the UI for 60s on the first attempt.
+    let app = app.clone();
+    let state = state.clone();
+    let candidates = candidates.to_vec();
+    let url = raw_url.to_string();
+    let default_target = default_target.clone();
+    std::thread::spawn(move || {
+        let target = match resolve_ask(&app, &state, &candidates, &url) {
+            Some(t) => t,
+            None => {
+                tracing::info!("dispatch: ask cancelled");
+                return;
+            }
+        };
+        let parsed = match Url::parse(&url) {
+            Ok(u) => u,
+            Err(err) => {
+                tracing::error!(?err, %url, "ask: bad URL after pick");
+                return;
+            }
+        };
+        tracing::info!(?target, "dispatch: ask resolved — launching");
+        if let Err(err) = open_with_default_fallback(
+            state.platform.url_launcher(),
+            &target,
+            &default_target,
+            &parsed,
+        ) {
+            tracing::error!(err, "ask: launcher failed (default fallback exhausted)");
+        }
+    });
+    LaunchOutcome::Pending
 }
 
 /// Try `primary`; on failure (e.g. the rule references a browser the
@@ -316,6 +397,40 @@ mod tests {
 
     fn url() -> Url {
         Url::parse("https://example.com/").unwrap()
+    }
+
+    fn installed(ids: &[&str]) -> HashSet<String> {
+        ids.iter().map(|id| (*id).to_string()).collect()
+    }
+
+    #[test]
+    fn open_plan_uses_primary_when_available() {
+        let primary = BrowserTarget::new(BrowserId::new("chrome"));
+        let default_target = BrowserTarget::new(BrowserId::new("safari"));
+        assert_eq!(
+            plan_open_target(&primary, &default_target, &installed(&["chrome"])),
+            OpenPlan::Primary
+        );
+    }
+
+    #[test]
+    fn open_plan_uses_default_when_primary_missing() {
+        let primary = BrowserTarget::new(BrowserId::new("arc"));
+        let default_target = BrowserTarget::new(BrowserId::new("safari"));
+        assert_eq!(
+            plan_open_target(&primary, &default_target, &installed(&["safari"])),
+            OpenPlan::Default
+        );
+    }
+
+    #[test]
+    fn open_plan_asks_when_primary_and_default_are_missing() {
+        let primary = BrowserTarget::new(BrowserId::new("arc"));
+        let default_target = BrowserTarget::new(BrowserId::new("system"));
+        assert_eq!(
+            plan_open_target(&primary, &default_target, &installed(&["chrome"])),
+            OpenPlan::Ask
+        );
     }
 
     #[test]

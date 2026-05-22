@@ -80,7 +80,7 @@ impl ConfigDocument {
 
         Self {
             version: SCHEMA_VERSION,
-            default_target: arc.clone(),
+            default_target: BrowserTarget::new(BrowserId::new("system")),
             rules: vec![
                 mk("github.com", chrome_work.clone()),
                 mk("notion.so", chrome_work.clone()),
