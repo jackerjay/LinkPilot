@@ -55,15 +55,23 @@
     "noProfiles": "プロファイルなし"
   },
   "step4": {
+    "title": "既定のブラウザを選択",
+    "body": "どのルールにも一致しないとき、LinkPilot はここへリンクを送ります。後から設定タブで変更できます。",
+    "scanning": "インストール済みブラウザをスキャン中...",
+    "noBrowsers": "ブラウザが検出されませんでした。このステップを後回しにして、概要タブから既定ターゲットを設定できます。",
+    "help": "ヒント: これはルーティングのフォールバックです。ステップ 2 は LinkPilot を macOS の既定にする設定で、別物です。"
+  },
+  "step5": {
     "title": "テンプレートから開始",
     "body": "4つのルールを用意しました。必要なものをオンにし、残りは後でルールタブから調整できます。",
-    "help": "ルールはいつでも編集、並べ替え、削除できます。"
+    "help": "ルールはいつでも編集、並べ替え、削除できます。",
+    "noTemplates": "検出されたブラウザと既存のスターターテンプレートが一致しません。後でルールタブから手動で追加できます。"
   },
   "templates": {
     "work": {
-      "label": "仕事 -> Chrome / Work",
+      "label": "仕事 -> {{browser}} / {{profile}}",
       "detail": "github.com、linear.app、notion.so、figma.com",
-      "note": "仕事用ツール -> Chrome / Work プロファイル"
+      "note": "仕事用ツール -> {{browser}} / {{profile}} プロファイル"
     },
     "oauth": {
       "label": "OAuth -> 元のブラウザを維持",
@@ -71,14 +79,14 @@
       "note": "OAuth リダイレクトは元のブラウザで完了させる必要があります"
     },
     "media": {
-      "label": "メディア -> Arc",
+      "label": "メディア -> {{browser}}",
       "detail": "youtube.com、twitch.tv",
-      "note": "ストリーミングメディア -> Arc"
+      "note": "ストリーミングメディア -> {{browser}}"
     },
     "banking": {
-      "label": "銀行 -> Safari",
+      "label": "銀行 -> {{browser}}",
       "detail": "個人の銀行サイトはキーチェーン利用のため Safari に残します",
-      "note": "銀行 -> Safari（キーチェーン）"
+      "note": "銀行 -> {{browser}}（キーチェーン）"
     }
   }
 }

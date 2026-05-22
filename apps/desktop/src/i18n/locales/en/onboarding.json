@@ -55,15 +55,23 @@
     "noProfiles": "No profiles"
   },
   "step4": {
+    "title": "Pick your default browser",
+    "body": "When no rule matches, LinkPilot sends the link here. You can change this later in Settings.",
+    "scanning": "Scanning installed browsers...",
+    "noBrowsers": "No browsers detected. Skip this step and configure a default later from the Overview tab.",
+    "help": "Tip: this is the routing fallback. Step 2 was about making LinkPilot the macOS default — different setting."
+  },
+  "step5": {
     "title": "Start from a template",
     "body": "We drafted four rules. Toggle the ones you want; tweak the rest in the Rules tab later.",
-    "help": "You can edit, reorder, or delete rules any time."
+    "help": "You can edit, reorder, or delete rules any time.",
+    "noTemplates": "No starter templates match the browsers detected on this Mac. You can still add rules later from the Rules tab."
   },
   "templates": {
     "work": {
-      "label": "Work -> Chrome / Work",
+      "label": "Work -> {{browser}} / {{profile}}",
       "detail": "github.com, linear.app, notion.so, figma.com",
-      "note": "Work tools -> Chrome / Work profile"
+      "note": "Work tools -> {{browser}} / {{profile}} profile"
     },
     "oauth": {
       "label": "OAuth -> Keep source",
@@ -71,14 +79,14 @@
       "note": "OAuth redirects must complete in the source browser"
     },
     "media": {
-      "label": "Media -> Arc",
+      "label": "Media -> {{browser}}",
       "detail": "youtube.com, twitch.tv",
-      "note": "Streaming media -> Arc"
+      "note": "Streaming media -> {{browser}}"
     },
     "banking": {
-      "label": "Banking -> Safari",
+      "label": "Banking -> {{browser}}",
       "detail": "Personal banking sites stay in Safari for keychain support",
-      "note": "Banking -> Safari (keychain)"
+      "note": "Banking -> {{browser}} (keychain)"
     }
   }
 }

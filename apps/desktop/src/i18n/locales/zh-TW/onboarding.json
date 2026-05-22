@@ -55,15 +55,23 @@
     "noProfiles": "無設定檔"
   },
   "step4": {
+    "title": "選擇預設瀏覽器",
+    "body": "沒有規則命中時，LinkPilot 會把連結送到這裡。之後可以在設定頁修改。",
+    "scanning": "正在掃描已安裝的瀏覽器...",
+    "noBrowsers": "沒有識別到瀏覽器。可以先略過這一步，之後在總覽頁設定預設目標。",
+    "help": "提示：這是路由兜底。第 2 步是把 LinkPilot 設為 macOS 預設 — 是不同的設定。"
+  },
+  "step5": {
     "title": "從範本開始",
     "body": "我們已準備四條規則。開啟你需要的範本，其他內容稍後可在規則頁調整。",
-    "help": "你隨時可以編輯、重排或刪除規則。"
+    "help": "你隨時可以編輯、重排或刪除規則。",
+    "noTemplates": "已偵測到的瀏覽器和現有起步範本都對不上。你仍然可以稍後在規則頁手動新增規則。"
   },
   "templates": {
     "work": {
-      "label": "工作 -> Chrome / Work",
+      "label": "工作 -> {{browser}} / {{profile}}",
       "detail": "github.com、linear.app、notion.so、figma.com",
-      "note": "工作工具 -> Chrome / Work 設定檔"
+      "note": "工作工具 -> {{browser}} / {{profile}} 設定檔"
     },
     "oauth": {
       "label": "OAuth -> 保持來源瀏覽器",
@@ -71,14 +79,14 @@
       "note": "OAuth 重新導向必須在來源瀏覽器中完成"
     },
     "media": {
-      "label": "媒體 -> Arc",
+      "label": "媒體 -> {{browser}}",
       "detail": "youtube.com、twitch.tv",
-      "note": "串流媒體 -> Arc"
+      "note": "串流媒體 -> {{browser}}"
     },
     "banking": {
-      "label": "銀行 -> Safari",
+      "label": "銀行 -> {{browser}}",
       "detail": "個人銀行網站留在 Safari，以便使用鑰匙圈",
-      "note": "銀行 -> Safari（鑰匙圈）"
+      "note": "銀行 -> {{browser}}（鑰匙圈）"
     }
   }
 }
