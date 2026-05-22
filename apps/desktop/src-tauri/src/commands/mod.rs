@@ -410,9 +410,260 @@ pub fn export_config(state: State<'_, AppState>, path: PathBuf) -> Result<(), St
 }
 
 // ----------------------------------------------------------------------------
-// updates — discover happens in the renderer so Settings can show release
-// metadata immediately; the native side owns download-to-disk because DMGs are
-// too large to shuttle through the WebView IPC boundary.
+// updates — both discover and download happen on the native side. The
+// renderer used to fetch release metadata + checksums.txt directly from
+// the WebView, but `release-assets.githubusercontent.com` does not send
+// CORS headers on its 302 redirect, so the request died in dev (origin
+// http://localhost:5173) and would die again the moment we tightened
+// the production CSP. Hosting the fetch in Rust sidesteps CORS entirely
+// and matches how `update_download` already shells out to /usr/bin/curl.
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateMetadataRequest {
+    pub current_version: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAssetMeta {
+    pub name: String,
+    pub download_url: String,
+    pub size: Option<u64>,
+    /// Lowercase hex SHA-256 sourced from the release's `checksums.txt`.
+    /// `None` if no checksums file is published or it doesn't list this
+    /// asset — `update_download` then refuses to write the DMG, keeping
+    /// unverified binaries off disk.
+    pub sha256: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCheckResult {
+    pub current_version: String,
+    pub latest_version: String,
+    pub release_url: String,
+    pub asset: UpdateAssetMeta,
+    pub release_name: Option<String>,
+    pub published_at: Option<String>,
+    pub available: bool,
+    pub checked_at: u64,
+}
+
+const LATEST_RELEASE_API: &str =
+    "https://api.github.com/repos/jackerjay/LinkPilot/releases/latest";
+
+#[tauri::command]
+pub async fn update_fetch_metadata(
+    request: UpdateMetadataRequest,
+) -> Result<UpdateCheckResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        fetch_update_metadata_blocking(&request.current_version)
+    })
+    .await
+    .map_err(|e| format!("metadata task failed: {e}"))?
+}
+
+fn fetch_update_metadata_blocking(current_version: &str) -> Result<UpdateCheckResult, String> {
+    let release_json = curl_get_text(
+        LATEST_RELEASE_API,
+        &[("Accept", "application/vnd.github+json")],
+    )
+    .map_err(|e| format!("GitHub Releases API: {e}"))?;
+
+    let release: serde_json::Value = serde_json::from_str(&release_json)
+        .map_err(|e| format!("parsing release JSON: {e}"))?;
+
+    let tag_name = release
+        .get("tag_name")
+        .and_then(|v| v.as_str())
+        .ok_or("release missing tag_name")?
+        .to_string();
+    let html_url = release
+        .get("html_url")
+        .and_then(|v| v.as_str())
+        .ok_or("release missing html_url")?
+        .to_string();
+    let release_name = release
+        .get("name")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let published_at = release
+        .get("published_at")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
+    let assets = release
+        .get("assets")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let asset_metas: Vec<UpdateAssetMeta> = assets
+        .iter()
+        .filter_map(|a| {
+            let name = a.get("name")?.as_str()?.to_string();
+            let download_url = a.get("browser_download_url")?.as_str()?.to_string();
+            let size = a.get("size").and_then(serde_json::Value::as_u64);
+            Some(UpdateAssetMeta {
+                name,
+                download_url,
+                size,
+                sha256: None,
+            })
+        })
+        .collect();
+
+    let dmg: UpdateAssetMeta = pick_mac_dmg(&asset_metas)
+        .ok_or("latest release has no macOS DMG asset")?
+        .clone();
+
+    // Checksum fetch is best-effort: a missing or unreachable checksums.txt
+    // surfaces `sha256 = None`, which the renderer then maps to the
+    // "checksumMissing" error so we never auto-download an unverified DMG.
+    let sha256 = asset_metas
+        .iter()
+        .find(|a| a.name.eq_ignore_ascii_case("checksums.txt"))
+        .and_then(|cs| {
+            curl_get_text(&cs.download_url, &[("Accept", "text/plain")])
+                .ok()
+                .and_then(|text| parse_checksum_for_asset(&text, &dmg.name))
+        });
+
+    let latest_version = normalize_version(&tag_name);
+    let normalized_current = normalize_version(current_version);
+    let available = compare_versions(&latest_version, &normalized_current) > 0;
+
+    let checked_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+
+    Ok(UpdateCheckResult {
+        current_version: normalized_current,
+        latest_version,
+        release_url: html_url,
+        asset: UpdateAssetMeta {
+            name: dmg.name,
+            download_url: dmg.download_url,
+            size: dmg.size,
+            sha256,
+        },
+        release_name,
+        published_at,
+        available,
+        checked_at,
+    })
+}
+
+/// `curl --fail --location --silent --show-error` and return stdout as
+/// UTF-8. Matches the binary used by `download_update_asset` — same
+/// reasoning: avoid pulling reqwest+TLS+tokio into the desktop binary
+/// when the system already has a usable HTTPS client.
+fn curl_get_text(url: &str, headers: &[(&str, &str)]) -> Result<String, String> {
+    let mut cmd = Command::new("/usr/bin/curl");
+    cmd.arg("--fail")
+        .arg("--location")
+        .arg("--silent")
+        .arg("--show-error")
+        .arg("--max-time")
+        .arg("8")
+        .arg("--user-agent")
+        .arg("linkpilot-desktop");
+    for (name, value) in headers {
+        cmd.arg("--header").arg(format!("{name}: {value}"));
+    }
+    cmd.arg(url);
+
+    let output = cmd
+        .output()
+        .map_err(|e| format!("starting curl: {e}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("curl exited with {}: {}", output.status, stderr.trim()));
+    }
+    String::from_utf8(output.stdout).map_err(|e| format!("decoding curl stdout: {e}"))
+}
+
+fn pick_mac_dmg(assets: &[UpdateAssetMeta]) -> Option<&UpdateAssetMeta> {
+    let dmgs: Vec<&UpdateAssetMeta> = assets
+        .iter()
+        .filter(|a| a.name.to_ascii_lowercase().ends_with(".dmg"))
+        .collect();
+    if let Some(universal) = dmgs.iter().find(|a| a.name.to_ascii_lowercase().contains("universal"))
+    {
+        return Some(*universal);
+    }
+    if let Some(arm) = dmgs.iter().find(|a| {
+        let lower = a.name.to_ascii_lowercase();
+        lower.contains("aarch64") || lower.contains("arm64")
+    }) {
+        return Some(*arm);
+    }
+    dmgs.first().copied()
+}
+
+/// Parse a `shasum -a 256`-style file: `<hex>  <path-or-name>\n`. Match
+/// by basename so a line like `dist/Foo.dmg` still maps to a release
+/// asset named `Foo.dmg`.
+fn parse_checksum_for_asset(content: &str, asset_name: &str) -> Option<String> {
+    let target = asset_name.to_ascii_lowercase();
+    for raw in content.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let mut parts = line.splitn(2, char::is_whitespace);
+        let hex = parts.next()?;
+        let rest = parts.next()?.trim();
+        if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            continue;
+        }
+        let path = rest.trim_start_matches('*').trim();
+        let base = path
+            .rsplit('/')
+            .next()
+            .unwrap_or(path)
+            .to_ascii_lowercase();
+        if base == target {
+            return Some(hex.to_ascii_lowercase());
+        }
+    }
+    None
+}
+
+fn normalize_version(v: &str) -> String {
+    let trimmed = v.trim();
+    if let Some(stripped) = trimmed.strip_prefix(['v', 'V']) {
+        stripped.to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn compare_versions(left: &str, right: &str) -> i32 {
+    let a = version_parts(left);
+    let b = version_parts(right);
+    let len = a.len().max(b.len());
+    for i in 0..len {
+        let diff = a.get(i).copied().unwrap_or(0) as i64
+            - b.get(i).copied().unwrap_or(0) as i64;
+        if diff != 0 {
+            return diff.signum() as i32;
+        }
+    }
+    0
+}
+
+fn version_parts(version: &str) -> Vec<u32> {
+    let normalized = normalize_version(version);
+    let core = normalized
+        .split(|c| c == '+' || c == '-')
+        .next()
+        .unwrap_or("");
+    core.split('.')
+        .map(|part| part.parse::<u32>().unwrap_or(0))
+        .collect()
+}
 
 #[derive(serde::Deserialize)]
 pub struct UpdateDownloadRequest {

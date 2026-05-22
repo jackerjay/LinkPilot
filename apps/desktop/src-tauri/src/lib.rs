@@ -270,6 +270,7 @@ pub fn run() {
             commands::request_set_default_browser,
             commands::import_config,
             commands::export_config,
+            commands::update_fetch_metadata,
             commands::update_download,
             commands::app_icon,
             commands::pick_app,
