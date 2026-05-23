@@ -243,197 +243,26 @@
         right: max(32px, calc((100vw - 1160px) / 2));
         top: 50%;
         z-index: 1;
-        width: min(590px, 44vw);
+        width: min(660px, 48vw);
         transform: translateY(-46%);
       }
 
-      .app-window {
-        border: 1px solid rgba(16, 20, 24, 0.14);
+      .product-shot {
+        margin: 0;
+      }
+
+      .product-shot img {
+        width: 100%;
         border-radius: 14px;
-        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(16, 20, 24, 0.13);
         box-shadow: var(--shadow);
-        overflow: hidden;
       }
 
-      .window-bar {
-        height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 16px;
-        border-bottom: 1px solid var(--line);
-        background: #fbfcfd;
-      }
-
-      .traffic {
-        display: flex;
-        gap: 7px;
-      }
-
-      .traffic span {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: var(--line);
-      }
-
-      .traffic span:nth-child(1) {
-        background: #e36b5d;
-      }
-
-      .traffic span:nth-child(2) {
-        background: #d4a72c;
-      }
-
-      .traffic span:nth-child(3) {
-        background: #3aa86c;
-      }
-
-      .window-title {
+      .product-shot figcaption {
+        margin-top: 12px;
         color: var(--subtle);
-        font-size: 0.78rem;
-        font-weight: 760;
-      }
-
-      .app-layout {
-        display: grid;
-        grid-template-columns: 152px 1fr;
-        min-height: 452px;
-      }
-
-      .sidebar {
-        padding: 16px;
-        border-right: 1px solid var(--line);
-        background: #f5f8fb;
-      }
-
-      .side-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-height: 38px;
-        padding: 0 10px;
-        border-radius: 7px;
-        color: var(--muted);
-        font-size: 0.86rem;
-        font-weight: 740;
-      }
-
-      .side-item.active {
-        background: #e8f0ff;
-        color: var(--blue);
-      }
-
-      .side-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: currentColor;
-      }
-
-      .route-panel {
-        padding: 22px;
-      }
-
-      .panel-head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 18px;
-        margin-bottom: 22px;
-      }
-
-      .panel-head h2 {
-        margin-bottom: 4px;
-        font-size: 1.35rem;
-      }
-
-      .panel-head p {
-        margin-bottom: 0;
-        color: var(--muted);
-        font-size: 0.9rem;
-      }
-
-      .status-chip {
-        flex: none;
-        padding: 6px 9px;
-        border: 1px solid #b9e6d1;
-        border-radius: 999px;
-        background: #edf9f3;
-        color: var(--green);
-        font-size: 0.78rem;
-        font-weight: 800;
-      }
-
-      .decision {
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        overflow: hidden;
-      }
-
-      .decision-row {
-        display: grid;
-        grid-template-columns: 116px 1fr auto;
-        gap: 14px;
-        align-items: center;
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--line);
-        background: #fff;
-      }
-
-      .decision-row:last-child {
-        border-bottom: 0;
-      }
-
-      .field-label {
-        color: var(--subtle);
-        font-size: 0.78rem;
-        font-weight: 800;
-        text-transform: uppercase;
-      }
-
-      .field-value {
-        min-width: 0;
-        color: var(--ink);
-        font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
-        font-size: 0.84rem;
-        overflow-wrap: anywhere;
-      }
-
-      .target {
-        padding: 4px 8px;
-        border-radius: 999px;
-        color: #fff;
-        font-size: 0.76rem;
-        font-weight: 800;
-        white-space: nowrap;
-      }
-
-      .target.blue {
-        background: var(--blue);
-      }
-
-      .target.green {
-        background: var(--green);
-      }
-
-      .target.coral {
-        background: var(--coral);
-      }
-
-      .console-block {
-        margin-top: 20px;
-        padding: 16px;
-        border-radius: var(--radius);
-        background: #121820;
-        color: #e7edf5;
-        font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
         font-size: 0.82rem;
-        line-height: 1.7;
-      }
-
-      .console-muted {
-        color: #8fa0b2;
+        font-weight: 720;
       }
 
       .section {
@@ -595,160 +424,41 @@
         overflow-wrap: anywhere;
       }
 
-      .picker-section {
+      .screens-section {
         background: #ffffff;
       }
 
-      .picker-layout {
+      .screens-layout {
         display: grid;
-        grid-template-columns: 0.9fr 1.1fr;
-        gap: 54px;
-        align-items: center;
+        grid-template-columns: 0.86fr 1.14fr;
+        gap: 44px;
+        align-items: start;
       }
 
-      .picker-demo {
-        position: relative;
-        min-height: 460px;
+      .screen-stack {
+        display: grid;
+        gap: 18px;
+      }
+
+      .screen-card {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: #fff;
+        box-shadow: 0 18px 42px rgba(16, 20, 24, 0.1);
         overflow: hidden;
       }
 
-      .picker-card {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: min(520px, 100%);
-        padding: 20px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: #f8fafc;
-        box-shadow: var(--shadow);
-        transform: translate(-50%, -50%);
+      .screen-card img {
+        width: 100%;
       }
 
-      .picker-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 18px;
-      }
-
-      .picker-head strong {
-        font-size: 1rem;
-      }
-
-      .key-hint {
-        color: var(--subtle);
-        font-size: 0.8rem;
-        font-weight: 760;
-      }
-
-      .browser-choice {
-        display: grid;
-        grid-template-columns: 42px 1fr auto;
-        gap: 13px;
-        align-items: center;
-        padding: 14px;
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        background: #fff;
-      }
-
-      .browser-choice + .browser-choice {
-        margin-top: 10px;
-      }
-
-      .browser-glyph {
-        width: 42px;
-        height: 42px;
-        display: grid;
-        place-items: center;
-        border-radius: var(--radius);
-        color: #fff;
-        font-weight: 820;
-      }
-
-      .browser-glyph.arc {
-        background: var(--violet);
-      }
-
-      .browser-glyph.chrome {
-        background: var(--green);
-      }
-
-      .browser-glyph.safari {
-        background: var(--blue);
-      }
-
-      .choice-meta strong,
-      .choice-meta span {
-        display: block;
-      }
-
-      .choice-meta span {
+      .screen-card figcaption {
+        margin: 0;
+        padding: 13px 16px;
+        border-top: 1px solid var(--line);
         color: var(--muted);
-        font-size: 0.84rem;
-      }
-
-      .keycap {
-        min-width: 32px;
-        padding: 4px 8px;
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        background: #f5f7fa;
-        color: var(--muted);
-        text-align: center;
-        font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
-        font-size: 0.8rem;
-      }
-
-      .halo-ring {
-        position: absolute;
-        right: 16px;
-        bottom: 16px;
-        width: 176px;
-        height: 176px;
-        border: 1px solid rgba(33, 103, 213, 0.28);
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.65);
-      }
-
-      .halo-ring::before {
-        content: "";
-        position: absolute;
-        inset: 40px;
-        border: 1px dashed rgba(33, 103, 213, 0.24);
-        border-radius: 50%;
-      }
-
-      .halo-chip {
-        position: absolute;
-        width: 38px;
-        height: 38px;
-        display: grid;
-        place-items: center;
-        border: 1px solid var(--line);
-        border-radius: 50%;
-        background: #fff;
-        box-shadow: 0 12px 28px rgba(16, 20, 24, 0.12);
-        color: var(--blue);
-        font-weight: 820;
-      }
-
-      .halo-chip:nth-child(1) {
-        top: -8px;
-        left: 70px;
-      }
-
-      .halo-chip:nth-child(2) {
-        top: 68px;
-        right: 0;
-        color: var(--green);
-      }
-
-      .halo-chip:nth-child(3) {
-        left: 30px;
-        bottom: 4px;
-        color: var(--coral);
+        font-size: 0.86rem;
+        font-weight: 720;
       }
 
       .trust-grid {
@@ -844,10 +554,6 @@
           right: 24px;
           opacity: 0.8;
         }
-
-        .app-layout {
-          grid-template-columns: 120px 1fr;
-        }
       }
 
       @media (max-width: 880px) {
@@ -880,7 +586,7 @@
 
         .usecase-grid,
         .capability-board,
-        .picker-layout,
+        .screens-layout,
         .install-layout {
           grid-template-columns: 1fr;
         }
@@ -932,37 +638,6 @@
           margin-top: 36px;
         }
 
-        .app-layout {
-          grid-template-columns: 1fr;
-          min-height: auto;
-        }
-
-        .sidebar {
-          display: none;
-        }
-
-        .route-panel {
-          padding: 16px;
-        }
-
-        .panel-head {
-          display: block;
-        }
-
-        .status-chip {
-          display: inline-flex;
-          margin-top: 12px;
-        }
-
-        .decision-row {
-          grid-template-columns: 1fr;
-          gap: 6px;
-        }
-
-        .target {
-          width: fit-content;
-        }
-
         .section {
           padding: 72px 0;
         }
@@ -974,48 +649,6 @@
         .capability-list,
         .trust-grid {
           grid-template-columns: 1fr;
-        }
-
-        .picker-demo {
-          min-height: 430px;
-        }
-
-        .picker-card {
-          padding: 14px;
-        }
-
-        .browser-choice {
-          grid-template-columns: 38px 1fr auto;
-          padding: 12px;
-        }
-
-        .browser-glyph {
-          width: 38px;
-          height: 38px;
-        }
-
-        .halo-ring {
-          width: 142px;
-          height: 142px;
-          right: 8px;
-          bottom: 0;
-        }
-
-        .halo-ring::before {
-          inset: 32px;
-        }
-
-        .halo-chip {
-          width: 34px;
-          height: 34px;
-        }
-
-        .halo-chip:nth-child(1) {
-          left: 54px;
-        }
-
-        .halo-chip:nth-child(2) {
-          top: 54px;
         }
 
         .footer-inner {
@@ -1048,7 +681,7 @@
         </a>
         <div class="nav-links">
           <a href="#routing">路由能力</a>
-          <a href="#picker">Ask Picker</a>
+          <a href="#screens">真实界面</a>
           <a href="#trust">可信边界</a>
           <a href="#install">安装</a>
         </div>
@@ -1089,59 +722,13 @@
         </div>
       </div>
 
-      <div class="product-visual" aria-label="LinkPilot 路由决策示意">
-        <div class="app-window">
-          <div class="window-bar">
-            <div class="traffic" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <div class="window-title">Rules / Test URL / Inspector</div>
-          </div>
-          <div class="app-layout">
-            <aside class="sidebar" aria-label="应用导航示意">
-              <div class="side-item active"><span class="side-dot"></span> Rules</div>
-              <div class="side-item"><span class="side-dot"></span> Browsers</div>
-              <div class="side-item"><span class="side-dot"></span> Inspector</div>
-              <div class="side-item"><span class="side-dot"></span> Settings</div>
-            </aside>
-            <div class="route-panel">
-              <div class="panel-head">
-                <div>
-                  <h2>Routing decision</h2>
-                  <p>Dry-run against the live routing engine.</p>
-                </div>
-                <span class="status-chip">daemon online</span>
-              </div>
-
-              <div class="decision">
-                <div class="decision-row">
-                  <span class="field-label">URL</span>
-                  <span class="field-value">https://github.com/jackerjay/LinkPilot</span>
-                  <span class="target green">Chrome Work</span>
-                </div>
-                <div class="decision-row">
-                  <span class="field-label">From app</span>
-                  <span class="field-value">Slack</span>
-                  <span class="target blue">rule matched</span>
-                </div>
-                <div class="decision-row">
-                  <span class="field-label">Fallback</span>
-                  <span class="field-value">Ask when no rule is decisive</span>
-                  <span class="target coral">Picker</span>
-                </div>
-              </div>
-
-              <div class="console-block" aria-label="CLI 示例">
-                <span class="console-muted">$</span> lpt open https://github.com --dry-run<br />
-                <span class="console-muted">matched:</span> host github.com + from-app Slack<br />
-                <span class="console-muted">target:</span> chrome / Work Profile
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <figure class="product-visual product-shot">
+        <img
+          src="assets/linkpilot-overview.png"
+          alt="LinkPilot dev 版 Overview 页面截图，展示侧边栏、状态卡片、daemon 状态和最近路由区域"
+        />
+        <figcaption>当前项目 dev 版真实前端截图：Overview 页面。</figcaption>
+      </figure>
     </header>
 
     <main>
@@ -1226,59 +813,39 @@
         </div>
       </section>
 
-      <section class="section picker-section" id="picker">
-        <div class="section-inner picker-layout">
+      <section class="section screens-section" id="screens">
+        <div class="section-inner screens-layout">
           <div>
-            <p class="section-kicker">Ask Picker</p>
-            <h2 class="section-title">不确定的链接，也要能快速决定。</h2>
+            <p class="section-kicker">Product screens</p>
+            <h2 class="section-title">这里展示的是当前项目 dev 版真实前端。</h2>
             <p class="section-lede">
-              Ask 规则会打开 LinkPilot 的选择窗口。常用目标可以用键盘快速选择；
-              多 Profile 浏览器可以通过 Halo 选择环瞄准具体 Profile。
+              截图来自 `apps/desktop` 的 Vite/Tauri dev 前端。Overview 展示 daemon、
+              默认浏览器、浏览器清单和最近路由状态；Onboarding 展示首次启动时的规则、
+              多浏览器、Profiles 和 Inspector 引导。
             </p>
             <div class="hero-meta">
-              <span class="pill">Frosted</span>
-              <span class="pill">Bezel</span>
-              <span class="pill">Crown</span>
-              <span class="pill">Dark mode</span>
+              <span class="pill">Overview</span>
+              <span class="pill">Onboarding</span>
+              <span class="pill">Rules</span>
+              <span class="pill">Inspector</span>
             </div>
           </div>
 
-          <div class="picker-demo" aria-label="Ask Picker 示意">
-            <div class="picker-card">
-              <div class="picker-head">
-                <strong>Open with LinkPilot</strong>
-                <span class="key-hint">1-9 shortcuts</span>
-              </div>
-              <div class="browser-choice">
-                <div class="browser-glyph arc">A</div>
-                <div class="choice-meta">
-                  <strong>Arc</strong>
-                  <span>Personal Space</span>
-                </div>
-                <span class="keycap">1</span>
-              </div>
-              <div class="browser-choice">
-                <div class="browser-glyph chrome">C</div>
-                <div class="choice-meta">
-                  <strong>Chrome</strong>
-                  <span>Work Profile</span>
-                </div>
-                <span class="keycap">2</span>
-              </div>
-              <div class="browser-choice">
-                <div class="browser-glyph safari">S</div>
-                <div class="choice-meta">
-                  <strong>Safari</strong>
-                  <span>Banking and Apple</span>
-                </div>
-                <span class="keycap">3</span>
-              </div>
-            </div>
-            <div class="halo-ring" aria-hidden="true">
-              <span class="halo-chip">1</span>
-              <span class="halo-chip">2</span>
-              <span class="halo-chip">3</span>
-            </div>
+          <div class="screen-stack" aria-label="LinkPilot 真实界面截图">
+            <figure class="screen-card">
+              <img
+                src="assets/linkpilot-overview.png"
+                alt="LinkPilot Overview 页面，包含侧边栏、daemon 状态、默认浏览器状态和最近路由区域"
+              />
+              <figcaption>Overview：路由状态、daemon 连接、默认浏览器与最近路由。</figcaption>
+            </figure>
+            <figure class="screen-card">
+              <img
+                src="assets/linkpilot-onboarding.png"
+                alt="LinkPilot Onboarding 欢迎页，展示规则引擎、多浏览器、Profiles 和 Inspector 引导"
+              />
+              <figcaption>Onboarding：首次启动时解释规则引擎、多浏览器、Profiles 和 Inspector。</figcaption>
+            </figure>
           </div>
         </div>
       </section>
