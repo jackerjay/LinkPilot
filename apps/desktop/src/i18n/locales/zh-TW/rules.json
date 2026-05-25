@@ -22,6 +22,9 @@
     "show": "顯示",
     "hide": "隱藏",
     "errorTag": "錯誤",
+    "validTag": "JSON 語法正確",
+    "parseAt": "第 {{line}} 行第 {{col}} 列：{{msg}}",
+    "loadingEditor": "正在載入編輯器…",
     "revert": "還原",
     "save": "儲存",
     "saving": "儲存中…"

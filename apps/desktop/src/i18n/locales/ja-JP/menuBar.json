@@ -26,6 +26,17 @@
     "browsersCount": "{{count}} 個のアプリ",
     "configFile": "設定ファイル"
   },
+  "setupDefaultTarget": {
+    "title": "既定のターゲットを選択",
+    "description": "利用可能な既定ターゲットがまだ設定されていません。どのルールにも一致しないリンクを開く場所を選んでください。",
+    "heroTitle": "既定のブラウザを選択",
+    "heroSubtitle": "どのルールにも一致しないリンクをどこへ送るかを LinkPilot に教えてください。ブラウザを 1 つ選ぶとセットアップが完了します。",
+    "quickPickLabel": "この Mac で検出されたブラウザ",
+    "advancedLabel": "または、プロファイル / ウインドウのオプションを微調整",
+    "currentMissing": "現在の既定ターゲット「{{browser}}」はこの Mac で検出されていません。",
+    "noBrowsers": "ルーティング可能なブラウザがまだ検出されていません。ブラウザをインストールまたは追加してから、ここで選択してください。",
+    "askFallback": "利用可能なターゲットを選ぶまでは、どのルールにも一致しないリンクは Ask picker にフォールバックします。"
+  },
   "recent": {
     "card": "最近のルート",
     "empty": "まだルートがありません。<code>lpt open …</code> を実行するか、リンクをクリックしてみてください。"

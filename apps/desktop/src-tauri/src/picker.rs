@@ -17,6 +17,7 @@ use std::sync::mpsc;
 use std::sync::Mutex;
 use std::time::Duration;
 
+use linkpilot_core::browser::InstalledBrowser;
 use linkpilot_core::config::PickerStyle;
 use serde::{Deserialize, Serialize};
 use tauri::{ActivationPolicy, AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -510,22 +511,39 @@ pub fn picker_preview(app: AppHandle, test_url: Option<String>) -> Result<(), St
         return Err("Another picker is already open — finish the current ask first.".into());
     }
 
-    // Project out just the two settings we need; the rest of the
-    // document stays behind the store mutex. Mirrors the same trick
-    // dispatch::resolve_ask uses on its hot path.
-    let (order_map, style) = state.config.with_document(|doc| {
+    // Project out the settings we need; the rest of the document stays
+    // behind the store mutex. Mirrors the same trick dispatch::resolve_ask
+    // uses on its hot path. `disabled_set` filters the preview so it
+    // matches what a real ask flow would show.
+    let (order_map, style, disabled_set) = state.config.with_document(|doc| {
+        let disabled: std::collections::HashSet<String> =
+            doc.settings.disabled_browsers.iter().cloned().collect();
         (
             doc.settings.profile_orders.clone(),
             doc.settings.picker_style,
+            disabled,
         )
     });
     let inventory = state.platform.browser_inventory();
     let parsed_url = normalize_preview_url(test_url.as_deref())?;
     let url = parsed_url.to_string();
 
-    let mut choices: Vec<PickerChoice> = Vec::with_capacity(installed.len());
+    let visible: Vec<&InstalledBrowser> = installed
+        .iter()
+        .filter(|b| !disabled_set.contains(&b.id.0))
+        .collect();
+    // Same fallback as the ask path: never softlock the preview with
+    // an empty wheel — if the user disabled everything, show all so
+    // they can still verify the picker style works.
+    let source: Vec<&InstalledBrowser> = if visible.is_empty() {
+        installed.iter().collect()
+    } else {
+        visible
+    };
+
+    let mut choices: Vec<PickerChoice> = Vec::with_capacity(source.len());
     let mut target_by_id: HashMap<String, BrowserTarget> = HashMap::new();
-    for b in &installed {
+    for b in source {
         let raw = inventory.profiles(&b.id).unwrap_or_default();
         let ordered = apply_profile_order(raw, order_map.get(&b.id.0).map(|v| v.as_slice()));
         let profiles: Vec<PickerProfile> = ordered

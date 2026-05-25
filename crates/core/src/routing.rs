@@ -107,11 +107,10 @@ impl<'a> Router<'a> {
         // bypassed an obviously-matching rule.
         if !self.config.settings.smart_routing_enabled {
             return Explained {
-                decision: RoutingDecision::Open {
-                    target: self.config.default_target.clone(),
-                    matched_rule: None,
-                    reason: "smart routing disabled — default target".to_string(),
-                },
+                decision: default_target_decision(
+                    &self.config.default_target,
+                    "smart routing disabled — default target",
+                ),
                 explanation: None,
             };
         }
@@ -151,13 +150,26 @@ impl<'a> Router<'a> {
         }
 
         Explained {
-            decision: RoutingDecision::Open {
-                target: self.config.default_target.clone(),
-                matched_rule: None,
-                reason: "default target (no rule matched)".to_string(),
-            },
+            decision: default_target_decision(
+                &self.config.default_target,
+                "default target (no rule matched)",
+            ),
             explanation: None,
         }
+    }
+}
+
+fn default_target_decision(default_target: &BrowserTarget, reason: &str) -> RoutingDecision {
+    if default_target.browser.0 == "system" {
+        return RoutingDecision::Ask {
+            candidates: Vec::new(),
+            reason: format!("{reason}; default target not configured"),
+        };
+    }
+    RoutingDecision::Open {
+        target: default_target.clone(),
+        matched_rule: None,
+        reason: reason.to_string(),
     }
 }
 
@@ -388,6 +400,23 @@ mod tests {
         match decision {
             RoutingDecision::Open { target, .. } => assert_eq!(target.browser.0, "arc"),
             other => panic!("expected Open, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn asks_when_default_target_is_not_configured() {
+        let config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("system")));
+        let router = Router::new(&config);
+        let decision = router.evaluate(&ctx("https://example.com/"));
+        match decision {
+            RoutingDecision::Ask { candidates, reason } => {
+                assert!(candidates.is_empty());
+                assert!(
+                    reason.contains("not configured"),
+                    "reason should explain setup gap: {reason}"
+                );
+            }
+            other => panic!("expected Ask, got {other:?}"),
         }
     }
 

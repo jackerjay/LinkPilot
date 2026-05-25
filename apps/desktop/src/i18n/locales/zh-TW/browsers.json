@@ -11,5 +11,9 @@
   "customTag": "自訂",
   "customTagTitle": "手動新增 —— 點擊垃圾桶按鈕移除",
   "profilesErrorTag": "profile",
-  "removeCustomTitle": "從自訂瀏覽器中移除「{{name}}」"
+  "removeCustomTitle": "從自訂瀏覽器中移除「{{name}}」",
+  "disabledTag": "已隱藏",
+  "disabledTagTitle": "已從 ask 彈窗中隱藏",
+  "hideFromPicker": "從 ask 彈窗中隱藏「{{name}}」",
+  "showInPicker": "在 ask 彈窗中顯示「{{name}}」"
 }

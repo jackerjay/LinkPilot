@@ -6,6 +6,96 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-05-25
+
+### Added
+
+- **Per-browser hide-from-picker toggle.** Each row on the Browsers page now
+  has an on/off switch that adds the browser id to
+  `Settings.disabled_browsers`. Hidden browsers no longer appear in the ask
+  popup picker (and the Settings → preview picker, for parity); they stay
+  installed and remain valid as explicit routing targets — a rule that names
+  a hidden browser still opens links there. `lpt browsers enable <id>` /
+  `lpt browsers disable <id>` mirror the toggle from the CLI.
+
+### Fixed
+
+- **Update check bypasses `api.github.com` rate limits.** The "Check for
+  updates" path hit `api.github.com/.../releases/latest`, which returns 403
+  from many corporate / data-center egress IPs. The desktop app now resolves
+  the latest release via the `github.com/.../releases/latest` redirect and
+  synthesizes asset URLs from the release workflow's fixed naming
+  convention, so the update check works from networks the API host
+  throttles. `release_name` and `published_at` are backfilled from the
+  public `releases.atom` feed.
+
+## [0.4.0] — 2026-05-22
+
+### Added
+
+- **Expanded macOS browser inventory.** LinkPilot now auto-detects Vivaldi,
+  Opera, Opera GX, Dia, ChatGPT Atlas, Perplexity Comet, Zen Browser,
+  Orion, DuckDuckGo Browser, LibreWolf, Waterfox, Floorp, Mullvad Browser,
+  Tor Browser, Yandex Browser, and Naver Whale. Chromium and Firefox-family
+  additions reuse the existing profile parsers when their profile stores are
+  available.
+- **Channel variants and productivity browsers.** Inventory also picks up
+  Safari Technology Preview, Chrome Beta/Dev/Canary, Edge Beta/Dev/Canary,
+  Brave Beta/Nightly, Firefox Developer Edition/Nightly, and the
+  productivity-Chromium cohort (SigmaOS, Sidekick, Wavebox, Stack, Min,
+  Ulaa, Beam). Each channel keeps its own Chromium profile root, so
+  routing to `chrome-canary` won't open a stable Chrome profile.
+- **Expanded config DSL browser shortcuts.** `@linkpilot/config` now exposes
+  shortcuts for the newly-supported browser ids, including `browser.atlas`,
+  `browser.comet`, `browser.dia`, `browser.opera`, and `browser.zen`.
+- **Default-target setup prompt.** The Overview page now guides users to pick
+  a usable default target when the config still has the unconfigured `system`
+  target or points at a browser that is not detected on the current Mac.
+- **Onboarding wizard now has five steps.** A dedicated "pick your default
+  browser" step lands between the browser scan and the rule templates, so
+  first-run users explicitly choose where unmatched links go before they
+  opt into starter rules. The Step 2 illustration also gets a refresh —
+  the abstract URL token and Compass placeholders become two paired icon
+  stacks (URL sources on the left, real installed browsers on the right)
+  joined by horizontal arrows.
+- **Syntax-highlighted JSON editor.** Rules → Advanced → "raw JSON" now
+  uses CodeMirror 6 with `@codemirror/lang-json`, `jsonParseLinter`, and
+  a lint gutter. Errors surface inline (red underline + gutter mark) and
+  textually ("Line X, col Y: …"); Save disables while parsing fails.
+  The editor is lazy-imported so the ~140 KB gzipped chunk only loads
+  when the panel is expanded.
+- **Adaptive starter templates.** The onboarding wizard's rule templates
+  now resolve their target browser dynamically from a priority list
+  against the detected inventory. "Work → Chrome / Work" becomes
+  "Work → Edge / Work" on a Mac without Chrome; templates whose
+  candidate list has no installed match are hidden instead of creating
+  rules that point at non-existent browsers.
+
+### Changed
+
+- **Fresh configs start without an implicit browser default.** The bundled demo
+  rules still demonstrate Chrome/Arc routing, but the fallback target now stays
+  unconfigured until the user chooses one.
+- **Update check moves to the Rust side.** Both the GitHub Releases API call
+  and the `checksums.txt` fetch now run via `/usr/bin/curl` from a Tauri
+  command instead of from the renderer. This sidesteps the CORS rejection
+  that fired in `tauri dev` (origin `http://localhost:5173`) and keeps the
+  fetch outside of any future WebView CSP tightening, with the
+  `UpdateCheckResult` shape preserved for the renderer.
+
+### Fixed
+
+- **Unconfigured or missing default targets fall back to Ask.** When no rule
+  matches and the default target is still `system`, routing returns Ask instead
+  of trying to launch a fake browser id. If a rule/default points at a browser
+  LinkPilot cannot detect, the desktop launcher falls back to the Ask picker
+  instead of failing the open.
+- **Onboarding `tmpl-work` no longer creates a dead rule.** Its target was
+  hard-coded to a `google-chrome` id that never existed in the inventory
+  (correct id is `chrome`); enabling the template silently produced a rule
+  pointing at a phantom browser. The dynamic-template work above fixes this
+  by walking a Chromium-family candidate list.
+
 ## [0.3.0] — 2026-05-21
 
 ### Added

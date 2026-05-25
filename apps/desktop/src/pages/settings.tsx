@@ -133,6 +133,13 @@ export function SettingsPage({
     }
   };
 
+  const defaultTargetAvailable =
+    !!doc && browsers.some((b) => b.id === doc.default_target.browser);
+  const defaultTargetValue: BrowserTarget =
+    doc && defaultTargetAvailable
+      ? doc.default_target
+      : { browser: "", profile: null, incognito: false, new_window: false };
+
   const toggleLaunchAtLogin = async (next: boolean) => {
     if (!doc) return;
     try {
@@ -329,7 +336,7 @@ export function SettingsPage({
               }}
             >
               <TargetEditor
-                value={doc.default_target}
+                value={defaultTargetValue}
                 browsers={browsers}
                 onChange={updateDefaultTarget}
               />

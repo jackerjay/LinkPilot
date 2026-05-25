@@ -31,13 +31,25 @@ LinkPilot は現在 macOS に注力しています。
 現在のアプリには以下が含まれています。
 
 - host、path、送信元アプリ、送信元ブラウザ、送信元プロファイルによる URL ルーティング。
-- Chrome 系ブラウザ、Arc、Firefox、Safari、カスタムブラウザの検出とプロファイル列挙。
+- 主要な Chromium / Firefox 系ブラウザ、Arc、Safari 系アプリルーティング、カスタムブラウザの検出とプロファイル列挙。
 - Ask picker: Halo プロファイルホイール（Frosted / Bezel / Crown の 3 スタイル）、キーボードショートカット、ブラウザごとのプロファイル並び替え、ダークモード、Settings の実ブラウザ向けテスト URL フロー。
 - UI 言語は English、简体中文、繁體中文、日本語に対応し、システム言語に合わせる設定も利用可能。
 - GitHub Release の自動更新チェック。DMG ダウンロードは SHA-256 を検証し、Settings で手動でインストーラーを開きます。
 - バックグラウンド daemon と Unix socket IPC。メインウィンドウを閉じた後もルーティングを継続できます。
 - メニューバートレイ、Inspector、Test URL シミュレーター、ブラウザ管理、Settings、onboarding。
 - `lpt` CLI: URL を開く、ルールを管理する、設定を確認する、daemon をインストールする、既定ブラウザ状態を確認する。
+
+## 対応ブラウザ
+
+macOS では、LinkPilot はインストール済みの以下のブラウザを自動検出します。
+
+- プロファイル列挙に対応する Chromium 系：Google Chrome、Microsoft Edge、Brave Browser、
+  Vivaldi、Opera、Opera GX、Dia、ChatGPT Atlas、Perplexity Comet、Yandex Browser、
+  Naver Whale。
+- プロファイル列挙に対応する Firefox 系：Firefox、Zen Browser、LibreWolf、Waterfox、Floorp、
+  Mullvad Browser、Tor Browser。
+- アプリルーティング中心：Arc、Safari、Orion、DuckDuckGo Browser、カスタムブラウザ。Arc
+  は picker 表示用にプロファイルデータを読めますが、外部からの Space / profile 選択は Arc 側に委ねます。
 
 ## インストール
 

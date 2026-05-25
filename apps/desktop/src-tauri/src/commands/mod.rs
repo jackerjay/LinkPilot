@@ -254,6 +254,29 @@ pub fn remove_custom_browser(state: State<'_, AppState>, id: BrowserId) -> Resul
         .map_err(|e| e.to_string())
 }
 
+/// Flip a browser's visibility in the ask-popup picker. `enabled = false`
+/// adds the id to `Settings.disabled_browsers`; `true` removes it. The
+/// browser stays installed and remains a valid explicit routing target
+/// either way — see the field doc on `Settings.disabled_browsers`.
+#[tauri::command]
+pub fn browser_set_enabled(
+    state: State<'_, AppState>,
+    id: String,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut doc = state.config.document();
+    let list = &mut doc.settings.disabled_browsers;
+    if enabled {
+        list.retain(|existing| existing != &id);
+    } else if !list.iter().any(|existing| existing == &id) {
+        list.push(id);
+    }
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn list_profiles(
     state: State<'_, AppState>,
@@ -410,9 +433,329 @@ pub fn export_config(state: State<'_, AppState>, path: PathBuf) -> Result<(), St
 }
 
 // ----------------------------------------------------------------------------
-// updates — discover happens in the renderer so Settings can show release
-// metadata immediately; the native side owns download-to-disk because DMGs are
-// too large to shuttle through the WebView IPC boundary.
+// updates — both discover and download happen on the native side. The
+// renderer used to fetch release metadata + checksums.txt directly from
+// the WebView, but `release-assets.githubusercontent.com` does not send
+// CORS headers on its 302 redirect, so the request died in dev (origin
+// http://localhost:5173) and would die again the moment we tightened
+// the production CSP. Hosting the fetch in Rust sidesteps CORS entirely
+// and matches how `update_download` already shells out to /usr/bin/curl.
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateMetadataRequest {
+    pub current_version: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAssetMeta {
+    pub name: String,
+    pub download_url: String,
+    pub size: Option<u64>,
+    /// Lowercase hex SHA-256 sourced from the release's `checksums.txt`.
+    /// `None` if no checksums file is published or it doesn't list this
+    /// asset — `update_download` then refuses to write the DMG, keeping
+    /// unverified binaries off disk.
+    pub sha256: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCheckResult {
+    pub current_version: String,
+    pub latest_version: String,
+    pub release_url: String,
+    pub asset: UpdateAssetMeta,
+    pub release_name: Option<String>,
+    pub published_at: Option<String>,
+    pub available: bool,
+    pub checked_at: u64,
+}
+
+// We resolve the latest release via the `github.com` redirect rather than
+// `api.github.com/repos/.../releases/latest`. The API host is aggressively
+// rate-limited per egress IP and routinely returns 403 from corporate /
+// data-center networks; `github.com` redirects (and asset downloads) sit on
+// a different, far more permissive throttling tier.
+const LATEST_REDIRECT_URL: &str = "https://github.com/jackerjay/LinkPilot/releases/latest";
+const RELEASE_DOWNLOAD_BASE: &str = "https://github.com/jackerjay/LinkPilot/releases/download";
+const RELEASE_TAG_BASE: &str = "https://github.com/jackerjay/LinkPilot/releases/tag";
+const RELEASES_ATOM_URL: &str = "https://github.com/jackerjay/LinkPilot/releases.atom";
+
+#[tauri::command]
+pub async fn update_fetch_metadata(
+    request: UpdateMetadataRequest,
+) -> Result<UpdateCheckResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        fetch_update_metadata_blocking(&request.current_version)
+    })
+    .await
+    .map_err(|e| format!("metadata task failed: {e}"))?
+}
+
+fn fetch_update_metadata_blocking(current_version: &str) -> Result<UpdateCheckResult, String> {
+    // Step 1: resolve `releases/latest` to its redirect target. GitHub serves
+    // a 302 → `/releases/tag/<tag>`; the tag is the only thing we need to
+    // synthesize asset URLs, since the release workflow uses a fixed naming
+    // convention (see .github/workflows/release.yml).
+    let final_url = curl_resolve_redirect(LATEST_REDIRECT_URL)
+        .map_err(|e| format!("GitHub Releases redirect: {e}"))?;
+    let tag_name = parse_tag_from_release_url(&final_url)
+        .ok_or_else(|| format!("could not parse tag from redirect target: {final_url}"))?;
+
+    let latest_version = normalize_version(&tag_name);
+    // DMG filename mirrors `LinkPilot_${VERSION}_universal.dmg` produced by
+    // the release workflow's hdiutil step, where VERSION is the tag minus
+    // its leading `v`.
+    let dmg_name = format!("LinkPilot_{latest_version}_universal.dmg");
+    let dmg_url = format!("{RELEASE_DOWNLOAD_BASE}/{tag_name}/{dmg_name}");
+    let checksums_url = format!("{RELEASE_DOWNLOAD_BASE}/{tag_name}/checksums.txt");
+    let html_url = format!("{RELEASE_TAG_BASE}/{tag_name}");
+
+    // Checksum fetch is best-effort: a missing or unreachable checksums.txt
+    // surfaces `sha256 = None`, which the renderer then maps to the
+    // "checksumMissing" error so we never auto-download an unverified DMG.
+    let sha256 = curl_get_text(&checksums_url, &[("Accept", "text/plain")])
+        .ok()
+        .and_then(|text| parse_checksum_for_asset(&text, &dmg_name));
+
+    // Display metadata (release title, publish time) comes from the public
+    // releases.atom feed — also on `github.com`, so it shares the
+    // permissive throttling tier of the redirect/download paths. Failure
+    // here is silent: both fields are nullable and unrendered today.
+    let (release_name, published_at) =
+        curl_get_text(RELEASES_ATOM_URL, &[("Accept", "application/atom+xml")])
+            .ok()
+            .and_then(|atom| parse_release_atom_meta(&atom, &tag_name))
+            .unwrap_or((None, None));
+
+    let normalized_current = normalize_version(current_version);
+    let available = compare_versions(&latest_version, &normalized_current) > 0;
+
+    let checked_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+
+    Ok(UpdateCheckResult {
+        current_version: normalized_current,
+        latest_version,
+        release_url: html_url,
+        asset: UpdateAssetMeta {
+            name: dmg_name,
+            download_url: dmg_url,
+            // Size is no longer cheap to discover without the API; the
+            // downloader treats `None` as "skip the size pre-check" and the
+            // progress UI falls back to indeterminate.
+            size: None,
+            sha256,
+        },
+        release_name,
+        published_at,
+        available,
+        checked_at,
+    })
+}
+
+/// HEAD-follow `url` and return the final, post-redirect URL. Uses curl's
+/// `%{url_effective}` write-out so we don't have to parse `Location` headers
+/// ourselves or download a response body.
+fn curl_resolve_redirect(url: &str) -> Result<String, String> {
+    let output = Command::new("/usr/bin/curl")
+        .arg("--silent")
+        .arg("--show-error")
+        .arg("--location")
+        .arg("--head")
+        .arg("--output")
+        .arg("/dev/null")
+        .arg("--write-out")
+        .arg("%{url_effective}")
+        .arg("--max-time")
+        .arg("8")
+        .arg("--user-agent")
+        .arg("linkpilot-desktop")
+        .arg(url)
+        .output()
+        .map_err(|e| format!("starting curl: {e}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "curl exited with {}: {}",
+            output.status,
+            stderr.trim()
+        ));
+    }
+    let resolved =
+        String::from_utf8(output.stdout).map_err(|e| format!("decoding curl stdout: {e}"))?;
+    let trimmed = resolved.trim();
+    if trimmed.is_empty() {
+        return Err("curl returned empty effective URL".to_string());
+    }
+    Ok(trimmed.to_string())
+}
+
+/// Extract the tag name from a `https://github.com/<owner>/<repo>/releases/tag/<tag>`
+/// URL. Returns `None` when the URL doesn't match that shape or the tag is
+/// missing — both of which mean GitHub didn't redirect us where we expected.
+fn parse_tag_from_release_url(url: &str) -> Option<String> {
+    let without_query = url.split('?').next().unwrap_or(url);
+    let trimmed = without_query.trim_end_matches('/');
+    let mut segments = trimmed.split('/');
+    // Walk to the `tag` segment and return whatever follows it. We don't
+    // pin owner/repo here so the same parser is reusable in tests.
+    while let Some(seg) = segments.next() {
+        if seg == "tag" {
+            let tag = segments.next()?;
+            if tag.is_empty() {
+                return None;
+            }
+            return Some(tag.to_string());
+        }
+    }
+    None
+}
+
+/// Find the `<entry>` in a GitHub releases.atom feed that corresponds to
+/// `tag` (matched via the entry's alternate `<link href=".../releases/tag/<tag>"/>`,
+/// which is the only canonical anchor — `<id>` uses a numeric repo id and
+/// `<title>` is the human-edited release name that may not equal the tag).
+/// Returns `(release_name, published_at)`. Either side is `None` if its
+/// element is missing or the entry can't be located.
+fn parse_release_atom_meta(atom: &str, tag: &str) -> Option<(Option<String>, Option<String>)> {
+    let href_marker = format!("/releases/tag/{tag}\"");
+    let mut cursor = 0usize;
+    while let Some(rel_start) = atom[cursor..].find("<entry>") {
+        let entry_start = cursor + rel_start;
+        let rel_end = atom[entry_start..].find("</entry>")?;
+        let entry = &atom[entry_start..entry_start + rel_end];
+        cursor = entry_start + rel_end + "</entry>".len();
+        if !entry.contains(&href_marker) {
+            continue;
+        }
+        let title = extract_xml_text(entry, "title").map(decode_xml_entities);
+        let updated = extract_xml_text(entry, "updated").map(decode_xml_entities);
+        return Some((title, updated));
+    }
+    None
+}
+
+/// Extract the first `<tag>...</tag>` text node from `block`. Assumes no
+/// nested elements of the same name — true for the atom fields we read
+/// (`title`, `updated`) but not a general-purpose parser.
+fn extract_xml_text(block: &str, tag: &str) -> Option<String> {
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
+    let open_pos = block.find(&open)? + open.len();
+    let close_pos = block[open_pos..].find(&close)?;
+    Some(block[open_pos..open_pos + close_pos].to_string())
+}
+
+/// Decode the handful of XML entities GitHub actually emits in atom titles
+/// and timestamps. We don't reach for a real XML library because the atom
+/// data we read is a short, plain string and any unknown entity is left
+/// intact rather than triggering a hard failure.
+fn decode_xml_entities(input: String) -> String {
+    if !input.contains('&') {
+        return input;
+    }
+    input
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&#39;", "'")
+}
+
+/// `curl --fail --location --silent --show-error` and return stdout as
+/// UTF-8. Matches the binary used by `download_update_asset` — same
+/// reasoning: avoid pulling reqwest+TLS+tokio into the desktop binary
+/// when the system already has a usable HTTPS client.
+fn curl_get_text(url: &str, headers: &[(&str, &str)]) -> Result<String, String> {
+    let mut cmd = Command::new("/usr/bin/curl");
+    cmd.arg("--fail")
+        .arg("--location")
+        .arg("--silent")
+        .arg("--show-error")
+        .arg("--max-time")
+        .arg("8")
+        .arg("--user-agent")
+        .arg("linkpilot-desktop");
+    for (name, value) in headers {
+        cmd.arg("--header").arg(format!("{name}: {value}"));
+    }
+    cmd.arg(url);
+
+    let output = cmd.output().map_err(|e| format!("starting curl: {e}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "curl exited with {}: {}",
+            output.status,
+            stderr.trim()
+        ));
+    }
+    String::from_utf8(output.stdout).map_err(|e| format!("decoding curl stdout: {e}"))
+}
+
+/// Parse a `shasum -a 256`-style file: `<hex>  <path-or-name>\n`. Match
+/// by basename so a line like `dist/Foo.dmg` still maps to a release
+/// asset named `Foo.dmg`.
+fn parse_checksum_for_asset(content: &str, asset_name: &str) -> Option<String> {
+    let target = asset_name.to_ascii_lowercase();
+    for raw in content.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let mut parts = line.splitn(2, char::is_whitespace);
+        let hex = parts.next()?;
+        let rest = parts.next()?.trim();
+        if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            continue;
+        }
+        let path = rest.trim_start_matches('*').trim();
+        let base = path.rsplit('/').next().unwrap_or(path).to_ascii_lowercase();
+        if base == target {
+            return Some(hex.to_ascii_lowercase());
+        }
+    }
+    None
+}
+
+fn normalize_version(v: &str) -> String {
+    let trimmed = v.trim();
+    if let Some(stripped) = trimmed.strip_prefix(['v', 'V']) {
+        stripped.to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn compare_versions(left: &str, right: &str) -> i32 {
+    let a = version_parts(left);
+    let b = version_parts(right);
+    let len = a.len().max(b.len());
+    for i in 0..len {
+        let diff = a.get(i).copied().unwrap_or(0) as i64 - b.get(i).copied().unwrap_or(0) as i64;
+        if diff != 0 {
+            return diff.signum() as i32;
+        }
+    }
+    0
+}
+
+fn version_parts(version: &str) -> Vec<u32> {
+    let normalized = normalize_version(version);
+    let core = normalized
+        .split(|c| c == '+' || c == '-')
+        .next()
+        .unwrap_or("");
+    core.split('.')
+        .map(|part| part.parse::<u32>().unwrap_or(0))
+        .collect()
+}
 
 #[derive(serde::Deserialize)]
 pub struct UpdateDownloadRequest {
@@ -932,4 +1275,86 @@ fn locate_bundled_daemon() -> Option<String> {
     let exe = std::env::current_exe().ok()?;
     let candidate = exe.parent()?.join("linkpilot-daemon");
     candidate.is_file().then(|| candidate.display().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_release_atom_meta, parse_tag_from_release_url};
+
+    #[test]
+    fn parses_standard_release_tag_url() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/tag/v0.4.0";
+        assert_eq!(parse_tag_from_release_url(url).as_deref(), Some("v0.4.0"));
+    }
+
+    #[test]
+    fn parses_prerelease_tag_url() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/tag/v0.5.0-rc.1";
+        assert_eq!(
+            parse_tag_from_release_url(url).as_deref(),
+            Some("v0.5.0-rc.1")
+        );
+    }
+
+    #[test]
+    fn strips_trailing_slash_and_query() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/tag/v0.4.0/?utm=x";
+        assert_eq!(parse_tag_from_release_url(url).as_deref(), Some("v0.4.0"));
+    }
+
+    #[test]
+    fn rejects_url_without_tag_segment() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/latest";
+        assert_eq!(parse_tag_from_release_url(url), None);
+    }
+
+    #[test]
+    fn rejects_url_with_empty_tag() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/tag/";
+        assert_eq!(parse_tag_from_release_url(url), None);
+    }
+
+    const ATOM_FIXTURE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>tag:github.com,2008:https://github.com/jackerjay/LinkPilot/releases</id>
+  <title>Release notes from LinkPilot</title>
+  <entry>
+    <id>tag:github.com,2008:Repository/1239592238/v0.4.0</id>
+    <updated>2026-05-23T05:47:00Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/jackerjay/LinkPilot/releases/tag/v0.4.0"/>
+    <title>LinkPilot 0.4.0 &amp; goodies</title>
+    <content type="html">&lt;p&gt;notes&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/1239592238/v0.3.0</id>
+    <updated>2026-05-21T13:39:31Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/jackerjay/LinkPilot/releases/tag/v0.3.0"/>
+    <title>v0.3.0</title>
+  </entry>
+</feed>"#;
+
+    #[test]
+    fn atom_meta_finds_matching_entry_and_decodes_entities() {
+        let (name, published) = parse_release_atom_meta(ATOM_FIXTURE, "v0.4.0").unwrap();
+        assert_eq!(name.as_deref(), Some("LinkPilot 0.4.0 & goodies"));
+        assert_eq!(published.as_deref(), Some("2026-05-23T05:47:00Z"));
+    }
+
+    #[test]
+    fn atom_meta_does_not_prefix_match_other_tags() {
+        // v0.4 must not accidentally match the entry for v0.4.0; the
+        // closing quote in the href anchor pins the boundary.
+        assert_eq!(parse_release_atom_meta(ATOM_FIXTURE, "v0.4"), None);
+    }
+
+    #[test]
+    fn atom_meta_picks_correct_entry_when_first_does_not_match() {
+        let (name, _) = parse_release_atom_meta(ATOM_FIXTURE, "v0.3.0").unwrap();
+        assert_eq!(name.as_deref(), Some("v0.3.0"));
+    }
+
+    #[test]
+    fn atom_meta_returns_none_for_unknown_tag() {
+        assert_eq!(parse_release_atom_meta(ATOM_FIXTURE, "v9.9.9"), None);
+    }
 }

@@ -114,6 +114,10 @@ export interface Settings {
    *  the complete visible Halo inventory; profiles missing from the list are
    *  hidden until added back in Settings. */
   profile_orders: Record<string, string[]>;
+  /** Browser ids hidden from the ask-popup picker. Disabled browsers stay
+   *  installed and remain valid explicit routing targets — this is a
+   *  chooser-UI filter only. Mirrors core::config::Settings.disabled_browsers. */
+  disabled_browsers: string[];
   /** UI display language preference. `system` defers to navigator.languages
    *  at boot; the others are hard overrides. */
   language: LanguagePref;

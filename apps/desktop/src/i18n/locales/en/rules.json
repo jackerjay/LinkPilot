@@ -22,6 +22,9 @@
     "show": "Show",
     "hide": "Hide",
     "errorTag": "error",
+    "validTag": "Valid JSON",
+    "parseAt": "Line {{line}}, col {{col}}: {{msg}}",
+    "loadingEditor": "Loading editor…",
     "revert": "Revert",
     "save": "Save",
     "saving": "Saving…"

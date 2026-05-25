@@ -26,6 +26,17 @@
     "browsersCount": "{{count}} apps",
     "configFile": "Configuration"
   },
+  "setupDefaultTarget": {
+    "title": "Choose a default target",
+    "description": "No usable default target is configured yet. Pick where links should open when no rule matches.",
+    "heroTitle": "Pick a default browser",
+    "heroSubtitle": "LinkPilot needs to know where to send links when no rule matches. Pick one to finish setup.",
+    "quickPickLabel": "Detected on this Mac",
+    "advancedLabel": "Or fine-tune profile and window options",
+    "currentMissing": "Current default target \"{{browser}}\" is not detected on this Mac.",
+    "noBrowsers": "No routeable browsers were detected yet. Add or install a browser, then choose it here.",
+    "askFallback": "Until a usable target is selected, unmatched links fall back to the Ask picker."
+  },
   "recent": {
     "card": "Recent routes",
     "empty": "No routes yet. Try <code>lpt open …</code> or click a link."

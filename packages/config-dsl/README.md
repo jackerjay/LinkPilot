@@ -68,7 +68,11 @@ browser.chrome.workspace("work")
 ```
 
 Also: `browser.arc`, `browser.firefox`, `browser.safari`, `browser.edge`,
-`browser.brave`, `browser.vivaldi`, and `browser.custom("your-id")` for
+`browser.brave`, `browser.vivaldi`, `browser.opera`, `browser.operaGx`,
+`browser.dia`, `browser.atlas`, `browser.comet`, `browser.zen`,
+`browser.orion`, `browser.duckduckgo`, `browser.librewolf`,
+`browser.waterfox`, `browser.floorp`, `browser.mullvad`, `browser.tor`,
+`browser.yandex`, `browser.whale`, and `browser.custom("your-id")` for
 anything else.
 
 ### `route.*`

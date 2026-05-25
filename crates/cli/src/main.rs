@@ -380,6 +380,18 @@ enum BrowsersAction {
         #[command(subcommand)]
         action: CustomBrowserAction,
     },
+    /// Show a browser in the ask-popup picker again (default state).
+    /// The browser stays a valid explicit routing target either way.
+    Enable {
+        /// Browser id (e.g. `chrome`, `arc`, or a custom id).
+        id: String,
+    },
+    /// Hide a browser from the ask-popup picker. Explicit rules that
+    /// name this browser still open links there.
+    Disable {
+        /// Browser id (e.g. `chrome`, `arc`, or a custom id).
+        id: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -614,6 +626,8 @@ fn main() -> Result<()> {
                 } => run_browsers_custom_add(cli.config, id, name, kind, exec, bundle_id),
                 CustomBrowserAction::Remove { id } => run_browsers_custom_remove(cli.config, &id),
             },
+            BrowsersAction::Enable { id } => run_browsers_set_enabled(cli.config, &id, true),
+            BrowsersAction::Disable { id } => run_browsers_set_enabled(cli.config, &id, false),
         },
         Command::DefaultBrowser { action } => match action {
             DefaultBrowserAction::Status { json } => run_default_browser_status(json),
@@ -1346,6 +1360,30 @@ fn run_browsers_custom_remove(config: Option<PathBuf>, id: &str) -> Result<()> {
             return Err(anyhow!("custom browser not found: {id}"));
         }
         eprintln!("linkpilot: removed custom browser {id}");
+        Ok(())
+    })
+}
+
+/// Toggle a browser's visibility in the ask-popup picker. Mirrors the
+/// daemon's `browser_set_enabled` command but writes the config file
+/// directly — the running daemon picks up the change via fsnotify.
+fn run_browsers_set_enabled(config: Option<PathBuf>, id: &str, enabled: bool) -> Result<()> {
+    mutate_local(config, |doc| {
+        let list = &mut doc.settings.disabled_browsers;
+        if enabled {
+            let before = list.len();
+            list.retain(|existing| existing != id);
+            if list.len() == before {
+                eprintln!("linkpilot: {id} was already visible in the ask popup");
+            } else {
+                eprintln!("linkpilot: {id} will now appear in the ask popup");
+            }
+        } else if list.iter().any(|existing| existing == id) {
+            eprintln!("linkpilot: {id} is already hidden from the ask popup");
+        } else {
+            list.push(id.to_string());
+            eprintln!("linkpilot: hid {id} from the ask popup");
+        }
         Ok(())
     })
 }

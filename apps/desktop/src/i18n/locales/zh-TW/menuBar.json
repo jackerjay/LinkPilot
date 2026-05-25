@@ -26,6 +26,17 @@
     "browsersCount": "{{count}} 個應用程式",
     "configFile": "設定檔"
   },
+  "setupDefaultTarget": {
+    "title": "選擇預設目標",
+    "description": "尚未設定可用的預設目標。請選擇沒有規則命中時連結要開啟的位置。",
+    "heroTitle": "選擇預設瀏覽器",
+    "heroSubtitle": "沒有規則命中時，LinkPilot 需要知道把連結送去哪裡。選擇一個瀏覽器以完成設定。",
+    "quickPickLabel": "在這台 Mac 上識別到",
+    "advancedLabel": "或細調 profile 與視窗模式",
+    "currentMissing": "目前預設目標「{{browser}}」沒有在這台 Mac 上識別到。",
+    "noBrowsers": "尚未識別到可路由的瀏覽器。請先安裝或新增瀏覽器，然後在這裡選擇。",
+    "askFallback": "在選擇可用目標前，沒有命中規則的連結會回落到 Ask picker。"
+  },
   "recent": {
     "card": "最近路由",
     "empty": "尚無路由。試試 <code>lpt open …</code> 或點擊連結。"
