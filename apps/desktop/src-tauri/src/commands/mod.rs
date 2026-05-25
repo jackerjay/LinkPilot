@@ -450,8 +450,14 @@ pub struct UpdateCheckResult {
     pub checked_at: u64,
 }
 
-const LATEST_RELEASE_API: &str =
-    "https://api.github.com/repos/jackerjay/LinkPilot/releases/latest";
+// We resolve the latest release via the `github.com` redirect rather than
+// `api.github.com/repos/.../releases/latest`. The API host is aggressively
+// rate-limited per egress IP and routinely returns 403 from corporate /
+// data-center networks; `github.com` redirects (and asset downloads) sit on
+// a different, far more permissive throttling tier.
+const LATEST_REDIRECT_URL: &str = "https://github.com/jackerjay/LinkPilot/releases/latest";
+const RELEASE_DOWNLOAD_BASE: &str = "https://github.com/jackerjay/LinkPilot/releases/download";
+const RELEASE_TAG_BASE: &str = "https://github.com/jackerjay/LinkPilot/releases/tag";
 
 #[tauri::command]
 pub async fn update_fetch_metadata(
@@ -465,71 +471,31 @@ pub async fn update_fetch_metadata(
 }
 
 fn fetch_update_metadata_blocking(current_version: &str) -> Result<UpdateCheckResult, String> {
-    let release_json = curl_get_text(
-        LATEST_RELEASE_API,
-        &[("Accept", "application/vnd.github+json")],
-    )
-    .map_err(|e| format!("GitHub Releases API: {e}"))?;
+    // Step 1: resolve `releases/latest` to its redirect target. GitHub serves
+    // a 302 → `/releases/tag/<tag>`; the tag is the only thing we need to
+    // synthesize asset URLs, since the release workflow uses a fixed naming
+    // convention (see .github/workflows/release.yml).
+    let final_url = curl_resolve_redirect(LATEST_REDIRECT_URL)
+        .map_err(|e| format!("GitHub Releases redirect: {e}"))?;
+    let tag_name = parse_tag_from_release_url(&final_url)
+        .ok_or_else(|| format!("could not parse tag from redirect target: {final_url}"))?;
 
-    let release: serde_json::Value = serde_json::from_str(&release_json)
-        .map_err(|e| format!("parsing release JSON: {e}"))?;
-
-    let tag_name = release
-        .get("tag_name")
-        .and_then(|v| v.as_str())
-        .ok_or("release missing tag_name")?
-        .to_string();
-    let html_url = release
-        .get("html_url")
-        .and_then(|v| v.as_str())
-        .ok_or("release missing html_url")?
-        .to_string();
-    let release_name = release
-        .get("name")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let published_at = release
-        .get("published_at")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-
-    let assets = release
-        .get("assets")
-        .and_then(|v| v.as_array())
-        .cloned()
-        .unwrap_or_default();
-    let asset_metas: Vec<UpdateAssetMeta> = assets
-        .iter()
-        .filter_map(|a| {
-            let name = a.get("name")?.as_str()?.to_string();
-            let download_url = a.get("browser_download_url")?.as_str()?.to_string();
-            let size = a.get("size").and_then(serde_json::Value::as_u64);
-            Some(UpdateAssetMeta {
-                name,
-                download_url,
-                size,
-                sha256: None,
-            })
-        })
-        .collect();
-
-    let dmg: UpdateAssetMeta = pick_mac_dmg(&asset_metas)
-        .ok_or("latest release has no macOS DMG asset")?
-        .clone();
+    let latest_version = normalize_version(&tag_name);
+    // DMG filename mirrors `LinkPilot_${VERSION}_universal.dmg` produced by
+    // the release workflow's hdiutil step, where VERSION is the tag minus
+    // its leading `v`.
+    let dmg_name = format!("LinkPilot_{latest_version}_universal.dmg");
+    let dmg_url = format!("{RELEASE_DOWNLOAD_BASE}/{tag_name}/{dmg_name}");
+    let checksums_url = format!("{RELEASE_DOWNLOAD_BASE}/{tag_name}/checksums.txt");
+    let html_url = format!("{RELEASE_TAG_BASE}/{tag_name}");
 
     // Checksum fetch is best-effort: a missing or unreachable checksums.txt
     // surfaces `sha256 = None`, which the renderer then maps to the
     // "checksumMissing" error so we never auto-download an unverified DMG.
-    let sha256 = asset_metas
-        .iter()
-        .find(|a| a.name.eq_ignore_ascii_case("checksums.txt"))
-        .and_then(|cs| {
-            curl_get_text(&cs.download_url, &[("Accept", "text/plain")])
-                .ok()
-                .and_then(|text| parse_checksum_for_asset(&text, &dmg.name))
-        });
+    let sha256 = curl_get_text(&checksums_url, &[("Accept", "text/plain")])
+        .ok()
+        .and_then(|text| parse_checksum_for_asset(&text, &dmg_name));
 
-    let latest_version = normalize_version(&tag_name);
     let normalized_current = normalize_version(current_version);
     let available = compare_versions(&latest_version, &normalized_current) > 0;
 
@@ -543,16 +509,77 @@ fn fetch_update_metadata_blocking(current_version: &str) -> Result<UpdateCheckRe
         latest_version,
         release_url: html_url,
         asset: UpdateAssetMeta {
-            name: dmg.name,
-            download_url: dmg.download_url,
-            size: dmg.size,
+            name: dmg_name,
+            download_url: dmg_url,
+            // Size is no longer cheap to discover without the API; the
+            // downloader treats `None` as "skip the size pre-check" and the
+            // progress UI falls back to indeterminate.
+            size: None,
             sha256,
         },
-        release_name,
-        published_at,
+        release_name: None,
+        published_at: None,
         available,
         checked_at,
     })
+}
+
+/// HEAD-follow `url` and return the final, post-redirect URL. Uses curl's
+/// `%{url_effective}` write-out so we don't have to parse `Location` headers
+/// ourselves or download a response body.
+fn curl_resolve_redirect(url: &str) -> Result<String, String> {
+    let output = Command::new("/usr/bin/curl")
+        .arg("--silent")
+        .arg("--show-error")
+        .arg("--location")
+        .arg("--head")
+        .arg("--output")
+        .arg("/dev/null")
+        .arg("--write-out")
+        .arg("%{url_effective}")
+        .arg("--max-time")
+        .arg("8")
+        .arg("--user-agent")
+        .arg("linkpilot-desktop")
+        .arg(url)
+        .output()
+        .map_err(|e| format!("starting curl: {e}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "curl exited with {}: {}",
+            output.status,
+            stderr.trim()
+        ));
+    }
+    let resolved = String::from_utf8(output.stdout)
+        .map_err(|e| format!("decoding curl stdout: {e}"))?;
+    let trimmed = resolved.trim();
+    if trimmed.is_empty() {
+        return Err("curl returned empty effective URL".to_string());
+    }
+    Ok(trimmed.to_string())
+}
+
+/// Extract the tag name from a `https://github.com/<owner>/<repo>/releases/tag/<tag>`
+/// URL. Returns `None` when the URL doesn't match that shape or the tag is
+/// missing — both of which mean GitHub didn't redirect us where we expected.
+fn parse_tag_from_release_url(url: &str) -> Option<String> {
+    let without_query = url.split('?').next().unwrap_or(url);
+    let trimmed = without_query.trim_end_matches('/');
+    let mut segments = trimmed.split('/');
+    // Walk to the `tag` segment and return whatever follows it. We don't
+    // pin owner/repo here so the same parser is reusable in tests.
+    while let Some(seg) = segments.next() {
+        if seg == "tag" {
+            let tag = segments.next()?;
+            if tag.is_empty() {
+                return None;
+            }
+            return Some(tag.to_string());
+        }
+    }
+    None
 }
 
 /// `curl --fail --location --silent --show-error` and return stdout as
@@ -582,24 +609,6 @@ fn curl_get_text(url: &str, headers: &[(&str, &str)]) -> Result<String, String> 
         return Err(format!("curl exited with {}: {}", output.status, stderr.trim()));
     }
     String::from_utf8(output.stdout).map_err(|e| format!("decoding curl stdout: {e}"))
-}
-
-fn pick_mac_dmg(assets: &[UpdateAssetMeta]) -> Option<&UpdateAssetMeta> {
-    let dmgs: Vec<&UpdateAssetMeta> = assets
-        .iter()
-        .filter(|a| a.name.to_ascii_lowercase().ends_with(".dmg"))
-        .collect();
-    if let Some(universal) = dmgs.iter().find(|a| a.name.to_ascii_lowercase().contains("universal"))
-    {
-        return Some(*universal);
-    }
-    if let Some(arm) = dmgs.iter().find(|a| {
-        let lower = a.name.to_ascii_lowercase();
-        lower.contains("aarch64") || lower.contains("arm64")
-    }) {
-        return Some(*arm);
-    }
-    dmgs.first().copied()
 }
 
 /// Parse a `shasum -a 256`-style file: `<hex>  <path-or-name>\n`. Match
@@ -1183,4 +1192,42 @@ fn locate_bundled_daemon() -> Option<String> {
     let exe = std::env::current_exe().ok()?;
     let candidate = exe.parent()?.join("linkpilot-daemon");
     candidate.is_file().then(|| candidate.display().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_tag_from_release_url;
+
+    #[test]
+    fn parses_standard_release_tag_url() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/tag/v0.4.0";
+        assert_eq!(parse_tag_from_release_url(url).as_deref(), Some("v0.4.0"));
+    }
+
+    #[test]
+    fn parses_prerelease_tag_url() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/tag/v0.5.0-rc.1";
+        assert_eq!(
+            parse_tag_from_release_url(url).as_deref(),
+            Some("v0.5.0-rc.1")
+        );
+    }
+
+    #[test]
+    fn strips_trailing_slash_and_query() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/tag/v0.4.0/?utm=x";
+        assert_eq!(parse_tag_from_release_url(url).as_deref(), Some("v0.4.0"));
+    }
+
+    #[test]
+    fn rejects_url_without_tag_segment() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/latest";
+        assert_eq!(parse_tag_from_release_url(url), None);
+    }
+
+    #[test]
+    fn rejects_url_with_empty_tag() {
+        let url = "https://github.com/jackerjay/LinkPilot/releases/tag/";
+        assert_eq!(parse_tag_from_release_url(url), None);
+    }
 }
