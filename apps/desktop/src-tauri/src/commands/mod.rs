@@ -458,6 +458,7 @@ pub struct UpdateCheckResult {
 const LATEST_REDIRECT_URL: &str = "https://github.com/jackerjay/LinkPilot/releases/latest";
 const RELEASE_DOWNLOAD_BASE: &str = "https://github.com/jackerjay/LinkPilot/releases/download";
 const RELEASE_TAG_BASE: &str = "https://github.com/jackerjay/LinkPilot/releases/tag";
+const RELEASES_ATOM_URL: &str = "https://github.com/jackerjay/LinkPilot/releases.atom";
 
 #[tauri::command]
 pub async fn update_fetch_metadata(
@@ -496,6 +497,16 @@ fn fetch_update_metadata_blocking(current_version: &str) -> Result<UpdateCheckRe
         .ok()
         .and_then(|text| parse_checksum_for_asset(&text, &dmg_name));
 
+    // Display metadata (release title, publish time) comes from the public
+    // releases.atom feed — also on `github.com`, so it shares the
+    // permissive throttling tier of the redirect/download paths. Failure
+    // here is silent: both fields are nullable and unrendered today.
+    let (release_name, published_at) =
+        curl_get_text(RELEASES_ATOM_URL, &[("Accept", "application/atom+xml")])
+            .ok()
+            .and_then(|atom| parse_release_atom_meta(&atom, &tag_name))
+            .unwrap_or((None, None));
+
     let normalized_current = normalize_version(current_version);
     let available = compare_versions(&latest_version, &normalized_current) > 0;
 
@@ -517,8 +528,8 @@ fn fetch_update_metadata_blocking(current_version: &str) -> Result<UpdateCheckRe
             size: None,
             sha256,
         },
-        release_name: None,
-        published_at: None,
+        release_name,
+        published_at,
         available,
         checked_at,
     })
@@ -580,6 +591,61 @@ fn parse_tag_from_release_url(url: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// Find the `<entry>` in a GitHub releases.atom feed that corresponds to
+/// `tag` (matched via the entry's alternate `<link href=".../releases/tag/<tag>"/>`,
+/// which is the only canonical anchor — `<id>` uses a numeric repo id and
+/// `<title>` is the human-edited release name that may not equal the tag).
+/// Returns `(release_name, published_at)`. Either side is `None` if its
+/// element is missing or the entry can't be located.
+fn parse_release_atom_meta(
+    atom: &str,
+    tag: &str,
+) -> Option<(Option<String>, Option<String>)> {
+    let href_marker = format!("/releases/tag/{tag}\"");
+    let mut cursor = 0usize;
+    while let Some(rel_start) = atom[cursor..].find("<entry>") {
+        let entry_start = cursor + rel_start;
+        let rel_end = atom[entry_start..].find("</entry>")?;
+        let entry = &atom[entry_start..entry_start + rel_end];
+        cursor = entry_start + rel_end + "</entry>".len();
+        if !entry.contains(&href_marker) {
+            continue;
+        }
+        let title = extract_xml_text(entry, "title").map(decode_xml_entities);
+        let updated = extract_xml_text(entry, "updated").map(decode_xml_entities);
+        return Some((title, updated));
+    }
+    None
+}
+
+/// Extract the first `<tag>...</tag>` text node from `block`. Assumes no
+/// nested elements of the same name — true for the atom fields we read
+/// (`title`, `updated`) but not a general-purpose parser.
+fn extract_xml_text(block: &str, tag: &str) -> Option<String> {
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
+    let open_pos = block.find(&open)? + open.len();
+    let close_pos = block[open_pos..].find(&close)?;
+    Some(block[open_pos..open_pos + close_pos].to_string())
+}
+
+/// Decode the handful of XML entities GitHub actually emits in atom titles
+/// and timestamps. We don't reach for a real XML library because the atom
+/// data we read is a short, plain string and any unknown entity is left
+/// intact rather than triggering a hard failure.
+fn decode_xml_entities(input: String) -> String {
+    if !input.contains('&') {
+        return input;
+    }
+    input
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&#39;", "'")
 }
 
 /// `curl --fail --location --silent --show-error` and return stdout as
@@ -1196,7 +1262,7 @@ fn locate_bundled_daemon() -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_tag_from_release_url;
+    use super::{parse_release_atom_meta, parse_tag_from_release_url};
 
     #[test]
     fn parses_standard_release_tag_url() {
@@ -1229,5 +1295,49 @@ mod tests {
     fn rejects_url_with_empty_tag() {
         let url = "https://github.com/jackerjay/LinkPilot/releases/tag/";
         assert_eq!(parse_tag_from_release_url(url), None);
+    }
+
+    const ATOM_FIXTURE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>tag:github.com,2008:https://github.com/jackerjay/LinkPilot/releases</id>
+  <title>Release notes from LinkPilot</title>
+  <entry>
+    <id>tag:github.com,2008:Repository/1239592238/v0.4.0</id>
+    <updated>2026-05-23T05:47:00Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/jackerjay/LinkPilot/releases/tag/v0.4.0"/>
+    <title>LinkPilot 0.4.0 &amp; goodies</title>
+    <content type="html">&lt;p&gt;notes&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/1239592238/v0.3.0</id>
+    <updated>2026-05-21T13:39:31Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/jackerjay/LinkPilot/releases/tag/v0.3.0"/>
+    <title>v0.3.0</title>
+  </entry>
+</feed>"#;
+
+    #[test]
+    fn atom_meta_finds_matching_entry_and_decodes_entities() {
+        let (name, published) = parse_release_atom_meta(ATOM_FIXTURE, "v0.4.0").unwrap();
+        assert_eq!(name.as_deref(), Some("LinkPilot 0.4.0 & goodies"));
+        assert_eq!(published.as_deref(), Some("2026-05-23T05:47:00Z"));
+    }
+
+    #[test]
+    fn atom_meta_does_not_prefix_match_other_tags() {
+        // v0.4 must not accidentally match the entry for v0.4.0; the
+        // closing quote in the href anchor pins the boundary.
+        assert_eq!(parse_release_atom_meta(ATOM_FIXTURE, "v0.4"), None);
+    }
+
+    #[test]
+    fn atom_meta_picks_correct_entry_when_first_does_not_match() {
+        let (name, _) = parse_release_atom_meta(ATOM_FIXTURE, "v0.3.0").unwrap();
+        assert_eq!(name.as_deref(), Some("v0.3.0"));
+    }
+
+    #[test]
+    fn atom_meta_returns_none_for_unknown_tag() {
+        assert_eq!(parse_release_atom_meta(ATOM_FIXTURE, "v9.9.9"), None);
     }
 }
