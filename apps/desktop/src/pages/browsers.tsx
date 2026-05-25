@@ -13,6 +13,10 @@ interface Entry {
   /** True when this entry came from `config.custom_browsers` rather
    *  than auto-detection. Drives the "custom" tag and remove button. */
   custom: boolean;
+  /** True when the user has hidden this browser from the ask-popup
+   *  picker via the row toggle. Mirrors membership in
+   *  `doc.settings.disabled_browsers`. */
+  disabled: boolean;
 }
 
 export function BrowsersPage() {
@@ -33,13 +37,16 @@ export function BrowsersPage() {
       const customIds = new Set(
         (doc.custom_browsers ?? []).map((b) => b.id),
       );
+      const disabledIds = new Set(doc.settings?.disabled_browsers ?? []);
       const out: Entry[] = await Promise.all(
         installed.map(async (b) => {
+          const disabled = disabledIds.has(b.id);
           try {
             return {
               browser: b,
               profiles: await ipc.listProfiles(b.id),
               custom: customIds.has(b.id),
+              disabled,
             };
           } catch (err) {
             return {
@@ -47,6 +54,7 @@ export function BrowsersPage() {
               profiles: [],
               error: String(err),
               custom: customIds.has(b.id),
+              disabled,
             };
           }
         }),
@@ -112,6 +120,25 @@ export function BrowsersPage() {
       await refresh();
     } catch (err) {
       setError(String(err));
+    }
+  };
+
+  const toggleEnabled = async (id: string, enabled: boolean) => {
+    // Optimistic toggle so the switch animation lands instantly. The
+    // refresh below re-reads from the daemon so any reject + revert is
+    // immediately reflected.
+    setEntries((prev) =>
+      prev?.map((e) =>
+        e.browser.id === id ? { ...e, disabled: !enabled } : e,
+      ) ?? prev,
+    );
+    setError(null);
+    try {
+      await ipc.browserSetEnabled(id, enabled);
+      await refresh();
+    } catch (err) {
+      setError(String(err));
+      await refresh();
     }
   };
 
@@ -218,6 +245,9 @@ export function BrowsersPage() {
               key={e.browser.id}
               entry={e}
               onRemove={() => removeCustom(e.browser.id)}
+              onToggleEnabled={(enabled) =>
+                toggleEnabled(e.browser.id, enabled)
+              }
             />
           ))}
         </div>
@@ -229,16 +259,25 @@ export function BrowsersPage() {
 function BrowserBlock({
   entry: e,
   onRemove,
+  onToggleEnabled,
 }: {
   entry: Entry;
   onRemove: () => void;
+  onToggleEnabled: (enabled: boolean) => void;
 }) {
   const { t } = useTranslation("browsers");
   return (
     <>
       <div
         className="mac-row"
-        style={{ alignItems: "flex-start", paddingTop: 14, paddingBottom: 14 }}
+        style={{
+          alignItems: "flex-start",
+          paddingTop: 14,
+          paddingBottom: 14,
+          // Dim the entire row when hidden from the picker so the
+          // disabled state is obvious without reading the switch.
+          opacity: e.disabled ? 0.55 : 1,
+        }}
       >
         <AppIcon
           bundleId={e.browser.platform_app_id ?? undefined}
@@ -259,6 +298,14 @@ function BrowserBlock({
                 title={t("customTagTitle")}
               >
                 {t("customTag")}
+              </span>
+            )}
+            {e.disabled && (
+              <span
+                className="mac-tag neutral"
+                title={t("disabledTagTitle")}
+              >
+                {t("disabledTag")}
               </span>
             )}
           </div>
@@ -284,6 +331,15 @@ function BrowserBlock({
             </div>
           )}
         </div>
+        <button
+          type="button"
+          className={`mac-switch accent ${e.disabled ? "" : "on"}`}
+          aria-pressed={!e.disabled}
+          onClick={() => onToggleEnabled(e.disabled)}
+          title={t(e.disabled ? "showInPicker" : "hideFromPicker", {
+            name: e.browser.display_name,
+          })}
+        />
         {e.custom && (
           <button
             type="button"

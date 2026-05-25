@@ -399,4 +399,30 @@ mod tests {
         assert!(reloaded.document().rules.is_empty());
         std::fs::remove_file(path).ok();
     }
+
+    #[test]
+    fn disabled_browsers_round_trip_and_default_backfills() {
+        // Pre-disabled-browsers config (no `settings.disabled_browsers`
+        // key) must still load and surface an empty list.
+        let path = tmp_path();
+        let legacy = serde_json::json!({
+            "version": 1,
+            "default_target": { "browser": "system" },
+            "settings": { "smart_routing_enabled": true }
+        });
+        std::fs::write(&path, serde_json::to_string_pretty(&legacy).unwrap()).unwrap();
+        let (store, _) = ConfigStore::load_or_init(path.clone()).unwrap();
+        assert!(store.document().settings.disabled_browsers.is_empty());
+
+        // Now write a non-empty list and confirm it survives a reload.
+        let mut doc = store.document();
+        doc.settings.disabled_browsers = vec!["dia".to_string(), "arc".to_string()];
+        store.replace(doc, WriterId::Gui).unwrap();
+        let (reloaded, _) = ConfigStore::load_or_init(path.clone()).unwrap();
+        assert_eq!(
+            reloaded.document().settings.disabled_browsers,
+            vec!["dia".to_string(), "arc".to_string()]
+        );
+        std::fs::remove_file(path).ok();
+    }
 }

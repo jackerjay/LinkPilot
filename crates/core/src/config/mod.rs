@@ -156,6 +156,14 @@ pub struct Settings {
     /// until the user adds them back in Settings. Stale ids are skipped.
     #[serde(default)]
     pub profile_orders: BTreeMap<String, Vec<String>>,
+    /// Browser ids the user has hidden from the ask-popup picker (and the
+    /// Settings → preview picker, for consistency). Disabled browsers stay
+    /// on disk and remain valid as explicit routing targets — a rule that
+    /// names a disabled browser still opens links there. This is purely a
+    /// chooser-UI filter so the wheel doesn't surface browsers the user
+    /// keeps installed but never wants to ask about.
+    #[serde(default)]
+    pub disabled_browsers: Vec<String>,
     /// UI display language preference. `System` defers to the OS / WebKit
     /// `navigator.languages` chain at startup; the other variants are hard
     /// overrides. The frontend owns the actual translation lookup (i18next
@@ -219,6 +227,7 @@ impl Default for Settings {
             smart_routing_enabled: true,
             picker_style: PickerStyle::Frosted,
             profile_orders: BTreeMap::new(),
+            disabled_browsers: Vec::new(),
             language: LanguagePref::System,
         }
     }

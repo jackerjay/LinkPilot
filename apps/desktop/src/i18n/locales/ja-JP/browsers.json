@@ -11,5 +11,9 @@
   "customTag": "カスタム",
   "customTagTitle": "手動で追加 —— ゴミ箱ボタンで削除できます",
   "profilesErrorTag": "profile",
-  "removeCustomTitle": "「{{name}}」をカスタムブラウザから削除"
+  "removeCustomTitle": "「{{name}}」をカスタムブラウザから削除",
+  "disabledTag": "非表示",
+  "disabledTagTitle": "ask ポップアップから非表示",
+  "hideFromPicker": "ask ポップアップから「{{name}}」を非表示にする",
+  "showInPicker": "ask ポップアップに「{{name}}」を表示する"
 }

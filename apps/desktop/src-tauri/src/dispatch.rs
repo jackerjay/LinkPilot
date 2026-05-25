@@ -245,13 +245,41 @@ fn resolve_ask(
         .installed_browsers()
         .ok()?;
 
-    let source: Vec<BrowserTarget> = if candidates.is_empty() {
+    // Project the three settings we need under the store mutex so the
+    // hot ask path doesn't deep-clone the whole document. `disabled_set`
+    // is the user's "hide from chooser" list (see Settings.disabled_browsers).
+    let (order_map, style, disabled_set) = state.config.with_document(|doc| {
+        let disabled: std::collections::HashSet<String> =
+            doc.settings.disabled_browsers.iter().cloned().collect();
+        (
+            doc.settings.profile_orders.clone(),
+            doc.settings.picker_style,
+            disabled,
+        )
+    });
+
+    let raw_source: Vec<BrowserTarget> = if candidates.is_empty() {
         installed
             .iter()
             .map(|b| BrowserTarget::new(b.id.clone()))
             .collect()
     } else {
         candidates.to_vec()
+    };
+
+    // Apply the disabled-browsers filter. If every option ends up
+    // filtered, fall back to the unfiltered list rather than softlock
+    // the ask flow with an empty picker — the user can still pick
+    // among "hidden" entries when there's literally nothing else.
+    let filtered: Vec<BrowserTarget> = raw_source
+        .iter()
+        .filter(|t| !disabled_set.contains(&t.browser.0))
+        .cloned()
+        .collect();
+    let source: Vec<BrowserTarget> = if filtered.is_empty() {
+        raw_source
+    } else {
+        filtered
     };
 
     if source.is_empty() {
@@ -266,16 +294,6 @@ fn resolve_ask(
     let mut target_by_id: HashMap<String, BrowserTarget> = HashMap::new();
     let mut choices: Vec<PickerChoice> = Vec::with_capacity(source.len());
     let inventory = state.platform.browser_inventory();
-    // Ask is high-frequency, so don't deep-clone the whole ConfigDocument
-    // (rules + workspaces + browsers) just to read two fields. Project
-    // out picker_style and the per-browser profile orders under the store
-    // mutex and let the rest of the document stay shared.
-    let (order_map, style) = state.config.with_document(|doc| {
-        (
-            doc.settings.profile_orders.clone(),
-            doc.settings.picker_style,
-        )
-    });
     for target in source {
         let info = installed.iter().find(|b| b.id == target.browser);
         let name = info

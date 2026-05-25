@@ -254,6 +254,29 @@ pub fn remove_custom_browser(state: State<'_, AppState>, id: BrowserId) -> Resul
         .map_err(|e| e.to_string())
 }
 
+/// Flip a browser's visibility in the ask-popup picker. `enabled = false`
+/// adds the id to `Settings.disabled_browsers`; `true` removes it. The
+/// browser stays installed and remains a valid explicit routing target
+/// either way — see the field doc on `Settings.disabled_browsers`.
+#[tauri::command]
+pub fn browser_set_enabled(
+    state: State<'_, AppState>,
+    id: String,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut doc = state.config.document();
+    let list = &mut doc.settings.disabled_browsers;
+    if enabled {
+        list.retain(|existing| existing != &id);
+    } else if !list.iter().any(|existing| existing == &id) {
+        list.push(id);
+    }
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn list_profiles(
     state: State<'_, AppState>,

@@ -11,5 +11,9 @@
   "customTag": "custom",
   "customTagTitle": "Added manually — remove with the trash button",
   "profilesErrorTag": "profiles",
-  "removeCustomTitle": "Remove \"{{name}}\" from custom browsers"
+  "removeCustomTitle": "Remove \"{{name}}\" from custom browsers",
+  "disabledTag": "hidden",
+  "disabledTagTitle": "Hidden from the ask popup picker",
+  "hideFromPicker": "Hide \"{{name}}\" from the ask popup",
+  "showInPicker": "Show \"{{name}}\" in the ask popup"
 }

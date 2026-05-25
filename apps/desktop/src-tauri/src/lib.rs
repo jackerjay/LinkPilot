@@ -262,6 +262,7 @@ pub fn run() {
             commands::list_browsers,
             commands::add_custom_browser,
             commands::remove_custom_browser,
+            commands::browser_set_enabled,
             commands::list_profiles,
             commands::route_open,
             commands::route_evaluate,

@@ -52,6 +52,8 @@ export const ipc = {
     invoke<void>("add_custom_browser", { browser }),
   removeCustomBrowser: (id: BrowserId) =>
     invoke<void>("remove_custom_browser", { id }),
+  browserSetEnabled: (id: string, enabled: boolean) =>
+    invoke<void>("browser_set_enabled", { id, enabled }),
   listProfiles: (browser: BrowserId) =>
     invoke<BrowserProfile[]>("list_profiles", { browser }),
 
