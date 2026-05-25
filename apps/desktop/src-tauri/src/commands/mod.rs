@@ -586,8 +586,8 @@ fn curl_resolve_redirect(url: &str) -> Result<String, String> {
             stderr.trim()
         ));
     }
-    let resolved = String::from_utf8(output.stdout)
-        .map_err(|e| format!("decoding curl stdout: {e}"))?;
+    let resolved =
+        String::from_utf8(output.stdout).map_err(|e| format!("decoding curl stdout: {e}"))?;
     let trimmed = resolved.trim();
     if trimmed.is_empty() {
         return Err("curl returned empty effective URL".to_string());
@@ -622,10 +622,7 @@ fn parse_tag_from_release_url(url: &str) -> Option<String> {
 /// `<title>` is the human-edited release name that may not equal the tag).
 /// Returns `(release_name, published_at)`. Either side is `None` if its
 /// element is missing or the entry can't be located.
-fn parse_release_atom_meta(
-    atom: &str,
-    tag: &str,
-) -> Option<(Option<String>, Option<String>)> {
+fn parse_release_atom_meta(atom: &str, tag: &str) -> Option<(Option<String>, Option<String>)> {
     let href_marker = format!("/releases/tag/{tag}\"");
     let mut cursor = 0usize;
     while let Some(rel_start) = atom[cursor..].find("<entry>") {
@@ -690,12 +687,14 @@ fn curl_get_text(url: &str, headers: &[(&str, &str)]) -> Result<String, String> 
     }
     cmd.arg(url);
 
-    let output = cmd
-        .output()
-        .map_err(|e| format!("starting curl: {e}"))?;
+    let output = cmd.output().map_err(|e| format!("starting curl: {e}"))?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("curl exited with {}: {}", output.status, stderr.trim()));
+        return Err(format!(
+            "curl exited with {}: {}",
+            output.status,
+            stderr.trim()
+        ));
     }
     String::from_utf8(output.stdout).map_err(|e| format!("decoding curl stdout: {e}"))
 }
@@ -717,11 +716,7 @@ fn parse_checksum_for_asset(content: &str, asset_name: &str) -> Option<String> {
             continue;
         }
         let path = rest.trim_start_matches('*').trim();
-        let base = path
-            .rsplit('/')
-            .next()
-            .unwrap_or(path)
-            .to_ascii_lowercase();
+        let base = path.rsplit('/').next().unwrap_or(path).to_ascii_lowercase();
         if base == target {
             return Some(hex.to_ascii_lowercase());
         }
@@ -743,8 +738,7 @@ fn compare_versions(left: &str, right: &str) -> i32 {
     let b = version_parts(right);
     let len = a.len().max(b.len());
     for i in 0..len {
-        let diff = a.get(i).copied().unwrap_or(0) as i64
-            - b.get(i).copied().unwrap_or(0) as i64;
+        let diff = a.get(i).copied().unwrap_or(0) as i64 - b.get(i).copied().unwrap_or(0) as i64;
         if diff != 0 {
             return diff.signum() as i32;
         }

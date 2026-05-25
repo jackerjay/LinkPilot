@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-05-25
+
 ### Added
 
 - **Per-browser hide-from-picker toggle.** Each row on the Browsers page now
