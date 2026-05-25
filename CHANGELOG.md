@@ -6,6 +6,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Per-browser hide-from-picker toggle.** Each row on the Browsers page now
+  has an on/off switch that adds the browser id to
+  `Settings.disabled_browsers`. Hidden browsers no longer appear in the ask
+  popup picker (and the Settings → preview picker, for parity); they stay
+  installed and remain valid as explicit routing targets — a rule that names
+  a hidden browser still opens links there. `lpt browsers enable <id>` /
+  `lpt browsers disable <id>` mirror the toggle from the CLI.
+
+### Fixed
+
+- **Update check bypasses `api.github.com` rate limits.** The "Check for
+  updates" path hit `api.github.com/.../releases/latest`, which returns 403
+  from many corporate / data-center egress IPs. The desktop app now resolves
+  the latest release via the `github.com/.../releases/latest` redirect and
+  synthesizes asset URLs from the release workflow's fixed naming
+  convention, so the update check works from networks the API host
+  throttles. `release_name` and `published_at` are backfilled from the
+  public `releases.atom` feed.
+
 ## [0.4.0] — 2026-05-22
 
 ### Added
