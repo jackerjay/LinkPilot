@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-05-27
+
 ### Changed
 
 - **New brand logo.** Refreshed the app icon — a rounded "p" carrying a
