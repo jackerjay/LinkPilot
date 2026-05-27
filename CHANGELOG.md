@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-05-27
+
+### Changed
+
+- **New brand logo.** Refreshed the app icon — a rounded "p" carrying a
+  paper-plane *send* mark — across every bundle target (Dock / Launchpad,
+  Windows, iOS, Android) and the website favicon, regenerated from a new
+  source master through `tools/icon-padder` + `tauri icon`. The macOS
+  menu-bar tray template was redrawn to echo the mark (a "p" ring with a
+  paper-plane dart) while staying single-colour for `templateImage`
+  tinting.
+
 ## [0.4.1] — 2026-05-25
 
 ### Added
