@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-05-28
+
 ### Changed
 
 - **Per-arch macOS release artifacts.** The release workflow no longer
