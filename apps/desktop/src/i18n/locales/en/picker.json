@@ -8,7 +8,8 @@
       "direct": "DIRECT",
       "default": "DEFAULT",
       "cancel": "CANCEL",
-      "copy": "COPY"
+      "copy": "COPY",
+      "cut": "CUT"
     },
     "modifierActive": "Aim, release to open",
     "modifierIdle": "Hold ⌥ to pick a profile",
@@ -16,7 +17,8 @@
     "opening": "Opening in {{browser}}",
     "crownHint": "open · aim to switch",
     "copyUrl": "Copy URL",
-    "urlCopied": "Copied"
+    "urlCopied": "Copied",
+    "copyUrlClose": "Copy URL and close"
   },
   "style": {
     "variants": {

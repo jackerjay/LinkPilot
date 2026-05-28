@@ -8,7 +8,8 @@
       "direct": "DIRECT",
       "default": "DEFAULT",
       "cancel": "CANCEL",
-      "copy": "COPY"
+      "copy": "COPY",
+      "cut": "CUT"
     },
     "modifierActive": "狙って、離すと開きます",
     "modifierIdle": "⌥ を押して profile を選択",
@@ -16,7 +17,8 @@
     "opening": "{{browser}} で開いています",
     "crownHint": "開く · 狙って切り替え",
     "copyUrl": "URL をコピー",
-    "urlCopied": "コピーしました"
+    "urlCopied": "コピーしました",
+    "copyUrlClose": "URL をコピーして閉じる"
   },
   "style": {
     "variants": {

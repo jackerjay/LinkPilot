@@ -8,7 +8,8 @@
       "direct": "直達",
       "default": "預設",
       "cancel": "取消",
-      "copy": "複製"
+      "copy": "複製",
+      "cut": "剪下"
     },
     "modifierActive": "瞄準，放開即開啟",
     "modifierIdle": "按住 ⌥ 選擇 profile",
@@ -16,7 +17,8 @@
     "opening": "正在用 {{browser}} 開啟",
     "crownHint": "開啟 · 移動以切換",
     "copyUrl": "複製 URL",
-    "urlCopied": "已複製"
+    "urlCopied": "已複製",
+    "copyUrlClose": "複製 URL 並關閉"
   },
   "style": {
     "variants": {

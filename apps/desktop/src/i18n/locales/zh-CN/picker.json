@@ -8,7 +8,8 @@
       "direct": "直达",
       "default": "默认",
       "cancel": "取消",
-      "copy": "复制"
+      "copy": "复制",
+      "cut": "剪切"
     },
     "modifierActive": "瞄准，松开即打开",
     "modifierIdle": "按住 ⌥ 选择 profile",
@@ -16,7 +17,8 @@
     "opening": "正在用 {{browser}} 打开",
     "crownHint": "打开 · 移动以切换",
     "copyUrl": "复制 URL",
-    "urlCopied": "已复制"
+    "urlCopied": "已复制",
+    "copyUrlClose": "复制 URL 并关闭"
   },
   "style": {
     "variants": {

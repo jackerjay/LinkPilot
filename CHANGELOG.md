@@ -8,11 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Copy URL from the ask picker.** The URL row now carries an inline
-  copy button, and pressing `C` (no modifiers) copies the URL to the
-  clipboard regardless of whether the Halo wheel is open. The button
-  flips to a check briefly on success; the footer hint row lists the
-  new shortcut. Localized across en / zh-CN / zh-TW / ja-JP.
+- **Copy URL from the ask picker.** The URL row now carries two inline
+  icon buttons — copy, and copy-and-dismiss — and the same two actions
+  are bound to `C` (copy, picker stays open) and `X` (cut: copy then
+  close the picker). Both shortcuts ignore Cmd/Ctrl/Alt/Shift modifiers
+  and work whether the Halo wheel is open or not. The copy button flips
+  to a check briefly on success; the cut button closes the picker as
+  its own confirmation. Footer hint row lists both shortcuts. Localized
+  across en / zh-CN / zh-TW / ja-JP.
 
 ## [0.4.2] — 2026-05-27
 

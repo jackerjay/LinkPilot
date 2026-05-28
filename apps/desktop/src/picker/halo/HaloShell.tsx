@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Scissors } from "lucide-react";
 import { AppIcon } from "@/components/AppIcon";
 import {
   DEFAULT_HALO_GEOMETRY,
@@ -154,6 +154,19 @@ export function HaloShell({
     }
   }, [url]);
 
+  // "Cut" — copy then dismiss the picker. The window closing IS the
+  // confirmation; no icon flash needed (picker unmounts before React
+  // could paint one). Closes even on clipboard failure: the user's
+  // primary intent was to dismiss this picker; clipboard is secondary.
+  const copyUrlAndClose = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Best-effort: still dismiss per user intent.
+    }
+    onCancel();
+  }, [url, onCancel]);
+
   const browser = hoveredTileIdx != null ? choices[hoveredTileIdx] : null;
   const showWheel =
     optDown &&
@@ -280,6 +293,20 @@ export function HaloShell({
         copyUrl();
         return;
       }
+      // X — cut: copy URL and dismiss the picker. Same modifier-free
+      // guard so it never steals Cmd+X. Mirrors the C handler's
+      // unconditional placement (works whether the wheel is open or not).
+      if (
+        e.code === "KeyX" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.shiftKey
+      ) {
+        e.preventDefault();
+        copyUrlAndClose();
+        return;
+      }
       if (!showWheel || !browser) return;
       const digit = /^Digit([1-9])$/.exec(e.code);
       if (digit) {
@@ -298,7 +325,16 @@ export function HaloShell({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showWheel, browser, hoveredProfile, launching, launch, onCancel, copyUrl]);
+  }, [
+    showWheel,
+    browser,
+    hoveredProfile,
+    launching,
+    launch,
+    onCancel,
+    copyUrl,
+    copyUrlAndClose,
+  ]);
 
   // Click-to-launch — scoped to the wheel's hit zone (same annulus used by
   // the hover hit-test). Stops the click from bubbling so it doesn't also
@@ -384,6 +420,15 @@ export function HaloShell({
             aria-label={copied ? t("halo.urlCopied") : t("halo.copyUrl")}
           >
             {copied ? <Check size={12} /> : <Copy size={12} />}
+          </button>
+          <button
+            type="button"
+            className="pk-url-copy"
+            onClick={copyUrlAndClose}
+            title={t("halo.copyUrlClose")}
+            aria-label={t("halo.copyUrlClose")}
+          >
+            <Scissors size={12} />
           </button>
         </div>
       </div>
@@ -494,6 +539,9 @@ export function HaloShell({
         </span>
         <span className="pk-foot-group">
           <span className="pk-kbd">C</span> {t("halo.footer.copy")}
+        </span>
+        <span className="pk-foot-group">
+          <span className="pk-kbd">X</span> {t("halo.footer.cut")}
         </span>
         <span className="pk-foot-group">
           <span className="pk-kbd">ESC</span> {t("halo.footer.cancel")}
