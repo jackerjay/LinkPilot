@@ -211,9 +211,7 @@ impl ObservationsStore {
             .expect("observations store mutex poisoned");
         let mut file = self.load_dismissed()?;
         file.entries.retain(|e| {
-            !(e.host == host
-                && e.browser_id == browser_id
-                && e.profile_id.as_deref() == profile_id)
+            !(e.host == host && e.browser_id == browser_id && e.profile_id.as_deref() == profile_id)
         });
         file.entries.push(DismissedSuggestion {
             host: host.to_string(),

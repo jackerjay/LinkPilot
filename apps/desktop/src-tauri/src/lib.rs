@@ -98,17 +98,18 @@ pub fn run() {
             // store does nothing on construction — first `record` opens
             // the file in append mode. Reuse `config_path` to dodge a
             // second HOME-dir resolution.
-            let observations_store = Arc::new(linkpilot_core::observations::ObservationsStore::new(
-                config_path.with_file_name("observations.ndjson"),
-                config_path.with_file_name("observations-dismissed.json"),
-            ));
+            let observations_store =
+                Arc::new(linkpilot_core::observations::ObservationsStore::new(
+                    config_path.with_file_name("observations.ndjson"),
+                    config_path.with_file_name("observations-dismissed.json"),
+                ));
             // Best-effort retention sweep at startup so a long-running
             // install doesn't accumulate years of stale picks. Reads
             // current settings; `None` (retain forever) is a no-op.
             {
                 let doc = config_store.document();
-                if let Err(e) = observations_store
-                    .retain_within(doc.settings.behavior_log_retention_days)
+                if let Err(e) =
+                    observations_store.retain_within(doc.settings.behavior_log_retention_days)
                 {
                     tracing::warn!(error = %e, "observations retain_within failed at startup");
                 }
