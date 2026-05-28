@@ -505,10 +505,15 @@ fn fetch_update_metadata_blocking(current_version: &str) -> Result<UpdateCheckRe
         .ok_or_else(|| format!("could not parse tag from redirect target: {final_url}"))?;
 
     let latest_version = normalize_version(&tag_name);
-    // DMG filename mirrors `LinkPilot_${VERSION}_universal.dmg` produced by
-    // the release workflow's hdiutil step, where VERSION is the tag minus
-    // its leading `v`.
-    let dmg_name = format!("LinkPilot_{latest_version}_universal.dmg");
+    // DMG filename mirrors `LinkPilot_${VERSION}_${ARCH}.dmg` produced by
+    // the release workflow's per-arch hdiutil step (see .github/workflows/
+    // release.yml matrix). `std::env::consts::ARCH` is `"aarch64"` on
+    // Apple-Silicon and `"x86_64"` on Intel — matches the asset naming
+    // exactly. Pre-v0.5.0 releases used `_universal.dmg`; users on those
+    // installs will see a one-time 404 from the update check and must
+    // download the new DMG manually from the GitHub Releases page.
+    let arch = std::env::consts::ARCH;
+    let dmg_name = format!("LinkPilot_{latest_version}_{arch}.dmg");
     let dmg_url = format!("{RELEASE_DOWNLOAD_BASE}/{tag_name}/{dmg_name}");
     let checksums_url = format!("{RELEASE_DOWNLOAD_BASE}/{tag_name}/checksums.txt");
     let html_url = format!("{RELEASE_TAG_BASE}/{tag_name}");

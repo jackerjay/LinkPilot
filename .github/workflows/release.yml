@@ -10,8 +10,21 @@ permissions:
 
 jobs:
   build-macos:
-    name: Build macOS artifacts
-    runs-on: macos-latest
+    name: Build macOS (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # Don't abort the other arch on a single failure — both legs are
+      # informative for triage. The `publish` job has `needs:` on the
+      # whole matrix, so a half-green run still won't publish.
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            target: aarch64-apple-darwin
+            runner: macos-14    # Apple-Silicon GitHub runner
+          - arch: x86_64
+            target: x86_64-apple-darwin
+            runner: macos-13    # Intel GitHub runner
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,7 +33,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          targets: x86_64-apple-darwin,aarch64-apple-darwin
+          targets: ${{ matrix.target }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -30,7 +43,7 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
         with:
-          key: macos-universal
+          key: macos-${{ matrix.arch }}
 
       - name: Install desktop dependencies
         working-directory: apps/desktop
@@ -39,33 +52,15 @@ jobs:
       - name: Run Rust tests
         run: cargo test --workspace --exclude linkpilot-desktop
 
-      - name: Build CLI (x86_64)
-        run: cargo build --release --target x86_64-apple-darwin -p linkpilot-cli
+      - name: Build CLI
+        run: cargo build --release --target ${{ matrix.target }} -p linkpilot-cli
 
-      - name: Build CLI (aarch64)
-        run: cargo build --release --target aarch64-apple-darwin -p linkpilot-cli
+      - name: Build daemon
+        run: cargo build --release --target ${{ matrix.target }} -p linkpilot-headless-daemon
 
-      - name: Build daemon (x86_64)
-        run: cargo build --release --target x86_64-apple-darwin -p linkpilot-headless-daemon
-
-      - name: Build daemon (aarch64)
-        run: cargo build --release --target aarch64-apple-darwin -p linkpilot-headless-daemon
-
-      - name: Lipo CLI + daemon into universal binaries
-        run: |
-          mkdir -p target/universal-apple-darwin/release
-          lipo -create -output target/universal-apple-darwin/release/lpt \
-            target/x86_64-apple-darwin/release/lpt \
-            target/aarch64-apple-darwin/release/lpt
-          lipo -info target/universal-apple-darwin/release/lpt
-          lipo -create -output target/universal-apple-darwin/release/linkpilot-daemon \
-            target/x86_64-apple-darwin/release/linkpilot-daemon \
-            target/aarch64-apple-darwin/release/linkpilot-daemon
-          lipo -info target/universal-apple-darwin/release/linkpilot-daemon
-
-      - name: Build desktop .app (universal)
+      - name: Build desktop .app
         working-directory: apps/desktop
-        run: corepack yarn run tauri build --target universal-apple-darwin --bundles app
+        run: corepack yarn run tauri build --target ${{ matrix.target }} --bundles app
 
       # Ship the `lpt` CLI inside the .app so installing the DMG gives
       # users both a GUI and a CLI. The Settings page exposes a
@@ -78,10 +73,10 @@ jobs:
       - name: Embed lpt CLI and daemon inside the .app
         run: |
           set -euo pipefail
-          APP=target/universal-apple-darwin/release/bundle/macos/LinkPilot.app
-          cp target/universal-apple-darwin/release/lpt "$APP/Contents/MacOS/lpt"
+          APP=target/${{ matrix.target }}/release/bundle/macos/LinkPilot.app
+          cp target/${{ matrix.target }}/release/lpt "$APP/Contents/MacOS/lpt"
           chmod +x "$APP/Contents/MacOS/lpt"
-          cp target/universal-apple-darwin/release/linkpilot-daemon \
+          cp target/${{ matrix.target }}/release/linkpilot-daemon \
              "$APP/Contents/MacOS/linkpilot-daemon"
           chmod +x "$APP/Contents/MacOS/linkpilot-daemon"
 
@@ -97,7 +92,7 @@ jobs:
         run: |
           chmod +x apps/desktop/scripts/patch-info-plist.sh
           apps/desktop/scripts/patch-info-plist.sh \
-            target/universal-apple-darwin/release/bundle/macos/LinkPilot.app
+            target/${{ matrix.target }}/release/bundle/macos/LinkPilot.app
 
       # Manual DMG creation instead of `tauri build --bundles dmg`: that
       # would re-bundle the .app from scratch and overwrite the patched
@@ -111,7 +106,7 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           STAGE="$(mktemp -d)"
-          cp -R target/universal-apple-darwin/release/bundle/macos/LinkPilot.app "$STAGE/"
+          cp -R target/${{ matrix.target }}/release/bundle/macos/LinkPilot.app "$STAGE/"
           ln -s /Applications "$STAGE/Applications"
           mkdir -p dist/release
           hdiutil create \
@@ -119,41 +114,75 @@ jobs:
             -srcfolder "$STAGE" \
             -ov \
             -format UDZO \
-            "dist/release/LinkPilot_${VERSION}_universal.dmg"
+            "dist/release/LinkPilot_${VERSION}_${{ matrix.arch }}.dmg"
 
       - name: Package artifacts
         shell: bash
         run: |
           set -euo pipefail
-          # Tarball renamed `lp-macos.tar.gz` → `lpt-macos.tar.gz` in M5.4
-          # (binary collision with macOS-bundled /usr/bin/lp). Homebrew
-          # tap recipes pinned to v0.2.0-alpha.3 still reference the
-          # old name; M6 final-tag bumps the formula to track this.
-          cp target/universal-apple-darwin/release/lpt dist/release/lpt-macos
-          tar -C dist/release -czf dist/release/lpt-macos.tar.gz lpt-macos
+          ARCH="${{ matrix.arch }}"
+          # Per-arch CLI binary + tarball. Inside the tarball the binary
+          # is still named `lpt` so `mv lpt ~/.local/bin/` after extract
+          # works regardless of arch (the arch is only in the asset name).
+          cp target/${{ matrix.target }}/release/lpt \
+             "dist/release/lpt-macos-${ARCH}"
+          staging="$(mktemp -d)"
+          cp target/${{ matrix.target }}/release/lpt "$staging/lpt"
+          tar -C "$staging" -czf "dist/release/lpt-macos-${ARCH}.tar.gz" lpt
+          rm -rf "$staging"
+
           # Standalone daemon tarball — for CLI-only users who want a
           # background service without installing the .app. Inside the
           # tarball the binary is named `linkpilot-daemon` so a user can
-          # `mv linkpilot-daemon ~/.local/bin/` and then `linkpilot-daemon
-          # --serve` directly.
-          cp target/universal-apple-darwin/release/linkpilot-daemon \
-             dist/release/linkpilot-daemon-macos
-          # The tarball entry must be named `linkpilot-daemon` so users can
-          # `mv linkpilot-daemon ~/.local/bin/` after `tar -xzf`. macOS runners
-          # ship BSD tar (no `--transform`), so stage the file under its final
-          # name in a temp dir instead of relying on tar to rename it.
+          # `mv linkpilot-daemon ~/.local/bin/` after extract.
+          cp target/${{ matrix.target }}/release/linkpilot-daemon \
+             "dist/release/linkpilot-daemon-macos-${ARCH}"
           staging="$(mktemp -d)"
-          cp target/universal-apple-darwin/release/linkpilot-daemon \
+          cp target/${{ matrix.target }}/release/linkpilot-daemon \
              "$staging/linkpilot-daemon"
-          tar -C "$staging" -czf dist/release/linkpilot-daemon-macos.tar.gz \
+          tar -C "$staging" \
+              -czf "dist/release/linkpilot-daemon-macos-${ARCH}.tar.gz" \
               linkpilot-daemon
           rm -rf "$staging"
-          shasum -a 256 dist/release/* > dist/release/checksums.txt
+
+          # Per-arch checksums file — the publish job concatenates both
+          # arches' files into a single unified `checksums.txt`.
+          (cd dist/release && shasum -a 256 *) > "dist/release/checksums-${ARCH}.txt"
+
+      - name: Upload arch artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.arch }}
+          path: dist/release/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build-macos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download arch artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/incoming
+
+      - name: Combine artifacts + unified checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/release
+          # Move every file from every arch's artifact dir into one
+          # flat dist/release/. Per-arch checksums files are dropped —
+          # we regenerate one unified checksums.txt below so users have
+          # a single source of truth.
+          find dist/incoming -type f ! -name 'checksums-*.txt' -exec cp {} dist/release/ \;
+          (cd dist/release && shasum -a 256 *) > dist/release/checksums.txt
+          ls -la dist/release
 
       # This repo has immutable releases enabled, so assets can only be
-      # uploaded while the release is still a draft. Create the draft with
-      # all assets, then publish it in the next step. Once published it can
-      # no longer be edited — which is exactly the immutable-release
+      # uploaded while the release is still a draft. Create the draft
+      # with all assets, then publish it in the next step. Once published
+      # it can no longer be edited — which is exactly the immutable-release
       # guarantee the repo opted into.
       - name: Create GitHub Release (draft, with assets)
         uses: softprops/action-gh-release@v2

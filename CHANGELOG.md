@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Per-arch macOS release artifacts.** The release workflow no longer
+  builds a universal Mach-O via `lipo`. Instead a matrix runs natively on
+  `macos-14` (Apple Silicon) and `macos-13` (Intel), and the GitHub Release
+  carries two arch-specific DMGs (`LinkPilot_<v>_aarch64.dmg`,
+  `LinkPilot_<v>_x86_64.dmg`), two arch-specific CLI tarballs, and two
+  arch-specific daemon tarballs — with one unified `checksums.txt`. The
+  in-app update checker reads `std::env::consts::ARCH` and downloads the
+  matching DMG. **Heads-up for v0.4.3 users:** the auto-updater's first
+  check against v0.5.0 will 404 (it was hard-coded to look for
+  `_universal.dmg`); download the new DMG manually once and the auto-
+  updater works again from there. Homebrew formulas are templated for
+  multi-arch (placeholder SHAs filled by maintainer after release).
+
 ### Fixed
 
 - **`npm run bundle:mac` reliably patches the bundled `Info.plist`.**
