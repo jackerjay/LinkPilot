@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { BrowserBadge } from "@/components/BrowserBadge";
+import { SuggestionsPanel } from "@/components/SuggestionsPanel";
 import { WhenDisplay } from "@/components/WhenDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -266,6 +267,11 @@ export function RulesPage({ configEpoch, pendingFilter }: Props) {
           onError={(e) => setError(e)}
         />
       )}
+
+      <SuggestionsPanel
+        refreshKey={configEpoch}
+        onRuleCreated={() => void refresh()}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">

@@ -364,7 +364,48 @@ fn resolve_ask(
     if let Some(profile_id) = picked.profile_id {
         target.profile = Some(profile_id);
     }
+    record_ask_observation(state, url, &target);
     Some(target)
+}
+
+/// Append a behavior observation when the user resolves an ask
+/// picker. Silently no-ops when `Settings.behavior_log_enabled = false`
+/// or when the URL has no parseable host (data: / javascript: / etc.).
+/// Errors are logged and swallowed — losing one observation is never
+/// worth blocking the launch.
+///
+/// `source_app` deliberately stays `None` for now: plumbing the
+/// originating app through `execute → spawn_ask → resolve_ask` is a
+/// signature change touching 3 callsites, and the host-only suggestion
+/// quality is already useful. Follow-up will add the source_app
+/// dimension.
+fn record_ask_observation(state: &AppState, url: &str, target: &BrowserTarget) {
+    let enabled = state
+        .config
+        .with_document(|d| d.settings.behavior_log_enabled);
+    if !enabled {
+        return;
+    }
+    let Some(host) = Url::parse(url)
+        .ok()
+        .and_then(|u| u.host_str().map(str::to_string))
+    else {
+        return;
+    };
+    let timestamp_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let observation = linkpilot_core::observations::Observation {
+        timestamp_ms,
+        host,
+        source_app: None,
+        browser_id: target.browser.0.clone(),
+        profile_id: target.profile.clone(),
+    };
+    if let Err(err) = state.observations.record(&observation) {
+        tracing::warn!(error = %err, "observations: record failed");
+    }
 }
 
 /// `/Applications/Foo.app/Contents/MacOS/Foo` → `/Applications/Foo.app`.

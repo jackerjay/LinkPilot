@@ -1,0 +1,33 @@
+{
+  "panel": {
+    "title": "スマート提案",
+    "description": "同じブラウザでこれらのサイトを開いていますね。ワンクリックでルール化できます。",
+    "makeRule": "ルールを作成",
+    "dismiss": "無視",
+    "makeRuleTooltip": "{{host}} を {{browser}} にルーティングするルールを作成",
+    "dismissTooltip": "この提案を 30 日間非表示にします",
+    "rowAria": "提案：{{host}} を {{browser}} で開く",
+    "confidence": "{{percent}}% がこの選択",
+    "countLabel_one": "{{count}} 回",
+    "countLabel_other": "{{count}} 回"
+  },
+  "settings": {
+    "title": "動作の記録",
+    "hint": "LinkPilot は ask picker の選択をローカルファイルに記録し、パターンからルールを提案します。データはこの Mac に留まり、外部には送信されません。",
+    "enableLabel": "ask picker の選択を記録",
+    "retentionLabel": "保持期間",
+    "retention": {
+      "forever": "無期限",
+      "30": "30 日",
+      "90": "90 日",
+      "180": "180 日",
+      "365": "1 年"
+    },
+    "clearLabel": "記録された全パターンを消去",
+    "clearConfirm": "この Mac の ask picker 選択記録を全消去しますか？ ルールと無視済み提案には影響しません。",
+    "clearedToast": "消去しました",
+    "exportLabel": "JSON として書き出し",
+    "exportPrompt": "NDJSON ログの保存先は？",
+    "exportedToast": "書き出しました"
+  }
+}

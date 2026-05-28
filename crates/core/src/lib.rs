@@ -10,6 +10,7 @@ pub mod daemon;
 pub mod endpoint;
 pub mod history;
 pub mod inventory;
+pub mod observations;
 pub mod platform;
 pub mod protocol;
 pub mod routing;

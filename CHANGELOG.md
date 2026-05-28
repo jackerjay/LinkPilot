@@ -6,6 +6,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Ask-mode behavior recording + Smart suggestions panel.** Every
+  resolution of the ask picker now appends one NDJSON line to
+  `~/Library/Application Support/LinkPilot/observations.ndjson`
+  (host + chosen browser + profile + timestamp). The Rules page renders
+  a "Smart suggestions" card when a host has been resolved the same way
+  ≥3 times with ≥70 % confidence — one click turns the suggestion into
+  a `url-host → open` rule (reusing the existing `ipc.ruleUpsert` path),
+  one click dismisses it for 30 days. Data stays local and never leaves
+  the machine; the format is intentionally LLM-friendly NDJSON so a
+  future ingestion pipeline can consolidate rule sets. Settings →
+  Behavior recording adds an opt-out switch, a retention dropdown
+  (30 / 90 / 180 / 365 days or forever; default 90), and a Clear button.
+  Localized across en / zh-CN / zh-TW / ja-JP.
+
 ## [0.5.0] — 2026-05-28
 
 ### Changed

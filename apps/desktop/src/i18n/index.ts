@@ -24,6 +24,7 @@ import en_onboarding from "./locales/en/onboarding.json";
 import en_picker from "./locales/en/picker.json";
 import en_rules from "./locales/en/rules.json";
 import en_settings from "./locales/en/settings.json";
+import en_suggestions from "./locales/en/suggestions.json";
 import en_testUrl from "./locales/en/testUrl.json";
 import en_tray from "./locales/en/tray.json";
 import en_workspace from "./locales/en/workspace.json";
@@ -37,6 +38,7 @@ import zhCn_onboarding from "./locales/zh-CN/onboarding.json";
 import zhCn_picker from "./locales/zh-CN/picker.json";
 import zhCn_rules from "./locales/zh-CN/rules.json";
 import zhCn_settings from "./locales/zh-CN/settings.json";
+import zhCn_suggestions from "./locales/zh-CN/suggestions.json";
 import zhCn_testUrl from "./locales/zh-CN/testUrl.json";
 import zhCn_tray from "./locales/zh-CN/tray.json";
 import zhCn_workspace from "./locales/zh-CN/workspace.json";
@@ -50,6 +52,7 @@ import zhTw_onboarding from "./locales/zh-TW/onboarding.json";
 import zhTw_picker from "./locales/zh-TW/picker.json";
 import zhTw_rules from "./locales/zh-TW/rules.json";
 import zhTw_settings from "./locales/zh-TW/settings.json";
+import zhTw_suggestions from "./locales/zh-TW/suggestions.json";
 import zhTw_testUrl from "./locales/zh-TW/testUrl.json";
 import zhTw_tray from "./locales/zh-TW/tray.json";
 import zhTw_workspace from "./locales/zh-TW/workspace.json";
@@ -63,6 +66,7 @@ import jaJp_onboarding from "./locales/ja-JP/onboarding.json";
 import jaJp_picker from "./locales/ja-JP/picker.json";
 import jaJp_rules from "./locales/ja-JP/rules.json";
 import jaJp_settings from "./locales/ja-JP/settings.json";
+import jaJp_suggestions from "./locales/ja-JP/suggestions.json";
 import jaJp_testUrl from "./locales/ja-JP/testUrl.json";
 import jaJp_tray from "./locales/ja-JP/tray.json";
 import jaJp_workspace from "./locales/ja-JP/workspace.json";
@@ -86,6 +90,7 @@ export const I18N_NAMESPACES = [
   "tray",
   "picker",
   "onboarding",
+  "suggestions",
 ] as const;
 export type I18nNamespace = (typeof I18N_NAMESPACES)[number];
 
@@ -103,6 +108,7 @@ const resources = {
     tray: en_tray,
     picker: en_picker,
     onboarding: en_onboarding,
+    suggestions: en_suggestions,
   },
   "zh-CN": {
     common: zhCn_common,
@@ -117,6 +123,7 @@ const resources = {
     tray: zhCn_tray,
     picker: zhCn_picker,
     onboarding: zhCn_onboarding,
+    suggestions: zhCn_suggestions,
   },
   "zh-TW": {
     common: zhTw_common,
@@ -131,6 +138,7 @@ const resources = {
     tray: zhTw_tray,
     picker: zhTw_picker,
     onboarding: zhTw_onboarding,
+    suggestions: zhTw_suggestions,
   },
   "ja-JP": {
     common: jaJp_common,
@@ -145,6 +153,7 @@ const resources = {
     tray: jaJp_tray,
     picker: jaJp_picker,
     onboarding: jaJp_onboarding,
+    suggestions: jaJp_suggestions,
   },
 };
 

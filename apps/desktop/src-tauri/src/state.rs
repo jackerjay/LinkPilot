@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use linkpilot_core::config::store::RecommendedWatcherHandle;
 use linkpilot_core::config::ConfigStore;
 use linkpilot_core::history::RouteHistory;
+use linkpilot_core::observations::ObservationsStore;
 use linkpilot_core::platform::PlatformProvider;
 use linkpilot_ipc::server::ServerHandle;
 
@@ -30,6 +31,11 @@ pub struct AppState {
     pub config: ConfigStore,
     pub history: Arc<RouteHistory>,
     pub platform: Arc<dyn PlatformProvider>,
+    /// Ask-mode behavior log. Append-only on every picker resolution;
+    /// read by `suggestions_list` to aggregate into rule suggestions.
+    /// Disabled at the call site (`dispatch::resolve_ask`) when the
+    /// user has flipped `Settings.behavior_log_enabled = false`.
+    pub observations: Arc<ObservationsStore>,
     /// Long-lived background handles parked here so they outlive setup.
     handles: Arc<Mutex<Handles>>,
 }
@@ -46,11 +52,13 @@ impl AppState {
         config: ConfigStore,
         history: Arc<RouteHistory>,
         platform: Arc<dyn PlatformProvider>,
+        observations: Arc<ObservationsStore>,
     ) -> Self {
         Self {
             config,
             history,
             platform,
+            observations,
             handles: Arc::new(Mutex::new(Handles::default())),
         }
     }

@@ -170,6 +170,17 @@ pub struct Settings {
     /// keyed off this value); core only persists the choice.
     #[serde(default)]
     pub language: LanguagePref,
+    /// Record ask-mode picker resolutions to surface rule suggestions
+    /// ("you keep picking arc for figma.com → make it a rule?"). Data
+    /// stays in `~/Library/Application Support/LinkPilot/observations.ndjson`
+    /// and never leaves the machine. Default is on; flip off in Settings
+    /// to opt out, and use the Clear button to wipe the log.
+    #[serde(default = "default_behavior_log_enabled")]
+    pub behavior_log_enabled: bool,
+    /// Drop observations older than N days. `None` keeps them forever.
+    /// Pruning runs on daemon start and after each new write.
+    #[serde(default = "default_behavior_log_retention_days")]
+    pub behavior_log_retention_days: Option<u32>,
 }
 
 /// Visual variant for the browser-pick wheel. The three values come
@@ -217,6 +228,14 @@ fn default_auto_check_updates() -> bool {
     true
 }
 
+fn default_behavior_log_enabled() -> bool {
+    true
+}
+
+fn default_behavior_log_retention_days() -> Option<u32> {
+    Some(90)
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -229,6 +248,8 @@ impl Default for Settings {
             profile_orders: BTreeMap::new(),
             disabled_browsers: Vec::new(),
             language: LanguagePref::System,
+            behavior_log_enabled: default_behavior_log_enabled(),
+            behavior_log_retention_days: default_behavior_log_retention_days(),
         }
     }
 }
