@@ -7,13 +7,16 @@
       "summon": "SUMMON",
       "direct": "DIRECT",
       "default": "DEFAULT",
-      "cancel": "CANCEL"
+      "cancel": "CANCEL",
+      "copy": "COPY"
     },
     "modifierActive": "Aim, release to open",
     "modifierIdle": "Hold ⌥ to pick a profile",
     "readoutHint": "release ⌥ or press 1–9",
     "opening": "Opening in {{browser}}",
-    "crownHint": "open · aim to switch"
+    "crownHint": "open · aim to switch",
+    "copyUrl": "Copy URL",
+    "urlCopied": "Copied"
   },
   "style": {
     "variants": {

@@ -233,6 +233,37 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
+  min-width: 0; /* allow ellipsis when wrapped in .pk-url-row flex */
+}
+.pk-pop-head .pk-url-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.pk-pop-head .pk-url-copy {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(40, 40, 48, 0.45);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms ease, color 120ms ease;
+}
+.pk-pop-head .pk-url-copy:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(20, 20, 24, 0.85);
+}
+.pk-pop-head .pk-url-copy.ok {
+  color: rgba(46, 160, 67, 0.95);
 }
 
 .pk-pop-foot {
@@ -813,6 +844,16 @@ html[data-theme="dark"] .pk-pop-head .pk-eyebrow {
 }
 html[data-theme="dark"] .pk-pop-head .pk-url {
   color: rgba(245, 245, 247, 0.78);
+}
+html[data-theme="dark"] .pk-pop-head .pk-url-copy {
+  color: rgba(220, 220, 230, 0.5);
+}
+html[data-theme="dark"] .pk-pop-head .pk-url-copy:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(245, 245, 247, 0.92);
+}
+html[data-theme="dark"] .pk-pop-head .pk-url-copy.ok {
+  color: rgba(76, 222, 128, 0.95);
 }
 html[data-theme="dark"] .pk-pop-foot {
   color: rgba(220, 220, 230, 0.55);

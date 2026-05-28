@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Copy URL from the ask picker.** The URL row now carries an inline
+  copy button, and pressing `C` (no modifiers) copies the URL to the
+  clipboard regardless of whether the Halo wheel is open. The button
+  flips to a check briefly on success; the footer hint row lists the
+  new shortcut. Localized across en / zh-CN / zh-TW / ja-JP.
+
 ## [0.4.2] — 2026-05-27
 
 ### Changed

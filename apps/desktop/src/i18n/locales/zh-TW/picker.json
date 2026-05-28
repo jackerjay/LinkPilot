@@ -7,13 +7,16 @@
       "summon": "召喚",
       "direct": "直達",
       "default": "預設",
-      "cancel": "取消"
+      "cancel": "取消",
+      "copy": "複製"
     },
     "modifierActive": "瞄準，放開即開啟",
     "modifierIdle": "按住 ⌥ 選擇 profile",
     "readoutHint": "放開 ⌥ 或按 1–9",
     "opening": "正在用 {{browser}} 開啟",
-    "crownHint": "開啟 · 移動以切換"
+    "crownHint": "開啟 · 移動以切換",
+    "copyUrl": "複製 URL",
+    "urlCopied": "已複製"
   },
   "style": {
     "variants": {

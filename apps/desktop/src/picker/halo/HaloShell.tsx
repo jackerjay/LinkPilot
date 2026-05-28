@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { Check, Copy } from "lucide-react";
 import { AppIcon } from "@/components/AppIcon";
 import {
   DEFAULT_HALO_GEOMETRY,
@@ -133,6 +134,26 @@ export function HaloShell({
   const launchStartedRef = useRef(false);
   const lastPointerRef = useRef<PointerPoint | null>(null);
 
+  // Transient "URL copied" feedback for both the inline button and the C
+  // shortcut. Auto-clears so the icon flips back to the plain Copy glyph;
+  // failures leave `copied` false, so users notice the missing check.
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 1200);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  const copyUrl = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      // Clipboard write rejected (no secure context / OS denial). The
+      // missing check icon is the user-visible signal that nothing landed.
+    }
+  }, [url]);
+
   const browser = hoveredTileIdx != null ? choices[hoveredTileIdx] : null;
   const showWheel =
     optDown &&
@@ -244,6 +265,21 @@ export function HaloShell({
         onCancel();
         return;
       }
+      // C — copy the URL. Works whether the wheel is open or not. Uses
+      // e.code so it survives macOS's ⌥+letter dead-key remap (same reason
+      // the digit handler below reads e.code). Modifier-free only so it
+      // never steals Cmd+C from a future text-selection use case.
+      if (
+        e.code === "KeyC" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.shiftKey
+      ) {
+        e.preventDefault();
+        copyUrl();
+        return;
+      }
       if (!showWheel || !browser) return;
       const digit = /^Digit([1-9])$/.exec(e.code);
       if (digit) {
@@ -262,7 +298,7 @@ export function HaloShell({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showWheel, browser, hoveredProfile, launching, launch, onCancel]);
+  }, [showWheel, browser, hoveredProfile, launching, launch, onCancel, copyUrl]);
 
   // Click-to-launch — scoped to the wheel's hit zone (same annulus used by
   // the hover hit-test). Stops the click from bubbling so it doesn't also
@@ -336,8 +372,19 @@ export function HaloShell({
 
       <div className="pk-pop-head">
         <div className="pk-eyebrow">{t("halo.openWith")}</div>
-        <div className="pk-url" title={url}>
-          {urlPreview}
+        <div className="pk-url-row">
+          <span className="pk-url" title={url}>
+            {urlPreview}
+          </span>
+          <button
+            type="button"
+            className={"pk-url-copy" + (copied ? " ok" : "")}
+            onClick={copyUrl}
+            title={copied ? t("halo.urlCopied") : t("halo.copyUrl")}
+            aria-label={copied ? t("halo.urlCopied") : t("halo.copyUrl")}
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+          </button>
         </div>
       </div>
 
@@ -444,6 +491,9 @@ export function HaloShell({
         </span>
         <span className="pk-foot-group">
           <span className="pk-kbd">⏎</span> {t("halo.footer.default")}
+        </span>
+        <span className="pk-foot-group">
+          <span className="pk-kbd">C</span> {t("halo.footer.copy")}
         </span>
         <span className="pk-foot-group">
           <span className="pk-kbd">ESC</span> {t("halo.footer.cancel")}
