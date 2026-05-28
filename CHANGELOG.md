@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-05-28
+
 ### Added
 
 - **Copy URL from the ask picker.** The URL row now carries two inline
