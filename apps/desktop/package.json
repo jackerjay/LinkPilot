@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "bundle:mac": "npx tauri build && ./scripts/patch-info-plist.sh ../../target/release/bundle/macos/LinkPilot.app"
+    "bundle:mac": "npx tauri build --bundles app && ./scripts/patch-info-plist.sh ../../target/release/bundle/macos/LinkPilot.app"
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",
