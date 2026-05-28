@@ -15,6 +15,7 @@ import type {
   RoutingDecision,
   Rule,
   SetDefaultOutcome,
+  Suggestion,
   Workspace,
 } from "./types";
 
@@ -102,6 +103,21 @@ export const ipc = {
   daemonServiceStatus: () => invoke<DaemonServiceStatus>("daemon_service_status"),
   daemonServiceInstall: () => invoke<DaemonServiceStatus>("daemon_service_install"),
   daemonServiceUninstall: () => invoke<DaemonServiceStatus>("daemon_service_uninstall"),
+
+  suggestionsList: () => invoke<Suggestion[]>("suggestions_list"),
+  suggestionsDismiss: (
+    host: string,
+    browser_id: string,
+    profile_id?: string | null,
+  ) =>
+    invoke<void>("suggestions_dismiss", {
+      host,
+      browserId: browser_id,
+      profileId: profile_id ?? null,
+    }),
+  observationsClear: () => invoke<void>("observations_clear"),
+  observationsExport: (dest: string) =>
+    invoke<void>("observations_export", { dest }),
 };
 
 export interface CliInstallStatus {

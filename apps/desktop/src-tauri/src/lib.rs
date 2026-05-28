@@ -10,6 +10,7 @@ mod ipc_host;
 mod nmh_supervisor;
 mod picker;
 mod state;
+mod suggestions;
 mod tray;
 mod url_handler;
 
@@ -93,10 +94,31 @@ pub fn run() {
                 env!("CARGO_PKG_VERSION"),
             ));
 
+            // Ask-mode behavior log sits next to the config file. The
+            // store does nothing on construction — first `record` opens
+            // the file in append mode. Reuse `config_path` to dodge a
+            // second HOME-dir resolution.
+            let observations_store = Arc::new(linkpilot_core::observations::ObservationsStore::new(
+                config_path.with_file_name("observations.ndjson"),
+                config_path.with_file_name("observations-dismissed.json"),
+            ));
+            // Best-effort retention sweep at startup so a long-running
+            // install doesn't accumulate years of stale picks. Reads
+            // current settings; `None` (retain forever) is a no-op.
+            {
+                let doc = config_store.document();
+                if let Err(e) = observations_store
+                    .retain_within(doc.settings.behavior_log_retention_days)
+                {
+                    tracing::warn!(error = %e, "observations retain_within failed at startup");
+                }
+            }
+
             let state = AppState::new(
                 config_store.clone(),
                 Arc::clone(&history),
                 Arc::clone(&platform),
+                Arc::clone(&observations_store),
             );
 
             // fsnotify: rebroadcast every config change to the front-end.
@@ -282,6 +304,10 @@ pub fn run() {
             commands::daemon_service_uninstall,
             picker::picker_session,
             picker::picker_resolve,
+            suggestions::suggestions_list,
+            suggestions::suggestions_dismiss,
+            suggestions::observations_clear,
+            suggestions::observations_export,
             tray::tray_open_main,
         ])
         .build(tauri::generate_context!())

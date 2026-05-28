@@ -121,6 +121,28 @@ export interface Settings {
   /** UI display language preference. `system` defers to navigator.languages
    *  at boot; the others are hard overrides. */
   language: LanguagePref;
+  /** Record ask-mode picker resolutions to surface rule suggestions.
+   *  Data stays in `~/Library/Application Support/LinkPilot/
+   *  observations.ndjson` and never leaves the machine. Default: true. */
+  behavior_log_enabled: boolean;
+  /** Drop observations older than N days. `null` retains forever.
+   *  Pruning runs on daemon start. Default: 90. */
+  behavior_log_retention_days?: number | null;
+}
+
+/** Mirrors `core::observations::Suggestion`. Aggregated pattern surfaced
+ *  to the Rules page when the user has repeatedly picked the same
+ *  browser/profile for a host in the ask picker. */
+export interface Suggestion {
+  host: string;
+  browser_id: string;
+  profile_id?: string | null;
+  /** Number of ask-resolutions that picked this exact target for the host. */
+  observation_count: number;
+  /** Share of total ask-resolutions for the host that landed on this
+   *  target. 0..=1. */
+  confidence: number;
+  last_observed_ms: number;
 }
 
 /** Mirrors `core::config::PickerStyle`. */

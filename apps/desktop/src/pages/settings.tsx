@@ -41,6 +41,7 @@ export function SettingsPage({
   onCheckForUpdates,
 }: Props) {
   const { t } = useTranslation("settings");
+  const { t: tSuggestions } = useTranslation("suggestions");
   const [doc, setDoc] = useState<ConfigDocument | null>(null);
   const [configPath, setConfigPath] = useState<string | null>(null);
   const [isDefault, setIsDefault] = useState<boolean | null>(null);
@@ -161,6 +162,44 @@ export function SettingsPage({
         settings: { ...doc.settings, auto_check_updates: next },
       });
       await refresh();
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const toggleBehaviorLog = async (next: boolean) => {
+    if (!doc) return;
+    try {
+      await ipc.configReplace({
+        ...doc,
+        settings: { ...doc.settings, behavior_log_enabled: next },
+      });
+      await refresh();
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const setBehaviorRetention = async (value: string) => {
+    if (!doc) return;
+    const next = value === "forever" ? null : Number(value);
+    try {
+      await ipc.configReplace({
+        ...doc,
+        settings: { ...doc.settings, behavior_log_retention_days: next },
+      });
+      await refresh();
+    } catch (err) {
+      setError(String(err));
+    }
+  };
+
+  const clearBehaviorLog = async () => {
+    if (!doc) return;
+    if (!window.confirm(tSuggestions("settings.clearConfirm"))) return;
+    try {
+      await ipc.observationsClear();
+      setMessage(tSuggestions("settings.clearedToast"));
     } catch (err) {
       setError(String(err));
     }
@@ -526,6 +565,78 @@ export function SettingsPage({
           >
             {configPath ?? "…"}
           </span>
+        </div>
+      </div>
+
+      <div className="mac-card-title">{tSuggestions("settings.title")}</div>
+      <div className="mac-card">
+        <div className="mac-row" style={{ alignItems: "flex-start" }}>
+          <div className="grow">
+            <div className="mac-row-label">
+              {tSuggestions("settings.enableLabel")}
+            </div>
+            <div
+              className="mac-muted"
+              style={{ fontSize: 11.5, marginTop: 2 }}
+            >
+              {tSuggestions("settings.hint")}
+            </div>
+          </div>
+          <button
+            type="button"
+            className={`mac-switch accent ${doc?.settings.behavior_log_enabled ? "on" : ""}`}
+            aria-pressed={!!doc?.settings.behavior_log_enabled}
+            onClick={() =>
+              toggleBehaviorLog(!doc?.settings.behavior_log_enabled)
+            }
+          />
+        </div>
+        <div className="mac-row">
+          <span className="grow mac-row-label">
+            {tSuggestions("settings.retentionLabel")}
+          </span>
+          <Select
+            value={
+              doc?.settings.behavior_log_retention_days == null
+                ? "forever"
+                : String(doc.settings.behavior_log_retention_days)
+            }
+            onValueChange={(v) => void setBehaviorRetention(v)}
+            disabled={!doc?.settings.behavior_log_enabled}
+          >
+            <SelectTrigger style={{ minWidth: 140 }}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="forever">
+                {tSuggestions("settings.retention.forever")}
+              </SelectItem>
+              <SelectItem value="30">
+                {tSuggestions("settings.retention.30")}
+              </SelectItem>
+              <SelectItem value="90">
+                {tSuggestions("settings.retention.90")}
+              </SelectItem>
+              <SelectItem value="180">
+                {tSuggestions("settings.retention.180")}
+              </SelectItem>
+              <SelectItem value="365">
+                {tSuggestions("settings.retention.365")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="mac-row">
+          <span className="grow mac-row-label">
+            {tSuggestions("settings.clearLabel")}
+          </span>
+          <button
+            type="button"
+            className="mac-tbtn"
+            onClick={() => void clearBehaviorLog()}
+          >
+            {tSuggestions("settings.clearLabel")}
+          </button>
         </div>
       </div>
 
