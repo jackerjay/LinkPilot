@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`npm run bundle:mac` reliably patches the bundled `Info.plist`.**
+  The script ran `npx tauri build` with no `--bundles` filter, so on
+  macOS it also tried `bundle_dmg.sh` after the `.app`; when that
+  step flaked (a known-fragile local path — the release pipeline
+  sidesteps it by using `hdiutil create` directly), the `&&` chain
+  short-circuited and `patch-info-plist.sh` never ran, producing an
+  `.app` that macOS's "Default web browser" picker silently ignores.
+  The script now passes `--bundles app` so it only builds the `.app`
+  (which is all the local install / dev flow needs).
+
 ## [0.4.3] — 2026-05-28
 
 ### Added
