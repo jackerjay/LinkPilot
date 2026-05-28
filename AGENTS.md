@@ -97,15 +97,18 @@ Two workflows in `.github/workflows/`:
   - `frontend`: tsc + vite build on `ubuntu-latest`
   - `desktop-bundle`: `tauri build --debug --bundles app` smoke test on `macos-latest`
 - **`release.yml`** (on `v*.*.*` tag)
-  - Universal binary: builds `lpt` for both `x86_64-apple-darwin` and
-    `aarch64-apple-darwin`, lipos them together
-  - Tauri `--target universal-apple-darwin --bundles app`
-  - Embeds the universal `lpt` into `LinkPilot.app/Contents/MacOS/lp`
-    (so the DMG ships GUI + CLI; Settings page symlinks it to
-    `~/.local/bin/lpt` via `cli_install_to_path`)
-  - Runs `patch-info-plist.sh` against the bundled `.app`
-  - Wraps with `hdiutil` into `LinkPilot_<version>_universal.dmg`
-  - Uploads `lpt-macos`, `lpt-macos.tar.gz`, DMG, and `checksums.txt` to GitHub Release
+  - Matrix over `{aarch64-apple-darwin on macos-14, x86_64-apple-darwin on macos-13}`.
+    Each leg runs natively — no `lipo`, no `universal-apple-darwin` target.
+  - Per leg: builds `lpt` + `linkpilot-daemon` + Tauri
+    `--target <arch> --bundles app`, embeds the CLI and daemon into
+    `LinkPilot.app/Contents/MacOS/`, runs `patch-info-plist.sh`, then
+    `hdiutil`s a per-arch DMG `LinkPilot_<version>_<arch>.dmg`.
+  - Each leg uploads its `LinkPilot_<v>_<arch>.dmg`, `lpt-macos-<arch>` +
+    `.tar.gz`, `linkpilot-daemon-macos-<arch>` + `.tar.gz`, and a per-arch
+    checksums file as an `actions/upload-artifact` bundle.
+  - A `publish` job (depends on both matrix legs) downloads both bundles,
+    flattens them into a single `dist/release/` directory, regenerates a
+    unified `checksums.txt`, then creates the draft Release and publishes.
 
 Release pipeline is **unsigned/unnotarized** — users hit
 `xattr -dr com.apple.quarantine LinkPilot.app` on first launch.

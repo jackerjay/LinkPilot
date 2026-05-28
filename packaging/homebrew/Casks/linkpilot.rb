@@ -3,7 +3,7 @@
 # Local install (development only):
 #   brew install --cask ./packaging/homebrew/Casks/linkpilot.rb
 #
-# Public install (after M6 pushes this file to jackerjay/homebrew-linkpilot):
+# Public install (after this file is pushed to jackerjay/homebrew-linkpilot):
 #   brew install --cask jackerjay/linkpilot/linkpilot
 #
 # Ships the .app bundle from the release DMG. The .app carries `lpt` and
@@ -14,10 +14,19 @@
 # separate `linkpilot-cli` formula instead.
 
 cask "linkpilot" do
-  version "0.2.0-alpha.3"
-  sha256 "b443fddeb2996383ada8c50dc332ed298dcfe3e3bf96af48616b7db5e6dfea21"
+  # Map Homebrew's :arm/:intel symbols to our DMG asset naming.
+  # The release.yml matrix builds two DMGs per tag — one for each arch —
+  # named `LinkPilot_<version>_aarch64.dmg` and `..._x86_64.dmg`.
+  arch arm: "aarch64", intel: "x86_64"
 
-  url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/LinkPilot_#{version}_universal.dmg"
+  # TODO: when v0.5.0 actually ships, replace `:no_check` with the real
+  # per-arch hashes from `dist/release/checksums.txt`:
+  #   sha256 arm:   "<aarch64 dmg sha>",
+  #          intel: "<x86_64 dmg sha>"
+  version "0.5.0"
+  sha256 :no_check
+
+  url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/LinkPilot_#{version}_#{arch}.dmg"
   name "LinkPilot"
   desc "Route every link to the right browser, profile, and workspace"
   homepage "https://github.com/jackerjay/LinkPilot"
@@ -33,8 +42,8 @@ cask "linkpilot" do
     strategy :github_releases
   end
 
-  # Unsigned build for v0.2-alpha; Gatekeeper prompts on first launch
-  # unless the user strips the quarantine flag (see caveats below).
+  # Unsigned build; Gatekeeper prompts on first launch unless the user
+  # strips the quarantine flag (see caveats below).
   auto_updates false
   # Matches Info.plist LSMinimumSystemVersion (12.0 = Monterey). Cask's
   # idiomatic form is the symbol alone — implicitly "this or newer".
@@ -58,9 +67,8 @@ cask "linkpilot" do
   ]
 
   caveats <<~EOS
-    LinkPilot ships unsigned in v0.2-alpha. macOS may prompt you to
-    confirm the developer on first launch. If you'd rather skip the
-    prompt:
+    LinkPilot ships unsigned. macOS may prompt you to confirm the
+    developer on first launch. If you'd rather skip the prompt:
       xattr -dr com.apple.quarantine /Applications/LinkPilot.app
 
     On first launch the GUI writes ~/Library/LaunchAgents/

@@ -61,11 +61,14 @@ CLI tarball。
 
 ### GUI 应用
 
-从最新 GitHub Release 下载 universal DMG，把 `LinkPilot.app` 复制到
-`/Applications` 后打开：
+从最新 GitHub Release 下载对应芯片架构的 DMG（Apple Silicon 选
+`aarch64`，Intel 选 `x86_64`），把 `LinkPilot.app` 复制到 `/Applications`
+后打开：
 
 ```sh
-curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/LinkPilot_<version>_universal.dmg -o LinkPilot.dmg
+# Apple Silicon → aarch64；Intel → x86_64
+ARCH=$(uname -m | sed 's/arm64/aarch64/')
+curl -L "https://github.com/jackerjay/LinkPilot/releases/latest/download/LinkPilot_<version>_${ARCH}.dmg" -o LinkPilot.dmg
 hdiutil attach LinkPilot.dmg
 cp -R "/Volumes/LinkPilot/LinkPilot.app" /Applications/
 hdiutil detach "/Volumes/LinkPilot"
@@ -113,7 +116,8 @@ lpt settings language ja-JP
 CLI tarball 包含 `lpt` 和 `linkpilot-daemon`。
 
 ```sh
-curl -L https://github.com/jackerjay/LinkPilot/releases/latest/download/lpt-macos.tar.gz \
+ARCH=$(uname -m | sed 's/arm64/aarch64/')
+curl -L "https://github.com/jackerjay/LinkPilot/releases/latest/download/lpt-macos-${ARCH}.tar.gz" \
   | tar -xz -C ~/.local/bin
 chmod +x ~/.local/bin/lpt
 ```
