@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-05-28
+
 ### Added
 
 - **Ask-mode behavior recording + Smart suggestions panel.** Every
