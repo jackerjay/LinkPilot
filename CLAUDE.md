@@ -110,7 +110,7 @@ Two workflows in `.github/workflows/`:
   - `frontend`: tsc + vite build on `ubuntu-latest`
   - `desktop-bundle`: `tauri build --debug --bundles app` smoke test on `macos-latest`
 - **`release.yml`** (on `v*.*.*` tag)
-  - Matrix over `{aarch64-apple-darwin on macos-14, x86_64-apple-darwin on macos-13}`.
+  - Matrix over `{aarch64-apple-darwin on macos-14, x86_64-apple-darwin on macos-15-intel}`.
     Each leg runs natively — no `lipo`, no `universal-apple-darwin` target.
   - Per leg: builds `lpt` + `linkpilot-daemon` + Tauri
     `--target <arch> --bundles app`, embeds the CLI and daemon into
@@ -125,6 +125,12 @@ Two workflows in `.github/workflows/`:
 
 Release pipeline is **unsigned/unnotarized** — users hit
 `xattr -dr com.apple.quarantine LinkPilot.app` on first launch.
+
+There is also an **`npm-publish.yml`** on the same tag trigger that ships
+`@linkpilot/config` (version stamped from the tag). For release-pipeline
+gotchas — retired Intel runners, the checkout-less `publish` job, tag
+immutability, and the full version-bump file list — see the
+"Release-pipeline gotchas" section in `AGENTS.md`.
 
 ## Plist patch — why the dance
 
