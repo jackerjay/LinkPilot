@@ -5,7 +5,7 @@ Real artwork shipped in v0.1.
 | File | Source | Purpose |
 |------|--------|---------|
 | `icon.png`, `icon.icns`, `icon.ico`, `32x32.png`, `64x64.png`, `128x128.png`, `128x128@2x.png`, `Square*Logo.png`, `StoreLogo.png`, `android/`, `ios/` | `npx tauri icon ../../docs/brand/icon.png` | Bundle icons for every platform target (macOS, iOS, Android, Windows, Linux). |
-| `tray.png`, `tray@2x.png`, `tray@3x.png` | `rsvg-convert` from `../../../docs/brand/tray-template.svg` | macOS menu-bar template image. `iconAsTemplate: true` in `tauri.conf.json` — render in black-on-transparent only; the system tints for active/inactive + light/dark. |
+| `tray.png`, `tray@2x.png`, `tray@3x.png` | `rsvg-convert` from `../../../docs/brand/tray-template.svg` | macOS menu-bar template image: a solid disc with the brand "p" (ring bowl + vertical descender) and a paper-plane dart knocked out. `icon_as_template(true)` (set in `tray.rs`) — black-on-transparent only; the system tints for active/inactive + light/dark. `tray.rs` loads the `@3x` (66px) source: `tray-icon` scales any size to an 18pt menu-bar height, so the higher-res source just stays crisp on Retina. |
 
 ## Regenerating
 
