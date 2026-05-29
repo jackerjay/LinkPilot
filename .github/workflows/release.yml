@@ -94,27 +94,39 @@ jobs:
           apps/desktop/scripts/patch-info-plist.sh \
             target/${{ matrix.target }}/release/bundle/macos/LinkPilot.app
 
-      # Manual DMG creation instead of `tauri build --bundles dmg`: that
-      # would re-bundle the .app from scratch and overwrite the patched
-      # Info.plist. Tauri's default DMG has no custom background image
-      # or window layout (no `bundle.macOS.dmg` in tauri.conf.json), so
-      # a vanilla "drag to /Applications" disk image matches the
-      # previous release output.
+      # DMG built with create-dmg, not `tauri build --bundles dmg` (which
+      # re-bundles the .app from scratch and clobbers the patched
+      # Info.plist). Feeding create-dmg our already-patched .app keeps the
+      # plist intact while baking a Finder layout (.DS_Store: window size +
+      # icon positions + Applications drop-link) so the mounted volume
+      # shows the app-left / arrow / Applications-right install window.
+      # Background is apps/desktop/dmg/dmg-background.tiff — a hidpi TIFF
+      # holding a 600x400 (1x) + 1200x800 (2x) rep so Finder fills the
+      # 600x400-point window at 1x and stays crisp on Retina. Regenerate
+      # from the sibling .svg: rsvg-convert -w 600 -h 400 → .png,
+      # rsvg-convert -w 1200 -h 800 → @2x.png, then
+      # `tiffutil -cathidpicheck dmg-background.png dmg-background@2x.png
+      # -out dmg-background.tiff`.
       - name: Build DMG from patched .app
         shell: bash
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
+          brew install create-dmg
           STAGE="$(mktemp -d)"
           cp -R target/${{ matrix.target }}/release/bundle/macos/LinkPilot.app "$STAGE/"
-          ln -s /Applications "$STAGE/Applications"
           mkdir -p dist/release
-          hdiutil create \
-            -volname "LinkPilot" \
-            -srcfolder "$STAGE" \
-            -ov \
-            -format UDZO \
-            "dist/release/LinkPilot_${VERSION}_${{ matrix.arch }}.dmg"
+          create-dmg \
+            --volname "LinkPilot" \
+            --background "apps/desktop/dmg/dmg-background.tiff" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 128 \
+            --icon "LinkPilot.app" 150 190 \
+            --hide-extension "LinkPilot.app" \
+            --app-drop-link 450 190 \
+            "dist/release/LinkPilot_${VERSION}_${{ matrix.arch }}.dmg" \
+            "$STAGE"
 
       - name: Package artifacts
         shell: bash
