@@ -24,7 +24,7 @@ jobs:
             runner: macos-14    # Apple-Silicon GitHub runner
           - arch: x86_64
             target: x86_64-apple-darwin
-            runner: macos-13    # Intel GitHub runner
+            runner: macos-15-intel    # Intel GitHub runner (macos-13 retired 2025-12)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
