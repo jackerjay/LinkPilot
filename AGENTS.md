@@ -90,14 +90,14 @@ npm run bundle:mac      # tauri build + Info.plist patch on the .app
 
 ## CI / Release
 
-Two workflows in `.github/workflows/`:
+Three workflows in `.github/workflows/`:
 
 - **`ci.yml`** (every PR + `main` push)
   - `rust`: fmt + clippy + test + `cargo check -p linkpilot-desktop` on `macos-latest`
   - `frontend`: tsc + vite build on `ubuntu-latest`
   - `desktop-bundle`: `tauri build --debug --bundles app` smoke test on `macos-latest`
 - **`release.yml`** (on `v*.*.*` tag)
-  - Matrix over `{aarch64-apple-darwin on macos-14, x86_64-apple-darwin on macos-13}`.
+  - Matrix over `{aarch64-apple-darwin on macos-14, x86_64-apple-darwin on macos-15-intel}`.
     Each leg runs natively — no `lipo`, no `universal-apple-darwin` target.
   - Per leg: builds `lpt` + `linkpilot-daemon` + Tauri
     `--target <arch> --bundles app`, embeds the CLI and daemon into
@@ -108,10 +108,47 @@ Two workflows in `.github/workflows/`:
     checksums file as an `actions/upload-artifact` bundle.
   - A `publish` job (depends on both matrix legs) downloads both bundles,
     flattens them into a single `dist/release/` directory, regenerates a
-    unified `checksums.txt`, then creates the draft Release and publishes.
+    unified `checksums.txt`, creates the Release as a **draft with all
+    assets** (immutable-release setting forbids editing assets after
+    publish), then flips it to published.
+- **`npm-publish.yml`** (on `v*.*.*` tag) — builds + tests
+  `packages/config-dsl` and publishes `@linkpilot/config` to npm. The
+  published version is **stamped from the tag** (`npm version <tag>
+  --no-git-tag-version`), not read from the committed `package.json`.
 
 Release pipeline is **unsigned/unnotarized** — users hit
 `xattr -dr com.apple.quarantine LinkPilot.app` on first launch.
+
+### Release-pipeline gotchas (learned the hard way at v0.5.0–v0.5.2)
+
+The three bugs below were chained — each one had to be fixed before the
+next surfaced, because a failing job blocks everything downstream:
+
+1. **macOS Intel runner.** GitHub retired `macos-13` (deprecation
+   2025-09, fully unsupported 2025-12) with intermittent brownouts that
+   leave jobs *queued forever* instead of failing fast. Intel x86_64
+   builds must use `macos-15-intel` (GitHub's migration label, supported
+   until the macos-15 image retires ~Fall 2027). A leg stuck `queued`
+   for hours with an empty `runner_name` = retired-runner symptom, not a
+   slow build.
+2. **`publish` job has no checkout.** It only `download-artifact`s, so
+   the working dir has no `.git`. Any `gh` call that infers the repo
+   from a git remote (e.g. `gh release edit`) dies with "not a git
+   repository" — set `GH_REPO: ${{ github.repository }}` on the step.
+3. **Tags are immutable; the workflow file is read from the tagged
+   commit.** Re-running a failed release run replays the *old* workflow,
+   so a fix on `main` never helps an already-pushed tag. To recover a
+   half-finished release, finish it by hand (e.g. publish the draft via
+   `gh release edit <tag> --draft=false`); the workflow fix only helps
+   the *next* tag. Same logic blocks retroactively re-publishing a
+   skipped version — roll forward to a new patch tag instead.
+
+**Bumping the version** touches every version file, not just Cargo:
+`Cargo.toml` + `Cargo.lock` (run `cargo update --workspace` after
+editing `Cargo.toml`), `apps/desktop/package.json` + `package-lock.json`,
+`apps/desktop/src-tauri/tauri.conf.json`, `packages/config-dsl/package.json`,
+and a `CHANGELOG.md` entry. Forgetting `config-dsl` is what wedged npm
+publish from v0.4.1 through v0.5.1.
 
 ## Plist patch — why the dance
 
