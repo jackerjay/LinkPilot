@@ -51,7 +51,11 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .unwrap_or_default();
     let menu = build_tray_menu(app, language)?;
 
-    let icon_bytes = include_bytes!("../icons/tray.png");
+    // Load the @3x (66px) source: tray-icon scales the image to an 18pt
+    // menu-bar height regardless of pixel size, so a higher-res source is
+    // a pure Retina-crispness win with no change to the displayed size.
+    // The 22px tray.png is upscaled (blurry) on 2x/3x displays.
+    let icon_bytes = include_bytes!("../icons/tray@3x.png");
     let icon = Image::from_bytes(icon_bytes)
         .map_err(|e| tauri::Error::AssetNotFound(format!("tray icon decode: {e}")))?;
 

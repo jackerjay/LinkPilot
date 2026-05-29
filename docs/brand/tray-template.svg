@@ -1,22 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- LinkPilot menu-bar tray template.
-     macOS templateImage: paint only black on transparent. The system
-     applies appearance-aware tinting (light/dark, active/inactive). Keep
-     strokes thick at 22pt so the icon stays legible in the menu bar.
-     Mirrors the brand mark: a rounded "p" (ring + descending stem) with a
-     paper-plane "send" dart in the counter — the full-colour logo's stars
-     and gradients are dropped (too noisy at 22pt). -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
-  <g fill="#000" fill-rule="evenodd">
-    <!-- Bowl of the "p": a bold ring -->
-    <circle cx="12" cy="8.6" r="5.3" fill="none" stroke="#000" stroke-width="2.2"/>
-    <!-- Descending stem on the left, merging into the ring's left edge -->
-    <rect x="4.3" y="8.6" width="2.9" height="10.6" rx="1.45"/>
-    <!-- Paper plane in the counter, nose to lower-left, subtle tail fold -->
-    <path d="M 9.3 11.3
-             L 13.7 5.5
-             L 13.0 7.7
-             L 15.0 9.3
-             z"/>
-  </g>
+     macOS templateImage: only the alpha matters — the system tints it
+     (light/dark, active/inactive). Mirrors the brand badge: a solid disc
+     with the rounded "p" (ring bowl + vertical left descender) and a
+     paper-plane "send" dart knocked out as negative space. The colour
+     logo's gradient and stars are dropped (too noisy at menu-bar size).
+     Authored at 44 units; rsvg-convert scales to 22/44/66. The descender's
+     left edge is x=11 == the bowl's leftmost point, so the left contour is
+     one continuous vertical line. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
+  <defs>
+    <mask id="cut">
+      <rect width="44" height="44" fill="black"/>
+      <circle cx="22" cy="22" r="21" fill="white"/>
+      <!-- descender: top tucked inside the bowl so its rounded corners
+           don't break the straight left edge -->
+      <rect x="11" y="13" width="6.5" height="23" rx="3.25" fill="black"/>
+      <!-- bowl ring -->
+      <circle cx="22" cy="19.5" r="11" fill="black"/>
+      <circle cx="23" cy="18.5" r="5.4" fill="white"/>
+      <!-- paper-plane in the counter -->
+      <path d="M29 13.5 L18 18.5 L22.2 20.3 L23.2 24.5 Z" fill="black"/>
+    </mask>
+  </defs>
+  <rect width="44" height="44" fill="#000" mask="url(#cut)"/>
 </svg>
