@@ -164,7 +164,39 @@ publish from v0.4.1 through v0.5.1.
 `tauri build` produces the `.app`. In CI the patch must run between
 `--bundles app` and DMG creation; a second `tauri build --bundles dmg`
 would re-bundle the `.app` and clobber the patched plist, which is why
-the release workflow uses `hdiutil create` instead.
+the release workflow builds the DMG with `create-dmg` from the
+already-patched `.app` instead (see "Brand assets" below).
+
+## Brand assets — tray icon & DMG cosmetics
+
+Two macOS-specific gotchas, both learned shipping v0.5.3:
+
+**Menu-bar tray icon** (`docs/brand/tray-template.svg` → `tray.png` /
+`@2x` / `@3x`, loaded in `tray.rs` with `icon_as_template(true)`):
+
+- It's a **template image** — only the alpha matters; macOS tints it for
+  light/dark + active/inactive. The full-colour logo can't be used
+  directly (it'd render as a solid blob). Author a single-colour
+  silhouette: a disc with the brand "p" + paper-plane knocked out.
+- **Pixel size ≠ display size.** `tray-icon` scales any source to an 18pt
+  menu-bar height (`setSize` in its `platform_impl/macos/mod.rs`), so a
+  bigger source never overflows — it just stays crisp. `tray.rs` loads
+  the `@3x` (66px) source; the 22px one was upscaled and blurry on Retina.
+- Regenerate via the `rsvg-convert` commands in `icons/README.md`.
+
+**DMG install window** (`create-dmg`, background
+`apps/desktop/dmg/dmg-background.tiff`):
+
+- Built with `create-dmg` (not `tauri build --bundles dmg`) so the
+  patched plist survives; create-dmg bakes a `.DS_Store` (window size +
+  icon positions + Applications drop-link) for an app-left → Applications-
+  right layout. Icon/window coords are in **points**.
+- The background must be a **hidpi TIFF** holding a 600×400 (1x) +
+  1200×800 (2x) rep (`tiffutil -cathidpicheck a.png a@2x.png -out x.tiff`).
+  A plain 1200×800 PNG renders **2× too large** — Finder treats the
+  background's pixels as points, so the 1x rep must equal the window's
+  point size. Source SVG sits beside the TIFF; regen steps are in the
+  `release.yml` DMG step comment.
 
 ## Conventions
 
