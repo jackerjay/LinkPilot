@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-05-29
+
+### Fixed
+
+- **Release pipeline.** x86_64 macOS build moved off the retired
+  macos-13 runner to macos-15-intel; the @linkpilot/config npm publish
+  now derives its version from the git tag. v0.5.0 / v0.5.1 never
+  shipped artifacts due to these failures — v0.5.2 is the first release
+  carrying the 0.5.x work (ask-mode behavior recording, Smart
+  suggestions panel, per-arch DMGs).
+
 ## [0.5.1] — 2026-05-28
 
 ### Added
