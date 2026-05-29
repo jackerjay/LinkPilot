@@ -195,6 +195,11 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This job never checks out the repo (it only downloads
+          # artifacts), so `gh` has no git remote to infer the repo from
+          # and `gh release edit` dies with "not a git repository".
+          # GH_REPO tells gh which repo to act on without a working tree.
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
           IS_PRERELEASE: ${{ contains(github.ref_name, '-') }}
         run: |
