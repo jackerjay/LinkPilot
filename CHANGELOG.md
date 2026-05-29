@@ -6,6 +6,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-05-29
+
+### Changed
+
+- **Menu-bar tray icon redesigned.** Now a disc badge with the brand "p"
+  (ring bowl + a clean vertical-left descender) and a paper-plane dart
+  knocked out as negative space. The tray loads the `@3x` (66px) source so
+  it stays crisp on Retina (`tray-icon` scales any size to an 18pt
+  menu-bar height; the old 22px asset was upscaled and blurry).
+- **DMG install window.** Built with `create-dmg` instead of a bare
+  `hdiutil` image: a proper Finder layout (app-left → Applications-right)
+  plus a branded background — wordmark, a cyan→purple arrow, and an
+  install hint — rendered crisp on Retina via a hidpi TIFF.
+
 ## [0.5.2] — 2026-05-29
 
 ### Fixed
