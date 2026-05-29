@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DMG install-window background. Authored at 2x (1200x800) for a
+     600x400-point Finder window. Icon centers (window points):
+     app (150,190), Applications (450,190); the arrow sits between them.
+     Rendered to dmg-background.png via rsvg-convert; the PNG is what
+     release.yml feeds to create-dmg as the background image. -->
+<svg width="1200" height="800" viewBox="0 0 1200 800"
+     xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBFCFE"/>
+      <stop offset="1" stop-color="#EEF1F6"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <!-- userSpaceOnUse so it paints on the zero-height arrow shaft too
+         (an objectBoundingBox gradient degenerates on a flat line). -->
+    <linearGradient id="arrow" gradientUnits="userSpaceOnUse"
+                    x1="488" y1="380" x2="712" y2="380">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+
+  <!-- canvas -->
+  <rect width="1200" height="800" fill="url(#bg)"/>
+
+  <!-- top brand accent bar -->
+  <rect x="0" y="0" width="1200" height="6" fill="url(#brand)"/>
+
+  <!-- wordmark -->
+  <text x="600" y="120" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif" font-size="56"
+        font-weight="700" fill="#1F2937" letter-spacing="0.5">LinkPilot</text>
+
+  <!-- arrow between the app icon (left) and Applications (right),
+       centred on the icon row at y=380 (2x of 190pt) -->
+  <g stroke="url(#arrow)" fill="none" stroke-linecap="round"
+     stroke-linejoin="round" stroke-width="14">
+    <line x1="488" y1="380" x2="700" y2="380"/>
+    <polyline points="660,344 712,380 660,416"/>
+  </g>
+
+  <!-- install hint, well below the icon labels -->
+  <text x="600" y="690" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif" font-size="30"
+        font-weight="500" fill="#6B7280">Drag LinkPilot into Applications to install</text>
+</svg>

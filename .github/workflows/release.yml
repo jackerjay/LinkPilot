@@ -99,8 +99,14 @@ jobs:
       # Info.plist). Feeding create-dmg our already-patched .app keeps the
       # plist intact while baking a Finder layout (.DS_Store: window size +
       # icon positions + Applications drop-link) so the mounted volume
-      # shows a clean app-left / Applications-right window instead of bare
-      # hdiutil's unstyled top-left grid. No background image yet.
+      # shows the app-left / arrow / Applications-right install window.
+      # Background is apps/desktop/dmg/dmg-background.tiff — a hidpi TIFF
+      # holding a 600x400 (1x) + 1200x800 (2x) rep so Finder fills the
+      # 600x400-point window at 1x and stays crisp on Retina. Regenerate
+      # from the sibling .svg: rsvg-convert -w 600 -h 400 → .png,
+      # rsvg-convert -w 1200 -h 800 → @2x.png, then
+      # `tiffutil -cathidpicheck dmg-background.png dmg-background@2x.png
+      # -out dmg-background.tiff`.
       - name: Build DMG from patched .app
         shell: bash
         run: |
@@ -112,6 +118,7 @@ jobs:
           mkdir -p dist/release
           create-dmg \
             --volname "LinkPilot" \
+            --background "apps/desktop/dmg/dmg-background.tiff" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 128 \
