@@ -10,6 +10,12 @@
     "core:window:allow-toggle-maximize",
     "core:event:default",
     "deep-link:default",
-    "opener:default"
+    "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        { "path": "$HOME/Library/Application Support/LinkPilot/updates/*.dmg" }
+      ]
+    }
   ]
 }
