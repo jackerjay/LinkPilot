@@ -93,7 +93,7 @@ export function PickerWindow() {
     );
   }
 
-  const portalForStyle = (() => {
+  const PortalForStyle = (() => {
     switch (session.style) {
       case "bezel":
         return HaloBezelPortal;
@@ -122,7 +122,14 @@ export function PickerWindow() {
           url={session.url}
           onPick={onPick}
           onCancel={onCancel}
-          renderPortal={(args) => portalForStyle(args)}
+          // Render the variant as a JSX element, NOT `PortalForStyle(args)`.
+          // HaloShell invokes `renderPortal` directly during its own render,
+          // so a bare call would execute the portal's hooks (Crown calls
+          // useTranslation) inside HaloShell — and because the call sits in a
+          // conditional (showWheel), the hook count jumps when the wheel opens
+          // and React crashes the shell. As an element it mounts as a child
+          // fiber with its own hook scope, so conditional rendering is legal.
+          renderPortal={(args) => <PortalForStyle {...args} />}
           showReadout={showReadout}
         />
       </div>
