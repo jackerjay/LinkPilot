@@ -532,13 +532,19 @@
   backdrop-filter: blur(28px) saturate(150%);
 }
 .halo-frost-disc.strong {
+  /* Crown's center (≈0–54% of the disc) is the opaque "watch face" that
+   * backs the center readout; past it lies the sector ring. The old curve
+   * kept 0.34–0.52 opacity all the way out, so the white disc + 16px
+   * backdrop-blur drowned Crown's low-contrast white sectors — the wheel
+   * read as one frosted blob. Hold the face opaque, then fall off fast at
+   * ~55% so the sector annulus stays clear. */
   background: radial-gradient(
     circle at center,
-    rgba(232, 235, 244, 0.96) 0%,
-    rgba(236, 239, 247, 0.82) 34%,
-    rgba(244, 244, 247, 0.52) 62%,
-    rgba(244, 244, 247, 0.40) 78%,
-    rgba(244, 244, 247, 0.34) 100%
+    rgba(232, 235, 244, 0.92) 0%,
+    rgba(236, 239, 247, 0.76) 40%,
+    rgba(244, 244, 247, 0.36) 55%,
+    rgba(244, 244, 247, 0.13) 72%,
+    rgba(244, 244, 247, 0.08) 100%
   );
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.12),

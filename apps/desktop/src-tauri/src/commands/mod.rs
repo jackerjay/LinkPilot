@@ -129,6 +129,29 @@ pub fn set_smart_routing(state: State<'_, AppState>, enabled: bool) -> Result<()
         .map_err(|e| e.to_string())
 }
 
+/// Flip "Launch at Login". Unlike a bare `config_replace`, this also
+/// reconciles the macOS LaunchAgent plist that actually makes the app
+/// start at login — `set_smart_routing`-style dedicated command because
+/// the setting has an OS side effect plain config persistence can't
+/// perform. We touch the plist *first* and only persist the preference
+/// once that succeeds, so the saved config never claims a state the
+/// LaunchAgent doesn't reflect. On non-macOS the platform stub's
+/// `set_enabled` is a no-op, so this degrades to a plain settings write.
+#[tauri::command]
+pub fn set_launch_at_login(state: State<'_, AppState>, enabled: bool) -> Result<(), String> {
+    state
+        .platform
+        .autostart()
+        .set_enabled(enabled)
+        .map_err(|e| e.to_string())?;
+    let mut doc = state.config.document();
+    doc.settings.launch_at_login = enabled;
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
 /// Persist the user's UI display language preference. `System` defers to
 /// OS detection; explicit variants are hard overrides. The renderer reads
 /// `settings.language` and routes it through i18next.

@@ -115,6 +115,22 @@ pub fn run() {
                 }
             }
 
+            // Reconcile "Launch at Login" with the actual LaunchAgent on every
+            // startup so the config file is the single source of truth: it
+            // re-applies a preference set via `lpt` or a hand-edited config,
+            // self-heals installs whose toggle silently no-op'd before this
+            // fix, and refreshes the plist's embedded exe path. Dev builds skip
+            // it — otherwise every `tauri dev` would write a plist pointing at
+            // the throwaway target/debug binary (same reason the daemon
+            // LaunchAgent auto-install below is production-only).
+            #[cfg(all(target_os = "macos", not(debug_assertions)))]
+            {
+                let want = config_store.document().settings.launch_at_login;
+                if let Err(err) = platform.autostart().set_enabled(want) {
+                    tracing::warn!(?err, enabled = want, "launch-at-login reconcile failed");
+                }
+            }
+
             let state = AppState::new(
                 config_store.clone(),
                 Arc::clone(&history),
@@ -280,6 +296,7 @@ pub fn run() {
             commands::set_picker_style,
             commands::set_profile_order,
             commands::set_language,
+            commands::set_launch_at_login,
             picker::picker_preview,
             commands::doctor,
             commands::list_browsers,

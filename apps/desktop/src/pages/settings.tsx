@@ -144,10 +144,7 @@ export function SettingsPage({
   const toggleLaunchAtLogin = async (next: boolean) => {
     if (!doc) return;
     try {
-      await ipc.configReplace({
-        ...doc,
-        settings: { ...doc.settings, launch_at_login: next },
-      });
+      await ipc.setLaunchAtLogin(next);
       await refresh();
     } catch (err) {
       setError(String(err));
@@ -604,7 +601,7 @@ export function SettingsPage({
             onValueChange={(v) => void setBehaviorRetention(v)}
             disabled={!doc?.settings.behavior_log_enabled}
           >
-            <SelectTrigger style={{ minWidth: 140 }}>
+            <SelectTrigger className="w-[140px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
