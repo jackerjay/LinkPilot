@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.5] — 2026-06-01
+
+### Fixed
+
+- **"Open installer" button now works after an update downloads.** The
+  button opens the downloaded DMG via `openPath`, but the app only
+  granted `opener:default` (open-url + reveal-item), not
+  `allow-open-path`, so Tauri's ACL rejected the call and the button did
+  nothing. Granted `opener:allow-open-path` scoped to the updates
+  directory (`$HOME/Library/Application Support/LinkPilot/updates/*.dmg`).
+  Note: takes effect only for builds shipping this fix — an install on
+  ≤0.5.4 keeps the dead button until it is running a newer build.
+
 ## [0.5.4] — 2026-06-01
 
 ### Fixed
