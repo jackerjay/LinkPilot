@@ -27,7 +27,7 @@ jobs:
             runner: macos-15-intel    # Intel GitHub runner (macos-13 retired 2025-12)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -36,7 +36,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
@@ -162,7 +162,7 @@ jobs:
           (cd dist/release && shasum -a 256 *) > "dist/release/checksums-${ARCH}.txt"
 
       - name: Upload arch artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.arch }}
           path: dist/release/*
@@ -174,7 +174,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download arch artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist/incoming
 
@@ -197,7 +197,7 @@ jobs:
       # it can no longer be edited — which is exactly the immutable-release
       # guarantee the repo opted into.
       - name: Create GitHub Release (draft, with assets)
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
