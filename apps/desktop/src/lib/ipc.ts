@@ -74,6 +74,12 @@ export const ipc = {
   /** Persist the UI language preference. `system` means follow OS. */
   setLanguage: (language: LanguagePref) =>
     invoke<void>("set_language", { language }),
+  /** Persist the "launch at login" preference and (un)install the macOS
+   *  LaunchAgent that actually backs it. Plain `configReplace` only writes
+   *  the JSON flag — it never touches the plist, so the toggle looked
+   *  inert before this. */
+  setLaunchAtLogin: (enabled: boolean) =>
+    invoke<void>("set_launch_at_login", { enabled }),
   /** Persist a per-browser visible profile ordering. Empty `profileIds`
    *  clears customization for that browser — picker falls back to default
    *  sort and shows every detected profile. */

@@ -144,10 +144,7 @@ export function SettingsPage({
   const toggleLaunchAtLogin = async (next: boolean) => {
     if (!doc) return;
     try {
-      await ipc.configReplace({
-        ...doc,
-        settings: { ...doc.settings, launch_at_login: next },
-      });
+      await ipc.setLaunchAtLogin(next);
       await refresh();
     } catch (err) {
       setError(String(err));
