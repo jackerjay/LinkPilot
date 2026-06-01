@@ -6,6 +6,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.4] — 2026-06-01
+
+### Fixed
+
+- **Crown picker no longer crashes into a white blob.** `HaloShell`
+  invoked its `renderPortal` prop as a bare function call, so the Crown
+  variant's `useTranslation` hook ran inside `HaloShell`'s own render —
+  and because the call is conditional on the wheel being open, opening
+  the wheel changed the hook count and React tore down the whole picker.
+  The portal is now mounted as a JSX child so it keeps its own hook
+  scope. Crown's frosted disc gradient was also retuned so the sector
+  ring stays legible instead of washing out under the backdrop blur.
+- **Launch-at-login toggle now takes effect.** The switch only wrote the
+  config flag and never (un)installed the macOS LaunchAgent that backs
+  it. A dedicated `set_launch_at_login` command reconciles the plist,
+  and production builds re-reconcile on startup so the config file is the
+  single source of truth.
+- **Behavior-log retention row layout.** The retention selector stretched
+  full-width and squeezed its label down to one character per line; it
+  now uses a fixed `140px` width like the theme/language rows.
+
 ## [0.5.3] — 2026-05-29
 
 ### Changed
