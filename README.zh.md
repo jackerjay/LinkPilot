@@ -56,8 +56,23 @@ LinkPilot 当前聚焦 macOS。
 当前 release 产物未签名，macOS 首次启动时可能会加 quarantine。安装后如无法打开，
 可以移除 quarantine 标记。
 
-Homebrew 目前还不是可用安装渠道。在 tap 发布并验证之前，请使用下面的 DMG 或
-CLI tarball。
+### Homebrew（推荐）
+
+LinkPilot 通过自有 tap `jackerjay/homebrew-linkpilot` 分发：
+
+```sh
+brew tap jackerjay/linkpilot
+
+# GUI 应用——把 LinkPilot.app 装到 /Applications。构建未签名，cask 的
+# postflight 会替你去掉 quarantine 标记（因为 postflight 会执行 shell 命令，
+# Homebrew 首次会弹一次 tap-trust 确认）。
+brew install --cask jackerjay/linkpilot/linkpilot
+
+# 仅 CLI——把 `lpt` 和 `linkpilot-daemon` 装到 PATH。
+brew install jackerjay/linkpilot/linkpilot-cli
+```
+
+如果不想加 tap，也可以用下面的手动 DMG 或 CLI tarball。
 
 ### GUI 应用
 
@@ -266,7 +281,7 @@ apps/
 packages/
   config-dsl/           # linkpilot.config.ts 的 TypeScript DSL
 packaging/
-  homebrew/             # 未发布的 Formula/cask 模板；当前还不是安装渠道
+  homebrew/             # Formula + cask 源；镜像到 jackerjay/linkpilot tap
 ```
 
 ## 发布

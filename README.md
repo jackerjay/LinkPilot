@@ -67,8 +67,24 @@ On macOS, LinkPilot auto-detects these installed browsers:
 Release artifacts are unsigned and macOS may quarantine them on first launch.
 If needed, remove the quarantine flag after installing.
 
-Homebrew is not a supported install path yet. Use the DMG or CLI tarball below
-until the tap is published and verified.
+### Homebrew (recommended)
+
+LinkPilot ships through its own tap, `jackerjay/homebrew-linkpilot`:
+
+```sh
+brew tap jackerjay/linkpilot
+
+# GUI app — drops LinkPilot.app into /Applications. The build is unsigned,
+# so the cask's postflight strips the quarantine flag for you (Homebrew
+# shows a one-time tap-trust prompt the first time, since postflight runs
+# a shell command).
+brew install --cask jackerjay/linkpilot/linkpilot
+
+# CLI only — installs `lpt` + `linkpilot-daemon` onto your PATH.
+brew install jackerjay/linkpilot/linkpilot-cli
+```
+
+Prefer the manual DMG or CLI tarball below if you'd rather not add a tap.
 
 ### GUI app
 
@@ -281,7 +297,7 @@ apps/
 packages/
   config-dsl/           # TypeScript DSL for linkpilot.config.ts
 packaging/
-  homebrew/             # unpublished Formula/cask templates; not an install path yet
+  homebrew/             # Formula + cask sources mirrored into the jackerjay/linkpilot tap
 ```
 
 ## Release
