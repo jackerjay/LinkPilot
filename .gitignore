@@ -21,3 +21,4 @@ apps/desktop/src-tauri/gen/
 # LinkPilot runtime data (local dev)
 .linkpilot/
 *.log
+worktrees

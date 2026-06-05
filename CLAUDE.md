@@ -50,7 +50,7 @@
 Per-link router that sits between macOS, browsers, and apps that open URLs,
 and dispatches each link to the browser + profile that matches user rules.
 v0.1 is **macOS-only**; `platform-win` / `platform-linux` are stubs that
-re-export `core::platform::StubProvider` until v0.5 / v0.6+.
+re-export `core::platform::StubProvider` (win/linux remain stubs; no committed cross-platform milestone yet).
 
 ## Layout cheat-sheet
 
@@ -150,7 +150,7 @@ the release workflow uses `hdiutil create` instead.
 
 ## Conventions
 
-- Workspace `version = "0.2.0"`, `edition = "2021"`, `rust-version = "1.80"`,
+- Workspace `version = "0.5.6"`, `edition = "2021"`, `rust-version = "1.80"`,
   `license = "MIT"`.
 - Platform-specific Rust code is gated via `#[cfg(target_os = "macos")]` /
   `#[cfg(not(target_os = "macos"))]`. The Tauri shell's `picker.rs` and

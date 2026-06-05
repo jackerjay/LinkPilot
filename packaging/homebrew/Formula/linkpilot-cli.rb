@@ -28,23 +28,29 @@ class LinkpilotCli < Formula
   #
   # TODO: when v0.5.0 actually ships, replace each `"0" * 64`
   # placeholder with the real SHA from `dist/release/checksums.txt`.
-  on_arm do
-    url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/lpt-macos-aarch64.tar.gz"
-    sha256 "0000000000000000000000000000000000000000000000000000000000000000"
-
-    resource "daemon" do
-      url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/linkpilot-daemon-macos-aarch64.tar.gz"
+  # `brew style` (FormulaAudit/ComponentsOrder) forbids bare url/sha256
+  # directly inside top-level on_arm/on_intel — they must be nested under
+  # on_macos. The per-arch daemon resource rides along inside each arch
+  # block so its URL tracks the same arch as the main `lpt` tarball.
+  on_macos do
+    on_arm do
+      url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/lpt-macos-aarch64.tar.gz"
       sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+
+      resource "daemon" do
+        url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/linkpilot-daemon-macos-aarch64.tar.gz"
+        sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+      end
     end
-  end
 
-  on_intel do
-    url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/lpt-macos-x86_64.tar.gz"
-    sha256 "0000000000000000000000000000000000000000000000000000000000000000"
-
-    resource "daemon" do
-      url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/linkpilot-daemon-macos-x86_64.tar.gz"
+    on_intel do
+      url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/lpt-macos-x86_64.tar.gz"
       sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+
+      resource "daemon" do
+        url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/linkpilot-daemon-macos-x86_64.tar.gz"
+        sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+      end
     end
   end
 
@@ -61,8 +67,9 @@ class LinkpilotCli < Formula
 
   def caveats
     <<~EOS
-      LinkPilot ships unsigned. Strip the quarantine flag on first run:
-        xattr -dr com.apple.quarantine #{bin}/lpt #{bin}/linkpilot-daemon
+      LinkPilot ships unsigned, but Homebrew's formula path doesn't
+      quarantine downloads, so `lpt` and `linkpilot-daemon` run as-is —
+      no `xattr` dance needed (that's only for the .app cask).
 
       To register LinkPilot as the system default browser handler you
       need the .app (which carries an Info.plist with the right Launch

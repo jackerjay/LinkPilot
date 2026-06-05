@@ -6,6 +6,38 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.6] — 2026-06-05
+
+### Changed
+
+- **Homebrew cask now de-quarantines itself on install.** The build is
+  unsigned (no Apple Developer ID, so notarization isn't possible yet),
+  which made `brew install --cask` land an app that macOS blocks on first
+  launch ("LinkPilot is damaged"). A `postflight` stanza now strips the
+  `com.apple.quarantine` flag during install, so the app launches without
+  a manual `xattr -dr` step. The removal is surfaced in the cask caveats
+  rather than done silently. This is a deliberate trade-off: `brew audit`
+  rejects Gatekeeper-bypass behaviour, so the recipe can only live in our
+  own tap — the official homebrew-cask would never accept it. Real
+  notarization (the only path to a silent Gatekeeper pass) is deferred
+  until there's a paid Apple Developer account.
+
+### Fixed
+
+- **CLI formula no longer tells users to run a pointless `xattr`.** The
+  Homebrew *formula* path doesn't quarantine downloads, so `lpt` and
+  `linkpilot-daemon` already run as-is — the caveat instructing an
+  `xattr` strip was misleading and is removed. Verified empirically:
+  even with the source tarball pre-marked as quarantined, the installed
+  binaries carry no quarantine flag.
+- **`brew style` is clean on both recipes.** The formula's per-arch
+  `on_arm`/`on_intel` blocks held bare `url`/`sha256`, which newer
+  Homebrew's `FormulaAudit/ComponentsOrder` cop forbids at the top level;
+  they're now nested under `on_macos`. The packaging README's local-install
+  instructions were also corrected — Homebrew 5.x rejects installing a
+  formula from a bare file path ("formulae must be in a tap"), so the doc
+  now shows the throwaway-tap workaround (the cask path-install still works).
+
 ## [0.5.5] — 2026-06-01
 
 ### Fixed

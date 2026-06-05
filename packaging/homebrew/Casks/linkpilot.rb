@@ -42,14 +42,27 @@ cask "linkpilot" do
     strategy :github_releases
   end
 
-  # Unsigned build; Gatekeeper prompts on first launch unless the user
-  # strips the quarantine flag (see caveats below).
+  # Unsigned build. We can't notarize without an Apple Developer ID, so
+  # the postflight below strips the quarantine flag for the user (see the
+  # caveats — the removal is intentionally surfaced, not silent). This is
+  # why the recipe can only live in our own tap: `brew audit` rejects
+  # Gatekeeper-bypass behaviour, and the official homebrew-cask never
+  # accepts it.
   auto_updates false
   # Matches Info.plist LSMinimumSystemVersion (12.0 = Monterey). Cask's
   # idiomatic form is the symbol alone — implicitly "this or newer".
   depends_on macos: :monterey
 
   app "LinkPilot.app"
+
+  # The .app is unsigned, so Homebrew's default quarantine would make
+  # macOS block it on first launch ("LinkPilot is damaged"). Strip the
+  # quarantine xattr here instead of making every user run `xattr -dr`
+  # by hand. Runs as the user, after the bundle is in place.
+  postflight do
+    system_command "/usr/bin/xattr",
+                   args: ["-dr", "com.apple.quarantine", "#{appdir}/LinkPilot.app"]
+  end
 
   uninstall launchctl: "app.linkpilot.daemon",
             quit:      "app.linkpilot.desktop",
@@ -67,8 +80,11 @@ cask "linkpilot" do
   ]
 
   caveats <<~EOS
-    LinkPilot ships unsigned. macOS may prompt you to confirm the
-    developer on first launch. If you'd rather skip the prompt:
+    LinkPilot ships unsigned (no Apple Developer ID / notarization yet).
+    This cask already removed the macOS quarantine flag from
+    LinkPilot.app during install so it launches without a Gatekeeper
+    prompt. If you later move or re-download the app outside Homebrew,
+    re-run:
       xattr -dr com.apple.quarantine /Applications/LinkPilot.app
 
     On first launch the GUI writes ~/Library/LaunchAgents/

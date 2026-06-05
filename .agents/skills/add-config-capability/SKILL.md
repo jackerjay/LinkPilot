@@ -175,5 +175,5 @@ apps/desktop/src-tauri/src/lib.rs            # generate_handler! registration
 apps/desktop/src-tauri/capabilities/default.json
 apps/desktop/src/lib/tauri.ts        # typed wrappers
 apps/desktop/src/pages/*.tsx         # the page that surfaces it
-crates/cli/src/main.rs               # lp subcommand + arg parsing
+crates/cli/src/main.rs               # lpt subcommand + arg parsing
 ```

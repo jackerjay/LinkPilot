@@ -293,9 +293,10 @@ git tag v0.3.0
 git push origin v0.3.0
 ```
 
-The release workflow builds universal macOS binaries for the CLI, daemon, and
-desktop app, patches the app bundle, wraps it in a DMG, and uploads release
-artifacts with checksums.
+The release workflow builds per-architecture macOS binaries (Apple Silicon
+`aarch64` and Intel `x86_64`) for the CLI, daemon, and desktop app, patches
+each app bundle, wraps each in an arch-specific DMG, and uploads the release
+artifacts together with a unified `checksums.txt`.
 
 ## Changelog
 

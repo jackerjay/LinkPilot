@@ -109,12 +109,12 @@ The `lp` CLI mirrors every configurable thing in the GUI (see commit
 
 | Capability | CLI subcommand group |
 |---|---|
-| Rule matcher | `lp rules add` — add a flag (e.g. `--time-window`) AND extend `build_matcher` |
-| Action | `lp rules add` — add a flag (e.g. `--always-incognito`) AND extend `build_action` |
-| Settings field | `lp settings <name> <value>` — add a new `SettingsAction` variant |
-| Workspace property | `lp workspaces add` — add a flag |
-| Browser metadata | `lp browsers custom add` — add a flag |
-| Default target tweak | `lp config set-default-target` — add a flag |
+| Rule matcher | `lpt rules add` — add a flag (e.g. `--time-window`) AND extend `build_matcher` |
+| Action | `lpt rules add` — add a flag (e.g. `--always-incognito`) AND extend `build_action` |
+| Settings field | `lpt settings <name> <value>` — add a new `SettingsAction` variant |
+| Workspace property | `lpt workspaces add` — add a flag |
+| Browser metadata | `lpt browsers custom add` — add a flag |
+| Default target tweak | `lpt config set-default-target` — add a flag |
 
 Writes go through `mutate_local` (atomic rewrite + fsnotify echo via
 the existing anti-echo token), so a running daemon picks up the change
@@ -128,7 +128,7 @@ block if the flag form is awkward.
 ### 6. Tests
 
 - `cargo test -p linkpilot-core` — router + serde round-trip.
-- `cargo build -p linkpilot-cli` then run `lp <cmd> --help` and a
+- `cargo build -p linkpilot-cli` then run `lpt <cmd> --help` and a
   quick `--dry-run` smoke against a `/tmp/lp.json` config.
 - For GUI: `cd apps/desktop && npx tauri dev` and click through the
   new control.
@@ -175,5 +175,5 @@ apps/desktop/src-tauri/src/lib.rs            # generate_handler! registration
 apps/desktop/src-tauri/capabilities/default.json
 apps/desktop/src/lib/tauri.ts        # typed wrappers
 apps/desktop/src/pages/*.tsx         # the page that surfaces it
-crates/cli/src/main.rs               # lp subcommand + arg parsing
+crates/cli/src/main.rs               # lpt subcommand + arg parsing
 ```

@@ -3,7 +3,7 @@
 TypeScript DSL for authoring `linkpilot.config.ts`. Compiles to the same
 JSON schema the LinkPilot GUI edits.
 
-Lands in **v0.2**. CLI driver is `lp config compile`.
+Shipped in v0.2. CLI driver is `lpt config compile`.
 
 ## Quick start
 
@@ -36,7 +36,7 @@ printConfig(config);
 Then:
 
 ```sh
-lp config compile linkpilot.config.ts
+lpt config compile linkpilot.config.ts
 ```
 
 The CLI runs your file through [Bun][bun] (~30ms cold start, native
@@ -45,7 +45,7 @@ the daemon's config path. The daemon's `fsnotify` watcher picks it up
 and reloads within a frame — any running GUI / CLI sees the new rules
 immediately.
 
-`lp config compile --to out.json` writes to a path of your choosing
+`lpt config compile --to out.json` writes to a path of your choosing
 instead (useful for `git`-tracked compiled outputs).
 
 [bun]: https://bun.sh

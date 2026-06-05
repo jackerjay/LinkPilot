@@ -1,5 +1,11 @@
 # M6 release runbook — v0.2.0 public release
 
+> **Historical note:** this runbook was written for the v0.2.0 milestone.
+> The reusable, per-release **Homebrew tap-publish procedure now lives in
+> [`homebrew/README.md`](homebrew/README.md) → "Publishing a release to the
+> tap"** — Phase 3 below just points there. Version numbers and the
+> `claude/v0.2-dev` branch references below are historical.
+
 Operational steps the maintainer runs to take v0.2 from
 "feature-complete on `claude/v0.2-dev`" to "tagged + published".
 Every step is destructive/public — done in this exact order so you
@@ -69,59 +75,24 @@ git push origin v0.2.0
 ```
 
 Watch the two workflow runs:
-- [ ] `release.yml` — universal CLI + daemon + DMG, GitHub Release
+- [ ] `release.yml` — per-arch CLI + daemon + DMG, GitHub Release
       created as draft, then auto-published. Check the assets list
-      contains: `lpt-macos` + `lpt-macos.tar.gz`,
-      `linkpilot-daemon-macos` + `.tar.gz`,
-      `LinkPilot_0.2.0_universal.dmg`, `checksums.txt`.
+      contains, for EACH of `aarch64` and `x86_64`:
+      `lpt-macos-<arch>` (+ `.tar.gz`),
+      `linkpilot-daemon-macos-<arch>` (+ `.tar.gz`),
+      `LinkPilot_<version>_<arch>.dmg`, plus one unified `checksums.txt`.
 - [ ] `npm-publish.yml` — `@linkpilot/config@0.2.0` published.
       Confirm: `npm view @linkpilot/config@0.2.0`.
 
 ## Phase 3 — Update Homebrew tap
 
-Pull SHA256s from `checksums.txt` on the v0.2.0 GitHub Release.
-
-```sh
-# Edit in this repo first so the recipes track shipped state.
-$EDITOR packaging/homebrew/Formula/linkpilot-cli.rb
-# - bump `version` to 0.2.0
-# - swap `url` paths v0.2.0-alpha.3 → v0.2.0
-# - replace `sha256` for the main tarball AND the daemon resource
-# - tarball name lp-macos.tar.gz → lpt-macos.tar.gz (now that release.yml emits it)
-
-$EDITOR packaging/homebrew/Casks/linkpilot.rb
-# - bump `version` to 0.2.0
-# - replace `sha256` for the DMG
-# - the url template auto-renders v#{version}
-
-# Commit the bump on main
-git add packaging/homebrew/
-git commit -m "release: bump Homebrew recipes to v0.2.0"
-git push origin main
-
-# Push to the tap repo
-cd /tmp
-git clone git@github.com:jackerjay/homebrew-linkpilot.git
-cd homebrew-linkpilot
-mkdir -p Formula Casks
-cp /path/to/linkpilot/packaging/homebrew/Formula/linkpilot-cli.rb Formula/
-cp /path/to/linkpilot/packaging/homebrew/Casks/linkpilot.rb Casks/
-git add -A
-git commit -m "linkpilot v0.2.0"
-git push
-```
-
-Verify:
-```sh
-brew tap jackerjay/linkpilot
-brew install --formula jackerjay/linkpilot/linkpilot-cli
-lpt --version            # → lpt 0.2.0
-brew uninstall linkpilot-cli
-brew install --cask jackerjay/linkpilot/linkpilot
-open /Applications/LinkPilot.app
-brew uninstall --cask linkpilot
-brew untap jackerjay/linkpilot
-```
+The durable, per-release tap-publish procedure now lives in
+[`homebrew/README.md`](homebrew/README.md) → **"Publishing a release to the
+tap"**: pull the six shas from `checksums.txt`, fill the two per-arch cask
+shas + four formula shas, mirror the recipes into `jackerjay/homebrew-linkpilot`,
+and verify with `brew install`. Follow it there. The tap repo needs no tag —
+`brew update` picks up the next commit, so a bad sha is fixed by a follow-up
+commit to the tap.
 
 ## Phase 4 — Announce
 

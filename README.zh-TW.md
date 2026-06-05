@@ -278,8 +278,9 @@ git tag v0.3.0
 git push origin v0.3.0
 ```
 
-Release workflow 會構建 universal macOS CLI、daemon 和桌面應用程式，修補 app
-bundle，打包 DMG，並上傳 release artifacts 與 checksums。
+Release workflow 會依架構分別建構 macOS CLI、daemon 和桌面應用程式（Apple Silicon
+`aarch64` 與 Intel `x86_64`），分別修補各自的 app bundle、打包成對應架構的 DMG，
+並連同統一的 `checksums.txt` 一起上傳 release artifacts。
 
 ## 更新日誌
 

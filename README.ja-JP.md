@@ -280,8 +280,10 @@ git tag v0.3.0
 git push origin v0.3.0
 ```
 
-Release workflow は universal macOS CLI、daemon、デスクトップアプリをビルドし、
-app bundle を修正して DMG に包み、checksums とともに release artifacts をアップロードします。
+Release workflow はアーキテクチャごと（Apple Silicon `aarch64` と Intel `x86_64`）に
+macOS CLI、daemon、デスクトップアプリをビルドし、それぞれの app bundle を修正して
+アーキテクチャ別の DMG に包み、統一された `checksums.txt` とともに release artifacts を
+アップロードします。
 
 ## 変更履歴
 
