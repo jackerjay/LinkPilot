@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.7] — 2026-06-06
+
+### Fixed
+
+- **Menu-bar popover no longer flashes blank on first open.** The tray
+  popover webview was built lazily on the first click, so that click had
+  to absorb the webview spawn, bundle parse, React mount, and the
+  popover's initial IPC round-trips before any content painted. The
+  popover is now pre-warmed in the background ~1.5s after launch and left
+  hidden, so the first click shows an already-booted, data-loaded window.
+  Clicking before the pre-warm completes falls back to the original
+  build-on-click path, so there is no regression.
+
 ## [0.5.6] — 2026-06-05
 
 ### Changed
