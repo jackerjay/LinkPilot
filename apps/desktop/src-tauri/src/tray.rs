@@ -32,6 +32,15 @@ const ANCHOR_GAP: f64 = 8.0;
 /// would fire focus-lost → hide → click → re-show, because focus-lost
 /// arrives *before* the click handler on macOS.
 const REOPEN_SUPPRESS_MS: u64 = 250;
+/// Delay after launch before pre-building the popover webview in the
+/// background. A fresh `tray` webview costs a process spawn + bundle
+/// parse + React mount + i18n + the popover's initial IPC round-trips;
+/// doing that lazily on the first click is what makes the first open
+/// flash blank before content paints. We move that cost off the click
+/// path by pre-warming once the app has settled — far enough after
+/// launch that it doesn't compete with the main window's first paint,
+/// but well before a human reaches for the menu-bar icon.
+const PREWARM_DELAY_MS: u64 = 1500;
 const MAIN_TRAY_ID: &str = "main-tray";
 
 /// Cross-thread bookkeeping for the popover's click-toggle behavior.
@@ -84,6 +93,37 @@ pub fn install<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             }
         })
         .build(app)?;
+
+    // Pre-warm the popover webview shortly after launch so the first
+    // tray click shows an already-booted, data-loaded window instead of
+    // a blank flash (see PREWARM_DELAY_MS). The window is built hidden
+    // and centered; the first real click goes through the reposition
+    // branch in `handle_left_click`, which moves it under the icon
+    // before showing — so the placeholder position never surfaces.
+    //
+    // No-regression: if the user clicks before this fires,
+    // `handle_left_click` finds no window and falls back to the cold
+    // synchronous build, i.e. exactly today's behavior.
+    let app_for_prewarm = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(PREWARM_DELAY_MS));
+        // Cheap off-main-thread bail: skip dispatching if a click
+        // already built the popover.
+        if app_for_prewarm.get_webview_window(TRAY_LABEL).is_some() {
+            return;
+        }
+        let app_for_build = app_for_prewarm.clone();
+        let _ = app_for_prewarm.run_on_main_thread(move || {
+            // Authoritative re-check on the main thread: `handle_left_click`
+            // also builds here, so this serializes against a concurrent
+            // cold build and avoids a duplicate-label build error.
+            if app_for_build.get_webview_window(TRAY_LABEL).is_some() {
+                return;
+            }
+            let _ = build_popover(&app_for_build, None);
+        });
+    });
+
     Ok(())
 }
 
@@ -204,13 +244,27 @@ fn handle_left_click<R: Runtime>(app: &AppHandle<R>, rect: tauri::Rect) {
         return;
     }
 
-    // Fresh build. WebviewWindow construction is cheap on macOS (the
-    // process already has WKWebView linked) so we don't bother
-    // pre-creating it — the first click is still snappy.
+    // No window yet. The startup pre-warm (see `install`) normally
+    // builds it within ~PREWARM_DELAY_MS of launch, so we rarely land
+    // here. If the user clicks before pre-warm fires, fall back to a
+    // synchronous cold build — this is the blank-flash path the
+    // pre-warm exists to avoid, but it keeps the click functional.
     build_and_show_popover(app, rect);
 }
 
-fn build_and_show_popover<R: Runtime>(app: &AppHandle<R>, rect: tauri::Rect) {
+/// Build the popover webview (invisible) and apply macOS glass +
+/// collection behavior, but do NOT show it. Returns the window so the
+/// caller decides when it becomes visible: the click handler shows it
+/// immediately; the startup pre-warm leaves it hidden and ready.
+///
+/// `rect` is the tray icon's frame when building in response to a click
+/// (anchors the popover under the icon). Pre-warm has no click, so it
+/// passes `None` and the window is centered — `handle_left_click`'s
+/// reposition branch moves it under the icon before the first show.
+fn build_popover<R: Runtime>(
+    app: &AppHandle<R>,
+    rect: Option<tauri::Rect>,
+) -> Option<tauri::WebviewWindow<R>> {
     let target = WebviewUrl::App("index.html?view=tray".into());
     let mut builder = WebviewWindowBuilder::new(app, TRAY_LABEL, target)
         .title("LinkPilot")
@@ -230,7 +284,7 @@ fn build_and_show_popover<R: Runtime>(app: &AppHandle<R>, rect: tauri::Rect) {
         .visible(false)
         .focused(true);
 
-    match popover_position(app, rect) {
+    match rect.and_then(|r| popover_position(app, r)) {
         Some((x, y)) => builder = builder.position(x, y),
         None => builder = builder.center(),
     }
@@ -239,21 +293,34 @@ fn build_and_show_popover<R: Runtime>(app: &AppHandle<R>, rect: tauri::Rect) {
         Ok(w) => w,
         Err(err) => {
             tracing::warn!(?err, "tray: popover build failed");
-            return;
+            return None;
         }
     };
 
     // AppKit calls (vibrancy + collection behavior) MUST run on the
-    // main thread — picker.rs uses the same pattern. We're already on
-    // the main thread here (tray callback dispatched by Tauri's run
-    // loop) but use run_on_main_thread anyway for symmetry and to
-    // future-proof against the tray runtime moving off-main.
+    // main thread — picker.rs uses the same pattern. The window stays
+    // invisible through this, so the caller's later show() is still the
+    // first paint and the vibrancy is already in place.
     let win_for_main = win.clone();
     let _ = app.run_on_main_thread(move || {
         apply_glass(&win_for_main);
         elevate_collection_behavior(&win_for_main);
-        let _ = win_for_main.show();
-        let _ = win_for_main.set_focus();
+    });
+    Some(win)
+}
+
+/// Cold path: build the popover anchored under the icon and show it
+/// right away. Used when a click arrives before the pre-warm has built
+/// the window.
+fn build_and_show_popover<R: Runtime>(app: &AppHandle<R>, rect: tauri::Rect) {
+    let Some(win) = build_popover(app, Some(rect)) else {
+        return;
+    };
+    // Queued after build_popover's glass/collection closure (FIFO on the
+    // main thread), so vibrancy is applied before this first show.
+    let _ = app.run_on_main_thread(move || {
+        let _ = win.show();
+        let _ = win.set_focus();
     });
 }
 
