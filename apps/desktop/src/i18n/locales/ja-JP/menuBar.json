@@ -11,6 +11,15 @@
     "browsers": "ブラウザ",
     "detected": "検出済み"
   },
+  "activity": {
+    "card": "アクティビティ",
+    "last24h": "過去 24 時間",
+    "now": "現在",
+    "byBrowser": "ブラウザ別",
+    "other": "その他",
+    "emptyTitle": "アクティビティはまだありません",
+    "emptyHint": "リンクがルーティングされると、ここにリアルタイムで表示されます。"
+  },
   "status": {
     "card": "ステータス",
     "daemon": "Daemon",
@@ -39,7 +48,8 @@
   },
   "recent": {
     "card": "最近のルート",
-    "empty": "まだルートがありません。<code>lpt open …</code> を実行するか、リンクをクリックしてみてください。"
+    "emptyTitle": "ルート履歴はまだありません",
+    "emptyHint": "リンクをクリックするか、ターミナルで <code>lpt open …</code> を試してください。"
   },
   "decision": {
     "allow": "許可",

@@ -11,6 +11,15 @@
     "browsers": "瀏覽器",
     "detected": "已識別"
   },
+  "activity": {
+    "card": "活動",
+    "last24h": "近 24 小時",
+    "now": "現在",
+    "byBrowser": "依瀏覽器分佈",
+    "other": "其他",
+    "emptyTitle": "還沒有活動",
+    "emptyHint": "連結被路由後，這裡會即時顯示流量走向。"
+  },
   "status": {
     "card": "狀態",
     "daemon": "Daemon",
@@ -39,7 +48,8 @@
   },
   "recent": {
     "card": "最近路由",
-    "empty": "尚無路由。試試 <code>lpt open …</code> 或點擊連結。"
+    "emptyTitle": "還沒有路由紀錄",
+    "emptyHint": "點擊任意連結，或在終端機執行 <code>lpt open …</code> 試試。"
   },
   "decision": {
     "allow": "放行",

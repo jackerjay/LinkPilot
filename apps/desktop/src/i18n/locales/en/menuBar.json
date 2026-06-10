@@ -11,6 +11,15 @@
     "browsers": "Browsers",
     "detected": "Detected"
   },
+  "activity": {
+    "card": "Activity",
+    "last24h": "Last 24 hours",
+    "now": "now",
+    "byBrowser": "By browser",
+    "other": "Other",
+    "emptyTitle": "No activity yet",
+    "emptyHint": "Once links start routing, traffic shows up here in real time."
+  },
   "status": {
     "card": "Status",
     "daemon": "Daemon",
@@ -39,7 +48,8 @@
   },
   "recent": {
     "card": "Recent routes",
-    "empty": "No routes yet. Try <code>lpt open …</code> or click a link."
+    "emptyTitle": "No routes yet",
+    "emptyHint": "Click any link, or try <code>lpt open …</code> from your terminal."
   },
   "decision": {
     "allow": "allow",
