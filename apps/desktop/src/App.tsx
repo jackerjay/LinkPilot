@@ -351,9 +351,11 @@ export default function App() {
               22pt brand mark + "Pilot" text occupy the same y as the
               native window title would. */}
           {/* Brand lockup — mirrors the website nav: glowing mark +
-              wordmark over a small-caps role line, so the in-app brand
-              matches the marketing surface. */}
-          <div className="flex items-center gap-3 px-2 pb-4 pt-1">
+              wordmark over a small-caps role line. Horizontally centered
+              as its own unit: the 36px mark is wider than the 23px menu
+              chips, so joining the menu's left grid would leave either
+              the icon column or the text column visibly misaligned. */}
+          <div className="flex items-center justify-center gap-3 pb-4 pt-1">
             <img
               src={brandIcon}
               alt="LinkPilot"
