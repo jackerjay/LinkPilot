@@ -6,6 +6,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.8] — 2026-06-10
+
+### Added
+
+- **Overview activity card.** A new card on the Overview page charts the
+  last 24 hours of routing as an hourly sparkline plus a per-browser
+  distribution bar with icon legend, counts, and percentages — computed
+  from the route history the page already fetches, no new IPC.
+- **Designed empty states.** Overview's Activity and Recent-routes cards
+  now show an intentional empty state (accent icon disc + title + hint)
+  instead of a bare muted sentence; the shared `EmptyState` component is
+  reusable by other pages.
+
+### Changed
+
+- **Sidebar visual refresh.** Navigation items get System-Settings-style
+  colored icon chips, the selected row uses a solid accent fill with
+  white text, and the daemon status line at the bottom became a rounded
+  status chip. The brand area is now a proper lockup — 36px glowing mark,
+  wordmark, and a small-caps "macOS Link Router" role line matching the
+  website nav.
+- **"Routes today" stat is now accurate.** It previously counted the
+  5-row recent list (so it could never exceed 5); it now counts today's
+  records from the full in-memory history window.
+- **Website redesign.** linkpilot site rebuilt as a dark single-page
+  with three interactive demos (routing simulator, Halo wheel, lpt CLI
+  typewriter), a larger glowing nav brand, and install instructions that
+  lead with the Homebrew tap (the previous page still said Homebrew was
+  unavailable).
+
 ## [0.5.7] — 2026-06-06
 
 ### Fixed

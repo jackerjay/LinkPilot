@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { AlertTriangle, Bolt, FileText, Globe, Layout } from "lucide-react";
+import {
+  AlertTriangle,
+  Bolt,
+  FileText,
+  Globe,
+  Layout,
+  MousePointerClick,
+} from "lucide-react";
+import { ActivityCard } from "@/components/ActivityCard";
 import { AppIcon } from "@/components/AppIcon";
 import { BrowserBadge } from "@/components/BrowserBadge";
+import { EmptyState } from "@/components/EmptyState";
 import { TargetEditor } from "@/components/TargetEditor";
 import brandIcon from "@/assets/brand.png";
 import { appPathFromExecutable } from "@/lib/browsers";
@@ -25,7 +34,9 @@ export function MenuBarPage({ configEpoch }: Props) {
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
   const [config, setConfig] = useState<ConfigDocument | null>(null);
   const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
-  const [recent, setRecent] = useState<RouteRecord[]>([]);
+  // Full window the daemon keeps in memory — powers the activity card
+  // and the "routes today" stat; the Recent list shows the first 5.
+  const [history, setHistory] = useState<RouteRecord[]>([]);
   const [defaultTargetError, setDefaultTargetError] = useState<string | null>(
     null,
   );
@@ -34,12 +45,12 @@ export function MenuBarPage({ configEpoch }: Props) {
     const [d, c, h, b] = await Promise.all([
       ipc.doctor(),
       ipc.configGet(),
-      ipc.routeHistory(5),
+      ipc.routeHistory(200),
       ipc.listBrowsers().catch(() => [] as InstalledBrowser[]),
     ]);
     setDoctor(d);
     setConfig(c);
-    setRecent(h);
+    setHistory(h);
     setBrowsers(b);
   }, []);
 
@@ -50,7 +61,7 @@ export function MenuBarPage({ configEpoch }: Props) {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     onRouteLogged((record) => {
-      setRecent((prev) => [record, ...prev].slice(0, 5));
+      setHistory((prev) => [record, ...prev].slice(0, 200));
     }).then((fn) => {
       unlisten = fn;
     });
@@ -59,6 +70,11 @@ export function MenuBarPage({ configEpoch }: Props) {
     };
   }, []);
 
+  const recent = history.slice(0, 5);
+  const startOfToday = new Date().setHours(0, 0, 0, 0);
+  const routesToday = history.filter(
+    (r) => r.timestamp_ms >= startOfToday,
+  ).length;
   const enabledRules = config?.rules.filter((r) => r.enabled).length ?? 0;
   const totalRules = config?.rules.length ?? 0;
   const disabledCount = totalRules - enabledRules;
@@ -108,9 +124,9 @@ export function MenuBarPage({ configEpoch }: Props) {
       <div className="mac-stat-grid">
         <div className="mac-stat">
           <div className="mac-stat-label">{t("stats.routesToday")}</div>
-          <div className="mac-stat-value">{recent.length}</div>
+          <div className="mac-stat-value">{routesToday}</div>
           <div className="mac-stat-trend">
-            {recent.length > 0 ? t("stats.live") : t("stats.awaiting")}
+            {routesToday > 0 ? t("stats.live") : t("stats.awaiting")}
           </div>
         </div>
         <div className="mac-stat">
@@ -148,6 +164,9 @@ export function MenuBarPage({ configEpoch }: Props) {
           <div className="mac-stat-trend">{t("stats.detected")}</div>
         </div>
       </div>
+
+      {/* 24h sparkline + per-browser distribution */}
+      <ActivityCard history={history} />
 
       {/* Status card — System-Settings-shaped rows */}
       <div className="mac-card-title">{t("status.card")}</div>
@@ -239,22 +258,23 @@ export function MenuBarPage({ configEpoch }: Props) {
       <div className="mac-card-title">{t("recent.card")}</div>
       <div className="mac-card">
         {recent.length === 0 ? (
-          <div
-            className="mac-row mac-muted"
-            style={{ justifyContent: "center", padding: "24px 18px" }}
-          >
-            <Trans
-              i18nKey="recent.empty"
-              ns="menuBar"
-              components={{
-                code: <span className="mac-mono" style={{ margin: "0 4px" }} />,
-              }}
-            />
-          </div>
+          <EmptyState
+            icon={MousePointerClick}
+            title={t("recent.emptyTitle")}
+            hint={
+              <Trans
+                i18nKey="recent.emptyHint"
+                ns="menuBar"
+                components={{
+                  code: (
+                    <span className="mac-mono" style={{ margin: "0 2px" }} />
+                  ),
+                }}
+              />
+            }
+          />
         ) : (
-          recent
-            .slice(0, 5)
-            .map((r, i) => <RouteRow key={i} record={r} />)
+          recent.map((r, i) => <RouteRow key={i} record={r} />)
         )}
       </div>
     </div>
