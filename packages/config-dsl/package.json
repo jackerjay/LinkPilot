@@ -1,6 +1,6 @@
 {
   "name": "@linkpilot/config",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "description": "TypeScript DSL for authoring linkpilot.config.ts — compiles to the JSON the LinkPilot daemon reads.",
   "license": "MIT",
   "type": "module",
