@@ -56,15 +56,49 @@ interface Tab {
     | "browsers"
     | "settings";
   icon: LucideIcon;
+  /** Icon-chip fill, System-Settings style: a top-lit vertical gradient
+   *  per destination. Brand indigo leads; the rest follow the macOS
+   *  system palette. */
+  tint: string;
 }
 
 const TABS: Tab[] = [
-  { id: "menu-bar", labelKey: "overview", icon: Gauge },
-  { id: "rules", labelKey: "rules", icon: Workflow },
-  { id: "test-url", labelKey: "testUrl", icon: FlaskConical },
-  { id: "inspector", labelKey: "inspector", icon: ScrollText },
-  { id: "browsers", labelKey: "browsers", icon: Compass },
-  { id: "settings", labelKey: "settings", icon: SettingsIcon },
+  {
+    id: "menu-bar",
+    labelKey: "overview",
+    icon: Gauge,
+    tint: "linear-gradient(180deg, #6a71f0, #5057e8)",
+  },
+  {
+    id: "rules",
+    labelKey: "rules",
+    icon: Workflow,
+    tint: "linear-gradient(180deg, #4cd964, #2bb14c)",
+  },
+  {
+    id: "test-url",
+    labelKey: "testUrl",
+    icon: FlaskConical,
+    tint: "linear-gradient(180deg, #ffb340, #f59500)",
+  },
+  {
+    id: "inspector",
+    labelKey: "inspector",
+    icon: ScrollText,
+    tint: "linear-gradient(180deg, #5ac8fa, #2da9e0)",
+  },
+  {
+    id: "browsers",
+    labelKey: "browsers",
+    icon: Compass,
+    tint: "linear-gradient(180deg, #0a84ff, #0066d6)",
+  },
+  {
+    id: "settings",
+    labelKey: "settings",
+    icon: SettingsIcon,
+    tint: "linear-gradient(180deg, #9a9aa0, #7c7c82)",
+  },
 ];
 
 function isUpdateActionable(state: UpdateCheckState): boolean {
@@ -316,19 +350,39 @@ export default function App() {
           {/* Pilot wordmark — sits below the traffic-light row so the
               22pt brand mark + "Pilot" text occupy the same y as the
               native window title would. */}
-          <div className="flex items-center gap-2 px-2 pb-3">
+          {/* Brand lockup — mirrors the website nav: glowing mark +
+              wordmark over a small-caps role line, so the in-app brand
+              matches the marketing surface. */}
+          <div className="flex items-center gap-3 px-2 pb-4 pt-1">
             <img
               src={brandIcon}
               alt="LinkPilot"
-              className="h-[22px] w-[22px] flex-shrink-0 rounded-[5px]"
-              style={{ boxShadow: "0 0 0 0.5px rgba(0,0,0,0.06)" }}
+              className="h-[36px] w-[36px] flex-shrink-0 rounded-[9px]"
+              style={{
+                boxShadow:
+                  "0 2px 10px color-mix(in srgb, var(--mac-accent) 38%, transparent), 0 0 0 0.5px rgba(0, 0, 0, 0.06)",
+              }}
             />
-            <h1
-              className="font-semibold"
-              style={{ fontSize: 14, letterSpacing: "-0.01em" }}
-            >
-              LinkPilot
-            </h1>
+            <div style={{ lineHeight: 1.15 }}>
+              <h1
+                className="font-bold"
+                style={{ fontSize: 16.5, letterSpacing: "-0.01em", margin: 0 }}
+              >
+                LinkPilot
+              </h1>
+              <div
+                style={{
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: "0.09em",
+                  textTransform: "uppercase",
+                  color: "var(--mac-fg-muted)",
+                  marginTop: 2,
+                }}
+              >
+                macOS Link Router
+              </div>
+            </div>
           </div>
 
           {TABS.map((tabDef) => {
@@ -343,7 +397,13 @@ export default function App() {
                 onClick={() => goToTab(tabDef.id)}
                 className={cn("mac-sidebar-item", isActive && "active")}
               >
-                <Icon className="mac-symbol-icon h-[15px] w-[15px]" />
+                <span
+                  className="mac-sidebar-chip"
+                  style={{ background: tabDef.tint }}
+                  aria-hidden
+                >
+                  <Icon size={15} strokeWidth={1.8} />
+                </span>
                 <span>{t(`tabs.${tabDef.labelKey}`)}</span>
                 {tabDef.id === "settings" &&
                   isUpdateActionable(updateCheck) && (
@@ -410,7 +470,9 @@ export default function App() {
                         className="mac-mono"
                         style={{
                           fontSize: 10.5,
-                          color: "var(--mac-fg-muted)",
+                          color: isActive
+                            ? "rgba(255, 255, 255, 0.8)"
+                            : "var(--mac-fg-muted)",
                           fontVariantNumeric: "tabular-nums",
                           minWidth: 18,
                           textAlign: "right",
