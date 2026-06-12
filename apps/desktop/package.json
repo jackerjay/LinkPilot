@@ -29,7 +29,7 @@
     "i18next": "^26.2.0",
     "lucide-react": "^1.14.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.2.7",
     "react-i18next": "^17.0.8",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.0",
@@ -39,7 +39,7 @@
     "@tauri-apps/cli": "^2.0.0",
     "@types/node": "^25.7.0",
     "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.1",
     "typescript": "^5.5.3",
     "vite": "^5.3.5"
