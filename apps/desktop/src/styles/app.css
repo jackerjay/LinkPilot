@@ -1235,6 +1235,21 @@ html.tray-root #root {
   font-size: 12px;
   color: var(--mac-fg-muted);
 }
+.profile-access-modal {
+  width: min(520px, calc(100vw - 48px));
+}
+.profile-access-instructions {
+  padding: 16px 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow: auto;
+}
+.profile-access-instructions p {
+  margin: 0 0 10px;
+}
+.profile-access-instructions p:last-child {
+  margin-bottom: 0;
+}
 .profile-order-icon-btn {
   width: 28px;
   height: 28px;

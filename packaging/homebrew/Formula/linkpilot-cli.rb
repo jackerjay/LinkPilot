@@ -17,7 +17,7 @@
 class LinkpilotCli < Formula
   desc "Per-link router — dispatches URLs to the right browser, profile, workspace"
   homepage "https://github.com/jackerjay/LinkPilot"
-  version "0.5.6"
+  version "0.5.8"
   license "MIT"
 
   depends_on :macos
@@ -28,13 +28,13 @@ class LinkpilotCli < Formula
   # URL — formula and resource alike — uses one source of truth. Hardcoded
   # (not "v#{version}") because `version` isn't reliably readable at class-body
   # scope; bump this together with `version` above on every release.
-  release_tag = "v0.5.6"
+  release_tag = "v0.5.8"
 
   # The release.yml matrix builds CLI + daemon natively per arch and
   # publishes one tarball each. No more lipo — Apple-Silicon users get
   # the aarch64 binary, Intel users get x86_64.
   #
-  # SHAs are the per-arch tarball hashes from the v0.5.6 release
+  # SHAs are the per-arch tarball hashes from the v0.5.8 release
   # `checksums.txt` (main `lpt` tarball + the `daemon` resource each).
   # `brew style` (FormulaAudit/ComponentsOrder) forbids bare url/sha256
   # directly inside top-level on_arm/on_intel — they must be nested under
@@ -43,21 +43,21 @@ class LinkpilotCli < Formula
   on_macos do
     on_arm do
       url "https://github.com/jackerjay/LinkPilot/releases/download/#{release_tag}/lpt-macos-aarch64.tar.gz"
-      sha256 "01272d548f77936f0d23a9ba3608ff6fcfe1a92caa617dffe6eb67e66d0a2082"
+      sha256 "1a431357f6f783c78e4f40c2c473df6c8d431d006c986273c71b9177b87b88e9"
 
       resource "daemon" do
         url "https://github.com/jackerjay/LinkPilot/releases/download/#{release_tag}/linkpilot-daemon-macos-aarch64.tar.gz"
-        sha256 "1438aa9248da83298ff4b26a6a37915384daa020469ffb11b3cc83f21bb16816"
+        sha256 "f0010bbc1ee7676e7fceb3153a66962bcf3c8698f3fee87960139f38c94b40be"
       end
     end
 
     on_intel do
       url "https://github.com/jackerjay/LinkPilot/releases/download/#{release_tag}/lpt-macos-x86_64.tar.gz"
-      sha256 "5ad76521cf2469b3b3267d8593e8f2b5e902fadc11f1dd40e97af421d2d15730"
+      sha256 "1dc0fea17df88b52883453b00a1048eec2176d833937fa1529bdd261ada0665c"
 
       resource "daemon" do
         url "https://github.com/jackerjay/LinkPilot/releases/download/#{release_tag}/linkpilot-daemon-macos-x86_64.tar.gz"
-        sha256 "d0830405a88c68e8fbd47ebfec2fe09f79a8398b2b725a9dc7e9fc0021e837bf"
+        sha256 "1fc8940ad2ad4265f7579d229bf32889ae84c980616cac53caf9b471459f5271"
       end
     end
   end

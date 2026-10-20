@@ -29,6 +29,47 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Import Developer ID and validate notarization credentials
+        shell: bash
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          for name in APPLE_CERTIFICATE_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing GitHub Actions secret: $name. See docs/macos-signing.md."
+              exit 1
+            fi
+          done
+          CERTIFICATE_PATH="$RUNNER_TEMP/linkpilot-signing.p12"
+          APPLE_KEYCHAIN="$RUNNER_TEMP/linkpilot-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          printf '%s' "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$APPLE_KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$APPLE_KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$APPLE_KEYCHAIN"
+          security import "$CERTIFICATE_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -k "$APPLE_KEYCHAIN" -T /usr/bin/codesign
+          rm "$CERTIFICATE_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$APPLE_KEYCHAIN" > /dev/null
+          IDENTITIES="$(security find-identity -v -p codesigning "$APPLE_KEYCHAIN" | \
+            awk '/^[[:space:]]*[0-9]+\)/ && /"Developer ID Application:/ {print $2}')"
+          if [[ "$(printf '%s\n' "$IDENTITIES" | awk 'NF {count++} END {print count+0}')" != 1 ]]; then
+            echo "::error::The P12 must contain exactly one valid Developer ID Application identity."
+            exit 1
+          fi
+          xcrun notarytool store-credentials linkpilot \
+            --keychain "$APPLE_KEYCHAIN" --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" --password "$APPLE_PASSWORD"
+          echo "APPLE_KEYCHAIN=$APPLE_KEYCHAIN" >> "$GITHUB_ENV"
+          echo "APPLE_SIGNING_IDENTITY=$IDENTITIES" >> "$GITHUB_ENV"
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -60,7 +101,7 @@ jobs:
 
       - name: Build desktop .app
         working-directory: apps/desktop
-        run: corepack yarn run tauri build --target ${{ matrix.target }} --bundles app
+        run: corepack yarn run tauri build --target ${{ matrix.target }} --bundles app --no-sign
 
       # Ship the `lpt` CLI inside the .app so installing the DMG gives
       # users both a GUI and a CLI. The Settings page exposes a
@@ -93,6 +134,25 @@ jobs:
           chmod +x apps/desktop/scripts/patch-info-plist.sh
           apps/desktop/scripts/patch-info-plist.sh \
             target/${{ matrix.target }}/release/bundle/macos/LinkPilot.app
+
+      - name: Sign and notarize the final app and helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_DIR="target/${{ matrix.target }}/release"
+          APP="$RELEASE_DIR/bundle/macos/LinkPilot.app"
+          for binary in lpt linkpilot-daemon; do
+            codesign --force --sign "$APPLE_SIGNING_IDENTITY" --keychain "$APPLE_KEYCHAIN" \
+              --options runtime --timestamp "$APP/Contents/MacOS/$binary"
+            # Standalone downloads must match the notarized embedded binaries.
+            cp "$APP/Contents/MacOS/$binary" "$RELEASE_DIR/$binary"
+          done
+          codesign --force --sign "$APPLE_SIGNING_IDENTITY" --keychain "$APPLE_KEYCHAIN" \
+            --options runtime --timestamp "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/LinkPilot.zip"
+          bash apps/desktop/scripts/notarize-mac.sh "$RUNNER_TEMP/LinkPilot.zip" "$APP"
+          spctl --assess --type execute --verbose=2 "$APP"
 
       # DMG built with create-dmg, not `tauri build --bundles dmg` (which
       # re-bundles the .app from scratch and clobbers the patched
@@ -128,6 +188,17 @@ jobs:
             "dist/release/LinkPilot_${VERSION}_${{ matrix.arch }}.dmg" \
             "$STAGE"
 
+      - name: Sign and notarize the DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          DMG="dist/release/LinkPilot_${GITHUB_REF_NAME#v}_${{ matrix.arch }}.dmg"
+          codesign --force --sign "$APPLE_SIGNING_IDENTITY" --keychain "$APPLE_KEYCHAIN" \
+            --timestamp "$DMG"
+          bash apps/desktop/scripts/notarize-mac.sh "$DMG" "$DMG"
+          codesign --verify --strict --verbose=2 "$DMG"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
+
       - name: Package artifacts
         shell: bash
         run: |
@@ -159,7 +230,7 @@ jobs:
 
           # Per-arch checksums file — the publish job concatenates both
           # arches' files into a single unified `checksums.txt`.
-          (cd dist/release && shasum -a 256 *) > "dist/release/checksums-${ARCH}.txt"
+          (cd dist/release && shasum -a 256 -- *) > "dist/release/checksums-${ARCH}.txt"
 
       - name: Upload arch artifacts
         uses: actions/upload-artifact@v7
@@ -167,6 +238,17 @@ jobs:
           name: release-${{ matrix.arch }}
           path: dist/release/*
           if-no-files-found: error
+
+      - name: Remove signing credentials
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/linkpilot-signing.keychain-db"
+          if [[ -f "$KEYCHAIN_PATH" ]]; then
+            security delete-keychain "$KEYCHAIN_PATH"
+          fi
+          rm -f "$RUNNER_TEMP/linkpilot-signing.p12" "$RUNNER_TEMP/LinkPilot.zip"
 
   publish:
     name: Publish GitHub Release
@@ -188,7 +270,7 @@ jobs:
           # we regenerate one unified checksums.txt below so users have
           # a single source of truth.
           find dist/incoming -type f ! -name 'checksums-*.txt' -exec cp {} dist/release/ \;
-          (cd dist/release && shasum -a 256 *) > dist/release/checksums.txt
+          (cd dist/release && shasum -a 256 -- *) > dist/release/checksums.txt
           ls -la dist/release
 
       # This repo has immutable releases enabled, so assets can only be

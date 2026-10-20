@@ -2,6 +2,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { profileScanError } from "./profile-access";
 import type {
   BrowserId,
   BrowserProfile,
@@ -56,7 +57,11 @@ export const ipc = {
   browserSetEnabled: (id: string, enabled: boolean) =>
     invoke<void>("browser_set_enabled", { id, enabled }),
   listProfiles: (browser: BrowserId) =>
-    invoke<BrowserProfile[]>("list_profiles", { browser }),
+    invoke<BrowserProfile[]>("list_profiles", { browser }).catch((error) => {
+      throw profileScanError(error);
+    }),
+  openProfilePrivacySettings: () =>
+    invoke<void>("open_profile_privacy_settings"),
 
   routeEvaluate: (request: RouteRequest) =>
     invoke<Explained>("route_evaluate", { request }),

@@ -19,10 +19,10 @@ cask "linkpilot" do
   # named `LinkPilot_<version>_aarch64.dmg` and `..._x86_64.dmg`.
   arch arm: "aarch64", intel: "x86_64"
 
-  # Per-arch DMG hashes from the v0.5.6 release `checksums.txt`.
-  version "0.5.6"
-  sha256 arm:   "acd9b7fb92c4979424b324ef6743be7f0236e4c04820f89b436fdf07d29f333c",
-         intel: "21011d931a691dca2018d6491fc0fa7fc98c3c1a71e7225ec542b58f9a161e17"
+  # Per-arch DMG hashes from the v0.5.8 release `checksums.txt`.
+  version "0.5.8"
+  sha256 arm:   "9aef8ef79983d89f7566c9365cb3d0de408fed3e61ca03f52d0738db2f394ecf",
+         intel: "cb5ec104c44ae457579c933fee5b15787144df89a9543215e769700ac673f1d8"
 
   url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/LinkPilot_#{version}_#{arch}.dmg"
   name "LinkPilot"
@@ -57,14 +57,14 @@ cask "linkpilot" do
   # macOS block it on first launch ("LinkPilot is damaged"). Strip the
   # quarantine xattr here instead of making every user run `xattr -dr`
   # by hand. Runs as the user, after the bundle is in place.
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-dr", "com.apple.quarantine", "#{appdir}/LinkPilot.app"]
+  postflight_steps do
+    run "/usr/bin/xattr",
+        args: ["-dr", "com.apple.quarantine", "{{appdir}}/LinkPilot.app"]
   end
 
+  # launchctl also removes the user's LaunchAgent plist without sudo.
   uninstall launchctl: "app.linkpilot.daemon",
-            quit:      "app.linkpilot.desktop",
-            delete:    "~/Library/LaunchAgents/app.linkpilot.daemon.plist"
+            quit:      "app.linkpilot.desktop"
 
   # `zap` is opt-in deep clean (brew uninstall --zap). Keeps these on a
   # plain uninstall so a reinstall preserves the user's rules, history,

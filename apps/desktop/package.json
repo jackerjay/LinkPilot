@@ -8,7 +8,10 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "bundle:mac": "npx tauri build --bundles app && ./scripts/patch-info-plist.sh ../../target/release/bundle/macos/LinkPilot.app"
+    "bundle:mac": "bash ./scripts/bundle-mac.sh",
+    "test:bundle:mac": "node --test ./scripts/bundle-mac.test.mjs",
+    "test:notarize:mac": "node --test ./scripts/notarize-mac.test.mjs",
+    "test:profile-access": "node --experimental-strip-types --test ./scripts/profile-access.test.mjs"
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",
