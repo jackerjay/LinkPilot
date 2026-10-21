@@ -40,10 +40,9 @@ cp packaging/homebrew/Formula/linkpilot-cli.rb "$TAP/Formula/"
 brew install --formula lptest/lptest/linkpilot-cli
 ```
 
-The cask carries a `postflight` that strips the quarantine flag (the
-build is unsigned). Installing it triggers a one-time tap-trust prompt;
-set `HOMEBREW_NO_REQUIRE_TAP_TRUST=1` for unattended runs, and pass
-`--appdir=/tmp/...` to avoid the `/Applications` sudo prompt while testing.
+From v0.5.10, the app is Developer ID signed and Apple notarized. The cask
+preserves Homebrew quarantine so macOS can verify the download normally.
+Pass `--appdir=/tmp/...` to test without replacing an installed app.
 
 Uninstall with the canonical Homebrew commands:
 
@@ -71,7 +70,7 @@ fill the recipes from that release's `checksums.txt` and push them to the tap.
      sha256 arm:   "<aarch64 dmg sha>",
             intel: "<x86_64 dmg sha>"
      ```
-   - `Formula/linkpilot-cli.rb` — set `version`, and replace the four
+   - `Formula/linkpilot-cli.rb` — set `release_tag`, and replace the four
      `0…0` placeholders: arm `lpt`, arm daemon, intel `lpt`, intel daemon.
 
    There is no `bump-tap.sh` helper — do it by hand; the per-release shas are
@@ -93,12 +92,11 @@ fill the recipes from that release's `checksums.txt` and push them to the tap.
    ```sh
    brew tap jackerjay/linkpilot
    brew install jackerjay/linkpilot/linkpilot-cli && lpt --version
-   brew install --cask jackerjay/linkpilot/linkpilot   # postflight strips quarantine
+   brew install --cask jackerjay/linkpilot/linkpilot   # signed and notarized app
    brew uninstall --cask linkpilot && brew uninstall linkpilot-cli && brew untap jackerjay/linkpilot
    ```
-   The cask's `postflight` runs arbitrary shell (the `xattr` de-quarantine),
-   so Homebrew 5.x shows a one-time tap-trust prompt; unattended runs need
-   `HOMEBREW_NO_REQUIRE_TAP_TRUST=1`. A bad sha is fixed by pushing a
+   The cask preserves quarantine and relies on the app's Developer ID
+   signature and notarization ticket. A bad sha is fixed by pushing a
    corrected commit to the tap repo — no re-tag needed.
 
 ## Why two recipes?
