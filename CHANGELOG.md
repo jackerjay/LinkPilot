@@ -6,10 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.5.9] — 2026-10-21
+## [0.5.10] — 2026-10-21
 
 ### Fixed
 
+- **Release checksums.** Hash only download payloads so the checksum manifest
+  excludes itself and passes complete `shasum -a 256 -c` verification.
 - **Browser profile permission recovery.** When macOS denies access to a
   browser's profile data, Browsers and Settings show a browser-specific
   recovery dialog with a link to Files & Folders privacy settings and a

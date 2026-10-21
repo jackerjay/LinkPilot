@@ -242,7 +242,8 @@ jobs:
 
           # Per-arch checksums file — the publish job concatenates both
           # arches' files into a single unified `checksums.txt`.
-          (cd dist/release && shasum -a 256 -- *) > "dist/release/checksums-${ARCH}.txt"
+          # Hash payloads only: the redirected manifest already exists here.
+          (cd dist/release && shasum -a 256 -- *.dmg lpt-macos-* linkpilot-daemon-macos-*) > "dist/release/checksums-${ARCH}.txt"
 
       - name: Upload arch artifacts
         uses: actions/upload-artifact@v7
@@ -282,7 +283,8 @@ jobs:
           # we regenerate one unified checksums.txt below so users have
           # a single source of truth.
           find dist/incoming -type f ! -name 'checksums-*.txt' -exec cp {} dist/release/ \;
-          (cd dist/release && shasum -a 256 -- *) > dist/release/checksums.txt
+          # Hash payloads only: the redirected manifest already exists here.
+          (cd dist/release && shasum -a 256 -- *.dmg lpt-macos-* linkpilot-daemon-macos-*) > dist/release/checksums.txt
           ls -la dist/release
 
       # This repo has immutable releases enabled, so assets can only be

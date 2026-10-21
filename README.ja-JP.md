@@ -53,7 +53,7 @@ macOS では、LinkPilot はインストール済みの以下のブラウザを�
 
 ## インストール
 
-v0.5.9 以降の macOS 配布物は Developer ID で署名され、Apple の公証を受けています。
+v0.5.10 以降の macOS 配布物は Developer ID で署名され、Apple の公証を受けています。
 インストール後はそのまま開けます。quarantine の削除は不要です。
 管理者向けの設定は[リリース署名の認証情報](docs/macos-signing.md)を参照してください。
 

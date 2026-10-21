@@ -53,7 +53,7 @@ LinkPilot 目前聚焦於 macOS。
 
 ## 安裝
 
-自 v0.5.9 起，macOS 發佈產物使用 Developer ID 簽署並通過 Apple 公證。
+自 v0.5.10 起，macOS 發佈產物使用 Developer ID 簽署並通過 Apple 公證。
 安裝後直接開啟，無需移除 quarantine。維護者設定請見[發佈簽署憑證](docs/macos-signing.md)。
 
 ### Homebrew（推薦）
