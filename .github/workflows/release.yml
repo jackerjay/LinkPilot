@@ -59,6 +59,17 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: \
             -s -k "$KEYCHAIN_PASSWORD" "$APPLE_KEYCHAIN" > /dev/null
           security list-keychains -d user -s "$APPLE_KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db"
+          curl --fail --silent --show-error --location \
+            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+            --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          if ! IMPORT_RESULT="$(security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" \
+            -k "$HOME/Library/Keychains/login.keychain-db" 2>&1)"; then
+            if [[ "$IMPORT_RESULT" != *"The specified item already exists in the keychain."* ]]; then
+              printf '%s\n' "$IMPORT_RESULT" >&2
+              exit 1
+            fi
+          fi
+          printf '%s\n' "$IMPORT_RESULT"
           IDENTITIES="$(security find-identity -v -p codesigning "$APPLE_KEYCHAIN" | \
             awk '/^[[:space:]]*[0-9]+\)/ && /"Developer ID Application:/ {print $2}')"
           if [[ "$(printf '%s\n' "$IDENTITIES" | awk 'NF {count++} END {print count+0}')" != 1 ]]; then
@@ -249,7 +260,7 @@ jobs:
           if [[ -f "$KEYCHAIN_PATH" ]]; then
             security delete-keychain "$KEYCHAIN_PATH"
           fi
-          rm -f "$RUNNER_TEMP/linkpilot-signing.p12" "$RUNNER_TEMP/LinkPilot.zip"
+          rm -f "$RUNNER_TEMP/linkpilot-signing.p12" "$RUNNER_TEMP/LinkPilot.zip" "$RUNNER_TEMP/DeveloperIDG2CA.cer"
 
   publish:
     name: Publish GitHub Release

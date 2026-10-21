@@ -26,7 +26,9 @@ the certificate; GitHub Secrets provides the secret storage.
 Include the Apple Developer ID intermediate and Apple Root CA certificates
 in the export. An incomplete chain can make `codesign` fail even when the
 identity appears valid. The runner adds its temporary keychain to the search
-list before looking up the identity and signing.
+list and installs Apple's public G2 intermediate in the login keychain before
+looking up the identity and signing. Existing copies of that certificate are
+preserved; no custom certificate trust override is applied.
 
 The Release workflow requires all five secrets and exactly one valid
 Developer ID Application identity in the `.p12`. It fails before building if
