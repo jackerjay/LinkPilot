@@ -17,7 +17,8 @@ on:
         type: string
 
 permissions:
-  contents: read
+  # GitHub only exposes draft release assets to tokens with repository write access.
+  contents: write
 
 concurrency:
   group: app-store-upload
