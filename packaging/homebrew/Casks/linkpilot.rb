@@ -19,10 +19,10 @@ cask "linkpilot" do
   # named `LinkPilot_<version>_aarch64.dmg` and `..._x86_64.dmg`.
   arch arm: "aarch64", intel: "x86_64"
 
-  # Per-arch DMG hashes from the v0.5.8 release `checksums.txt`.
-  version "0.5.8"
-  sha256 arm:   "9aef8ef79983d89f7566c9365cb3d0de408fed3e61ca03f52d0738db2f394ecf",
-         intel: "cb5ec104c44ae457579c933fee5b15787144df89a9543215e769700ac673f1d8"
+  # Per-arch DMG hashes from the v0.5.10 release `checksums.txt`.
+  version "0.5.10"
+  sha256 arm:   "ae9f7d05062a8eecea386b7992c84f85b25b9122c6dad8480be7d28b40714cb7",
+         intel: "b6087654001e499e5b197293850c382eccdc2201e314ea72906413281337daeb"
 
   url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/LinkPilot_#{version}_#{arch}.dmg"
   name "LinkPilot"
@@ -40,27 +40,12 @@ cask "linkpilot" do
     strategy :github_releases
   end
 
-  # Unsigned build. We can't notarize without an Apple Developer ID, so
-  # the postflight below strips the quarantine flag for the user (see the
-  # caveats — the removal is intentionally surfaced, not silent). This is
-  # why the recipe can only live in our own tap: `brew audit` rejects
-  # Gatekeeper-bypass behaviour, and the official homebrew-cask never
-  # accepts it.
   auto_updates false
   # Matches Info.plist LSMinimumSystemVersion (12.0 = Monterey). Cask's
   # idiomatic form is the symbol alone — implicitly "this or newer".
   depends_on macos: :monterey
 
   app "LinkPilot.app"
-
-  # The .app is unsigned, so Homebrew's default quarantine would make
-  # macOS block it on first launch ("LinkPilot is damaged"). Strip the
-  # quarantine xattr here instead of making every user run `xattr -dr`
-  # by hand. Runs as the user, after the bundle is in place.
-  postflight_steps do
-    run "/usr/bin/xattr",
-        args: ["-dr", "com.apple.quarantine", "{{appdir}}/LinkPilot.app"]
-  end
 
   # launchctl also removes the user's LaunchAgent plist without sudo.
   uninstall launchctl: "app.linkpilot.daemon",
@@ -78,13 +63,6 @@ cask "linkpilot" do
   ]
 
   caveats <<~EOS
-    LinkPilot ships unsigned (no Apple Developer ID / notarization yet).
-    This cask already removed the macOS quarantine flag from
-    LinkPilot.app during install so it launches without a Gatekeeper
-    prompt. If you later move or re-download the app outside Homebrew,
-    re-run:
-      xattr -dr com.apple.quarantine /Applications/LinkPilot.app
-
     On first launch the GUI writes ~/Library/LaunchAgents/
     app.linkpilot.daemon.plist pointing at the daemon binary bundled
     inside the .app. From then on, `lpt open <url>` works system-wide
