@@ -130,7 +130,7 @@ jobs:
         working-directory: apps/desktop
         env:
           VITE_DISTRIBUTION: app-store
-        run: corepack yarn run tauri build --debug --bundles app --no-sign --config src-tauri/tauri.store.conf.json --features app-store -- --no-default-features --locked
+        run: npm exec -- tauri build --debug --bundles app --no-sign --config src-tauri/tauri.store.conf.json --features app-store -- --no-default-features --locked
 
       - name: Verify sandbox bundle
         run: |
