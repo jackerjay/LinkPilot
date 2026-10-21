@@ -53,8 +53,8 @@ LinkPilot 目前聚焦於 macOS。
 
 ## 安裝
 
-目前 release 產物尚未簽署，macOS 第一次啟動時可能會加上 quarantine。安裝後如果
-無法開啟，可以移除 quarantine 標記。
+自 v0.5.9 起，macOS 發佈產物使用 Developer ID 簽署並通過 Apple 公證。
+安裝後直接開啟，無需移除 quarantine。維護者設定請見[發佈簽署憑證](docs/macos-signing.md)。
 
 ### Homebrew（推薦）
 
@@ -63,9 +63,7 @@ LinkPilot 透過自有 tap `jackerjay/homebrew-linkpilot` 發佈：
 ```sh
 brew tap jackerjay/linkpilot
 
-# GUI 應用程式——把 LinkPilot.app 裝到 /Applications。建構未簽署，cask 的
-# postflight 會替你移除 quarantine 標記（因為 postflight 會執行 shell 指令，
-# Homebrew 第一次會跳一次 tap-trust 確認）。
+# GUI 應用程式——把已簽署、公證的 LinkPilot.app 裝到 /Applications。
 brew install --cask jackerjay/linkpilot/linkpilot
 
 # 僅 CLI——把 `lpt` 與 `linkpilot-daemon` 裝到 PATH。
@@ -87,7 +85,6 @@ curl -L "https://github.com/jackerjay/LinkPilot/releases/latest/download/LinkPil
 hdiutil attach LinkPilot.dmg
 cp -R "/Volumes/LinkPilot/LinkPilot.app" /Applications/
 hdiutil detach "/Volumes/LinkPilot"
-xattr -dr com.apple.quarantine /Applications/LinkPilot.app
 open /Applications/LinkPilot.app
 ```
 

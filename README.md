@@ -64,10 +64,9 @@ On macOS, LinkPilot auto-detects these installed browsers:
 
 ## Install
 
-Published releases through v0.5.8 are unsigned and macOS may quarantine them
-on first launch. If needed, remove the quarantine flag after installing.
-Future releases require Developer ID signing and Apple notarization;
-maintainers must configure the [release signing secrets](docs/macos-signing.md).
+Releases from v0.5.9 use Developer ID signing and Apple notarization.
+Open the installed app normally; removing quarantine is not required.
+For maintainer setup, see [release signing secrets](docs/macos-signing.md).
 
 ### Homebrew (recommended)
 
@@ -76,10 +75,7 @@ LinkPilot ships through its own tap, `jackerjay/homebrew-linkpilot`:
 ```sh
 brew tap jackerjay/linkpilot
 
-# GUI app — drops LinkPilot.app into /Applications. The build is unsigned,
-# so the cask's postflight strips the quarantine flag for you (Homebrew
-# shows a one-time tap-trust prompt the first time, since postflight runs
-# a shell command).
+# GUI app — installs the signed, notarized LinkPilot.app in /Applications.
 brew install --cask jackerjay/linkpilot/linkpilot
 
 # CLI only — installs `lpt` + `linkpilot-daemon` onto your PATH.
@@ -101,7 +97,6 @@ curl -L "https://github.com/jackerjay/LinkPilot/releases/latest/download/LinkPil
 hdiutil attach LinkPilot.dmg
 cp -R "/Volumes/LinkPilot/LinkPilot.app" /Applications/
 hdiutil detach "/Volumes/LinkPilot"
-xattr -dr com.apple.quarantine /Applications/LinkPilot.app
 open /Applications/LinkPilot.app
 ```
 
