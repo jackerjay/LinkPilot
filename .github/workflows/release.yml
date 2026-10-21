@@ -58,6 +58,7 @@ jobs:
           rm "$CERTIFICATE_PATH"
           security set-key-partition-list -S apple-tool:,apple:,codesign: \
             -s -k "$KEYCHAIN_PASSWORD" "$APPLE_KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$APPLE_KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db"
           IDENTITIES="$(security find-identity -v -p codesigning "$APPLE_KEYCHAIN" | \
             awk '/^[[:space:]]*[0-9]+\)/ && /"Developer ID Application:/ {print $2}')"
           if [[ "$(printf '%s\n' "$IDENTITIES" | awk 'NF {count++} END {print count+0}')" != 1 ]]; then
