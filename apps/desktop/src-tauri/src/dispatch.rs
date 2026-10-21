@@ -44,6 +44,9 @@ pub fn execute(
     decision: &RoutingDecision,
     raw_url: &str,
 ) -> LaunchOutcome {
+    if let Err(error) = crate::distribution::validate_document(&state.config.document()) {
+        return LaunchOutcome::Failed(error);
+    }
     tracing::debug!(?decision, %raw_url, "dispatch::execute");
     let parsed = match Url::parse(raw_url) {
         Ok(u) => u,
@@ -205,6 +208,9 @@ fn open_with_default_fallback(
     default_target: &BrowserTarget,
     url: &Url,
 ) -> std::result::Result<BrowserTarget, String> {
+    // Unsupported intent must fail before any fallback can discard its flags.
+    crate::distribution::validate_target(primary)?;
+    crate::distribution::validate_target(default_target)?;
     match launcher.open(primary, url) {
         Ok(()) => Ok(primary.clone()),
         Err(primary_err) => {
@@ -460,6 +466,17 @@ mod tests {
 
     fn installed(ids: &[&str]) -> HashSet<String> {
         ids.iter().map(|id| (*id).to_string()).collect()
+    }
+
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    #[test]
+    fn unsupported_profile_does_not_launch_or_fall_back() {
+        let launcher = ScriptedLauncher::new(vec![Ok(())]);
+        let mut primary = BrowserTarget::new(BrowserId::new("chrome"));
+        primary.profile = Some("Default".into());
+        let fallback = BrowserTarget::new(BrowserId::new("safari"));
+        assert!(open_with_default_fallback(&launcher, &primary, &fallback, &url()).is_err());
+        assert!(launcher.calls().is_empty());
     }
 
     #[test]

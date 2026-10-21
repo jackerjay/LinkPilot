@@ -12,6 +12,8 @@ mod launcher;
 mod notifier;
 mod opener;
 pub mod prompt;
+#[cfg(feature = "app-store")]
+pub mod store;
 
 use linkpilot_core::platform::{
     Autostart, BrowserInventory, DefaultBrowserController, Notifier, OpenerDetector,

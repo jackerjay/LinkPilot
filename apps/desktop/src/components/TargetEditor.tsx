@@ -1,3 +1,4 @@
+import { isAppStore } from "@/lib/distribution";
 // Cascading browser + profile picker for a BrowserTarget. Used by:
 // - RuleEditor (the "open → X" action of a rule)
 // - Settings (the default_target shown when no rule matches)
@@ -32,7 +33,7 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
   const [profiles, setProfiles] = useState<BrowserProfile[]>([]);
 
   useEffect(() => {
-    if (!value.browser) {
+    if (isAppStore || !value.browser) {
       setProfiles([]);
       return;
     }
@@ -78,6 +79,7 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
         </SelectContent>
       </Select>
 
+      {!isAppStore && <>
       <Select
         value={value.profile ?? "__any"}
         onValueChange={(v) =>
@@ -107,6 +109,7 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
         />
         {t("target.incognito")}
       </label>
+      </>}
     </>
   );
 }

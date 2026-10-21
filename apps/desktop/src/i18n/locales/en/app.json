@@ -16,5 +16,24 @@
   "updates": {
     "tag": "update",
     "checksumMissing": "Release is missing a checksums.txt entry for the macOS DMG; refusing to auto-download an unverified installer."
+  },
+  "store": {
+    "title": "App Store edition",
+    "description": "Routes links by browser. This edition does not select profiles, request browser data access, or control private mode and new windows. Choose your fallback browser in Settings.",
+    "updates": "Updates are delivered through the App Store. CLI installation, external background services and LaunchAgents are unavailable in this edition.",
+    "engine": "Routing engine",
+    "browserCount": "{{browsers}} browsers",
+    "settingsSubtitle": "Default browser, routing target, appearance and local behavior history.",
+    "overviewSubtitle": "Routing engine status and recent decisions.",
+    "emptyHint": "Open a link through LinkPilot to see routing activity here.",
+    "pickBrowser": "Or choose a browser from the list",
+    "pickerDescription": "Preview the browser chooser and send a test link to the browser you choose.",
+    "engineRunning": "Routing engine is running",
+    "engineUnavailable": "Routing engine is unavailable",
+    "openTest": "Open test link",
+    "testSubtitle": "The result updates as you type. Only clicking Open test link launches the browser.",
+    "imported": "Configuration imported.",
+    "exported": "Configuration exported.",
+    "defaultBrowserHint": "macOS will ask you to confirm the change."
   }
 }

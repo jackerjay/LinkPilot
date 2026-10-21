@@ -42,6 +42,14 @@ jobs:
       - name: Test profile permission errors
         run: cargo test -p linkpilot-desktop profile_scan_
 
+      - name: Test App Store policy
+        env:
+          TAURI_CONFIG: '{"app":{"macOSPrivateApi":false,"security":{"capabilities":["store"]}}}'
+        run: cargo test --locked -p linkpilot-desktop --no-default-features --features app-store
+
+      - name: Test App Store native bridge
+        run: cargo test --locked -p linkpilot-platform-mac --features app-store store::tests
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -58,7 +66,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: corepack yarn install --no-lockfile --non-interactive
+        run: npm ci
 
       - name: Check TypeScript binary
         run: corepack yarn run tsc --version
@@ -66,11 +74,19 @@ jobs:
       - name: Build frontend
         run: corepack yarn run build
 
+      - name: Build App Store frontend
+        env:
+          VITE_DISTRIBUTION: app-store
+        run: corepack yarn run build --outDir dist-store
+
       - name: Test profile permission recovery
         run: corepack yarn run test:profile-access
 
       - name: Test notarization failure handling
         run: corepack yarn run test:notarize:mac
+
+      - name: Test App Store signing profile validation
+        run: python3 -m unittest discover -s scripts -p 'test_package_store.py'
 
   desktop-bundle:
     name: Desktop bundle smoke test
@@ -96,7 +112,7 @@ jobs:
 
       - name: Install desktop dependencies
         working-directory: apps/desktop
-        run: corepack yarn install --no-lockfile --non-interactive
+        run: npm ci
 
       - name: Test local signing order
         working-directory: apps/desktop
@@ -109,3 +125,15 @@ jobs:
       - name: Build Tauri .app (debug)
         working-directory: apps/desktop
         run: corepack yarn run tauri build --debug --bundles app
+
+      - name: Build App Store .app (debug)
+        working-directory: apps/desktop
+        env:
+          VITE_DISTRIBUTION: app-store
+        run: npm exec -- tauri build --debug --bundles app --no-sign --config src-tauri/tauri.store.conf.json --features app-store -- --no-default-features --locked
+
+      - name: Verify sandbox bundle
+        run: |
+          bash apps/desktop/scripts/patch-info-plist.sh 'target/debug/bundle/macos/LinkPilot Store.app'
+          codesign --force --sign - --entitlements apps/desktop/src-tauri/Entitlements.store.plist 'target/debug/bundle/macos/LinkPilot Store.app'
+          codesign --verify --deep --strict 'target/debug/bundle/macos/LinkPilot Store.app'

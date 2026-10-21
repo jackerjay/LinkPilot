@@ -1,3 +1,4 @@
+import { isAppStore } from "@/lib/distribution";
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Plus, RefreshCcw, Trash2, User } from "lucide-react";
@@ -47,7 +48,7 @@ export function BrowsersPage() {
           try {
             return {
               browser: b,
-              profiles: await ipc.listProfiles(b.id),
+              profiles: isAppStore ? [] : await ipc.listProfiles(b.id),
               custom: customIds.has(b.id),
               disabled,
             };
@@ -166,7 +167,7 @@ export function BrowsersPage() {
   return (
     <div>
       <h2 className="mac-h2">{t("title")}</h2>
-      <p className="mac-subtitle">{t("subtitle")}</p>
+      <p className="mac-subtitle">{t(isAppStore ? "app:store.description" : "subtitle")}</p>
 
       {/* Action bar */}
       <div
@@ -189,6 +190,7 @@ export function BrowsersPage() {
           <RefreshCcw size={12} strokeWidth={1.8} />
           <span>{t("rescan")}</span>
         </button>
+        {!isAppStore && (
         <button
           type="button"
           className="mac-tbtn"
@@ -198,10 +200,11 @@ export function BrowsersPage() {
           <Plus size={12} strokeWidth={2} />
           <span>{busy ? t("choosing") : t("addManually")}</span>
         </button>
+        )}
         <span style={{ flex: 1 }} />
         {entries !== null && entries.length > 0 && (
           <span className="mac-muted" style={{ fontSize: 12 }}>
-            {t("summary", {
+            {t(isAppStore ? "app:store.browserCount" : "summary", {
               browsers: entries.length,
               profiles: totalProfiles,
             })}

@@ -1,3 +1,4 @@
+import { isAppStore } from "@/lib/distribution";
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -63,8 +64,8 @@ export function SettingsPage({
         ipc.doctor(),
         ipc.configGet(),
         ipc.listBrowsers().catch(() => [] as InstalledBrowser[]),
-        ipc.cliInstallStatus().catch(() => null),
-        ipc.daemonServiceStatus().catch(() => null),
+        isAppStore ? Promise.resolve(null) : ipc.cliInstallStatus().catch(() => null),
+        isAppStore ? Promise.resolve(null) : ipc.daemonServiceStatus().catch(() => null),
       ]);
       setConfigPath(d.config_path ?? null);
       setIsDefault(d.is_default_browser);
@@ -202,6 +203,18 @@ export function SettingsPage({
     }
   };
 
+  const transferStoreConfig = async (save: boolean) => {
+    setError(null);
+    setMessage(null);
+    try {
+      const done = await (save ? ipc.exportConfigDialog() : ipc.importConfigDialog());
+      if (done) setMessage(t(save ? "app:store.exported" : "app:store.imported"));
+      await refresh();
+    } catch (error) {
+      setError(String(error));
+    }
+  };
+
   const doImport = async () => {
     setError(null);
     setMessage(null);
@@ -290,7 +303,7 @@ export function SettingsPage({
   return (
     <div>
       <h2 className="mac-h2">{t("title")}</h2>
-      <p className="mac-subtitle">{t("subtitle")}</p>
+      <p className="mac-subtitle">{t(isAppStore ? "app:store.settingsSubtitle" : "subtitle")}</p>
 
       <div className="mac-card-title">{t("defaultBrowser.card")}</div>
       <div className="mac-card">
@@ -327,7 +340,7 @@ export function SettingsPage({
         {!isDefault && (
           <div className="mac-row">
             <span className="grow mac-muted" style={{ fontSize: 12 }}>
-              {t("defaultBrowser.hint")}
+              {t(isAppStore ? "app:store.defaultBrowserHint" : "defaultBrowser.hint")}
             </span>
             <button
               type="button"
@@ -456,7 +469,7 @@ export function SettingsPage({
               className="mac-muted"
               style={{ fontSize: 11.5, marginTop: 2 }}
             >
-              {t("appearance.pickerStyleDescription")}
+              {t(isAppStore ? "app:store.pickerDescription" : "appearance.pickerStyleDescription")}
             </div>
           </div>
           <PickerStyleChooser
@@ -464,6 +477,7 @@ export function SettingsPage({
             onChange={(v) => changePickerStyle(v)}
           />
         </div>
+        {!isAppStore && <>
         <div
           className="mac-row"
           style={{ alignItems: "flex-start", flexDirection: "column", gap: 4 }}
@@ -483,10 +497,13 @@ export function SettingsPage({
             onConfigChanged={refresh}
           />
         </div>
+        </>}
       </div>
 
       <div className="mac-card-title">{t("general.card")}</div>
       <div className="mac-card">
+        {isAppStore && <div className="mac-row"><span className="mac-muted">{t("app:store.updates")}</span></div>}
+        {!isAppStore && <>
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
           <div className="grow">
             <div className="mac-row-label">{t("general.updatesLabel")}</div>
@@ -553,6 +570,7 @@ export function SettingsPage({
             onClick={() => toggleLaunchAtLogin(!doc?.settings.launch_at_login)}
           />
         </div>
+        </>}
         <div className="mac-row">
           <span className="grow mac-row-label">{t("general.configFile")}</span>
           <span
@@ -637,6 +655,7 @@ export function SettingsPage({
         </div>
       </div>
 
+      {!isAppStore && <>
       <div className="mac-card-title">{t("daemon.card")}</div>
       <div className="mac-card">
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
@@ -748,6 +767,15 @@ export function SettingsPage({
         )}
       </div>
 
+      </>}
+      {isAppStore && <>
+        <div className="mac-card-title">{t("io.card")}</div>
+        <div className="mac-card mac-card-pad" style={{ display: "flex", gap: 12 }}>
+          <button type="button" className="mac-tbtn" onClick={() => void transferStoreConfig(false)}>{t("io.importButton")}…</button>
+          <button type="button" className="mac-tbtn" onClick={() => void transferStoreConfig(true)}>{t("io.exportButton")}…</button>
+        </div>
+      </>}
+      {!isAppStore && <>
       <div className="mac-card-title">{t("io.card")}</div>
       <div className="mac-card mac-card-pad" style={{ display: "grid", gap: 12 }}>
         <div>
@@ -789,6 +817,8 @@ export function SettingsPage({
           </div>
         </div>
       </div>
+
+      </>}
 
       {message && (
         <div className="mac-card">

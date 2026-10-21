@@ -1,0 +1,69 @@
+name: App Store upload
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Draft release containing the locally signed Store package
+        required: true
+        type: string
+      package_file:
+        description: Exact signed pkg asset name
+        required: true
+        type: string
+      sha256:
+        description: Expected SHA-256 of the signed package
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-store-upload
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    name: Validate and upload signed Store package
+    runs-on: macos-latest
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      PACKAGE_FILE: ${{ inputs.package_file }}
+      EXPECTED_SHA256: ${{ inputs.sha256 }}
+    steps:
+      - name: Validate inputs and credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^app-store-candidate-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]]
+          [[ "$PACKAGE_FILE" =~ ^LinkPilot_[0-9]+\.[0-9]+\.[0-9]+_[0-9]+\.pkg$ ]]
+          [[ "$EXPECTED_SHA256" =~ ^[a-f0-9]{64}$ ]]
+          test -n "$APPLE_ID"
+          test -n "$APPLE_PASSWORD"
+          xcrun --find altool
+
+      - name: Download and verify package
+        run: |
+          set -euo pipefail
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          gh release download "$RELEASE_TAG" --pattern "$PACKAGE_FILE" --dir package
+          cd package
+          printf '%s  %s\n' "$EXPECTED_SHA256" "$PACKAGE_FILE" | shasum -a 256 --check
+          pkgutil --check-signature "$PACKAGE_FILE"
+
+      - name: Validate with Apple
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+        run: xcrun altool --validate-app "package/$PACKAGE_FILE" -u "$APPLE_ID" -p @env:APPLE_PASSWORD
+
+      - name: Upload to App Store Connect
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+        run: xcrun altool --upload-package "package/$PACKAGE_FILE" -u "$APPLE_ID" -p @env:APPLE_PASSWORD --wait

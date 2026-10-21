@@ -16,5 +16,24 @@
   "updates": {
     "tag": "更新",
     "checksumMissing": "此版本缺少 macOS DMG 的 checksums.txt 校驗項；拒絕自動下載未經校驗的安裝程式。"
+  },
+  "store": {
+    "title": "App Store 版",
+    "description": "依瀏覽器路由連結，不指定 profile、不要求瀏覽器資料權限，也不控制私密模式和新視窗。請在設定中選擇預設路由瀏覽器。",
+    "updates": "更新由 App Store 提供。本版不提供 CLI 安裝、外部背景服務和 LaunchAgent。",
+    "engine": "路由引擎",
+    "browserCount": "{{browsers}} 個瀏覽器",
+    "settingsSubtitle": "預設瀏覽器、路由目標、外觀與本機行為記錄。",
+    "overviewSubtitle": "路由引擎狀態與最近的路由決策。",
+    "emptyHint": "透過 LinkPilot 開啟連結後，路由記錄會顯示在這裡。",
+    "pickBrowser": "或從清單中選擇瀏覽器",
+    "pickerDescription": "預覽瀏覽器選擇器，並將測試連結傳送到選取的瀏覽器。",
+    "engineRunning": "路由引擎正在執行",
+    "engineUnavailable": "路由引擎無法使用",
+    "openTest": "開啟測試連結",
+    "testSubtitle": "輸入時僅計算路由結果；點擊「開啟測試連結」才會啟動瀏覽器。",
+    "imported": "已匯入設定。",
+    "exported": "已匯出設定。",
+    "defaultBrowserHint": "macOS 會顯示確認視窗。"
   }
 }

@@ -1,3 +1,4 @@
+import { isAppStore } from "@/lib/distribution";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
@@ -137,7 +138,7 @@ export default function App() {
   // resetting it (DevTools or `localStorage.clear()`) is the documented
   // way to re-run onboarding during testing.
   const [showOnboarding, setShowOnboarding] = useState(() =>
-    isOnboardingNeeded(),
+    !isAppStore && isOnboardingNeeded(),
   );
 
   const refreshSidebarData = useCallback(async () => {
@@ -164,6 +165,7 @@ export default function App() {
   }, [refreshSidebarData, configEpoch]);
 
   const runUpdateCheck = useCallback(async () => {
+    if (isAppStore) return;
     setUpdateCheck({ status: "checking" });
     try {
       const currentVersion = await getVersion();
@@ -214,7 +216,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (showOnboarding) return;
+    if (isAppStore || showOnboarding) return;
     if (!config?.settings.auto_check_updates) {
       autoUpdateCheckStartedRef.current = false;
       return;
@@ -498,7 +500,7 @@ export default function App() {
               )}
             />
             <span>
-              {t("sidebar.daemon")}
+              {t(isAppStore ? "store.engine" : "sidebar.daemon")}
               {daemonVersion ? ` · ${daemonVersion}` : ""}
             </span>
           </div>
@@ -522,6 +524,10 @@ export default function App() {
             </span>
           </div>
           <div className="mac-scroll">
+            {isAppStore && <div role="note" className="mac-card mac-card-pad" style={{ marginBottom: 16 }}>
+              <strong>{t("store.title")}</strong>
+              <p className="mac-muted" style={{ marginTop: 6 }}>{t("store.description")}</p>
+            </div>}
             {selectedWorkspaceId ? (
               <WorkspacePage
                 workspaceId={selectedWorkspaceId}

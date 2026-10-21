@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "store",
+  "description": "Store windows use local routing commands and open ordinary web links.",
+  "windows": ["main", "picker", "tray"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-start-dragging",
+    "core:event:default",
+    "deep-link:default",
+    "opener:allow-open-url"
+  ]
+}

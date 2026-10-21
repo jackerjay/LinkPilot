@@ -1,3 +1,4 @@
+import { isAppStore } from "@/lib/distribution";
 // Dry-run a URL through the live routing engine. No browser is launched;
 // the daemon evaluates the rules and returns the decision + the full
 // MatcherEval tree, which we render exactly like the Inspector does.
@@ -58,6 +59,22 @@ export function TestUrlPage({ configEpoch }: Props) {
 
   const [result, setResult] = useState<Explained | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
+
+  const openTestLink = async () => {
+    setOpening(true);
+    setError(null);
+    try {
+      await ipc.routeOpen({
+        url: url.trim(), from_app: fromApp.trim() || null,
+        from_app_bundle_id: fromAppBundleId,
+      });
+    } catch (error) {
+      setError(String(error));
+    } finally {
+      setOpening(false);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -134,7 +151,7 @@ export function TestUrlPage({ configEpoch }: Props) {
     <div className="space-y-4">
       <header>
         <h2 className="mac-h2">{t("title")}</h2>
-        <p className="mac-subtitle">{t("subtitle")}</p>
+        <p className="mac-subtitle">{t(isAppStore ? "app:store.testSubtitle" : "subtitle")}</p>
       </header>
 
       <Card>
@@ -147,6 +164,9 @@ export function TestUrlPage({ configEpoch }: Props) {
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t("urlPlaceholder")}
             />
+            {isAppStore && <button type="button" className="mac-tbtn primary" disabled={opening || !url.trim()} onClick={() => void openTestLink()}>
+              {t("app:store.openTest")}
+            </button>}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -174,6 +194,7 @@ export function TestUrlPage({ configEpoch }: Props) {
                 />
               </div>
             </div>
+            {!isAppStore && <>
             <div className="space-y-1.5">
               <Label>{t("fromBrowser")}</Label>
               <Select
@@ -221,6 +242,7 @@ export function TestUrlPage({ configEpoch }: Props) {
                 </SelectContent>
               </Select>
             </div>
+            </>}
           </div>
         </CardContent>
       </Card>

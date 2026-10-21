@@ -1636,3 +1636,9 @@ html.tray-root #root {
     rgba(28, 28, 32, 0.36) 100%
   );
 }
+
+/* Store windows use public WebKit APIs and an opaque background. */
+html[data-distribution="app-store"].picker-root,
+html[data-distribution="app-store"].tray-root {
+  background: var(--mac-window-fill) !important;
+}
