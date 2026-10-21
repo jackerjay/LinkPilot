@@ -64,8 +64,10 @@ On macOS, LinkPilot auto-detects these installed browsers:
 
 ## Install
 
-Release artifacts are unsigned and macOS may quarantine them on first launch.
-If needed, remove the quarantine flag after installing.
+Published releases through v0.5.8 are unsigned and macOS may quarantine them
+on first launch. If needed, remove the quarantine flag after installing.
+Future releases require Developer ID signing and Apple notarization;
+maintainers must configure the [release signing secrets](docs/macos-signing.md).
 
 ### Homebrew (recommended)
 
@@ -274,8 +276,16 @@ npm run bundle:mac
 open ../../target/release/bundle/macos/LinkPilot.app
 ```
 
-`bundle:mac` runs `tauri build` and then patches the generated
-`Info.plist` so macOS recognizes LinkPilot as an HTTP/HTTPS browser handler.
+`bundle:mac` builds the desktop app, CLI, and daemon, embeds both helpers,
+and patches `Info.plist` so macOS recognizes LinkPilot as an HTTP/HTTPS browser
+handler. It then signs the helpers and the complete app and verifies the seal.
+If the keychain has exactly one valid Apple Development or Developer ID
+Application identity, it is selected automatically. With multiple identities,
+set `APPLE_SIGNING_IDENTITY` to the certificate name or SHA-1. With no identity,
+the script reports that it is using ad-hoc signing; `APPLE_SIGNING_IDENTITY=-`
+also explicitly selects ad-hoc signing. Apple Development signing is for local
+use; public distribution still needs Developer ID signing and notarization.
+See [macOS release signing](docs/macos-signing.md) for the GitHub Actions setup.
 
 ## Repository Layout
 

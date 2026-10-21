@@ -15,5 +15,17 @@
   "disabledTag": "已隐藏",
   "disabledTagTitle": "已从 ask 弹窗中隐藏",
   "hideFromPicker": "从 ask 弹窗中隐藏「{{name}}」",
-  "showInPicker": "在 ask 弹窗中显示「{{name}}」"
+  "showInPicker": "在 ask 弹窗中显示「{{name}}」",
+  "profileAccess": {
+    "required": "需要授权",
+    "error": "macOS 阻止了浏览器 profile 的读取。",
+    "action": "重新授权",
+    "title": "允许读取 {{name}} 的 profile",
+    "description": "LinkPilot 需要访问 {{name}} 的应用数据，以显示 profile 列表并在所选 profile 中打开链接。",
+    "instructions": "在「系统设置 → 隐私与安全 → 文件与文件夹」中展开 LinkPilot，开启 {{name}}。",
+    "afterAllow": "如果此前拒绝过授权，macOS 不会自动再次弹出系统授权框。允许访问后，返回这里重新扫描；若仍受阻，请退出并重新打开 LinkPilot。",
+    "openSettings": "打开权限设置",
+    "later": "稍后",
+    "close": "关闭"
+  }
 }

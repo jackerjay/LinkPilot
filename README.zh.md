@@ -53,8 +53,9 @@ LinkPilot 当前聚焦 macOS。
 
 ## 安装
 
-当前 release 产物未签名，macOS 首次启动时可能会加 quarantine。安装后如无法打开，
-可以移除 quarantine 标记。
+截至 v0.5.8 的已发布产物未签名，macOS 首次启动时可能会加 quarantine。安装后如
+无法打开，可以移除 quarantine 标记。后续发布流程要求 Developer ID 签名和 Apple
+公证；维护者需先配置[发布签名凭据](docs/macos-signing.md)。
 
 ### Homebrew（推荐）
 
@@ -258,8 +259,14 @@ npm run bundle:mac
 open ../../target/release/bundle/macos/LinkPilot.app
 ```
 
-`bundle:mac` 会先运行 `tauri build`，再修补生成的 `Info.plist`，让 macOS 能把
-LinkPilot 识别为 HTTP/HTTPS 浏览器处理器。
+`bundle:mac` 会构建桌面应用、CLI 和后台程序，将两个辅助程序嵌入应用，再修补
+`Info.plist`，最后依次签名辅助程序和整个应用，并验证签名完整性。钥匙串中只有
+一个有效的 Apple Development 或 Developer ID Application 身份时会自动选用；
+有多个时，需通过 `APPLE_SIGNING_IDENTITY` 指定证书名称或 SHA-1。没有证书时会
+明确提示使用临时签名，也可以设置 `APPLE_SIGNING_IDENTITY=-` 主动选择临时签名。
+Apple Development 签名用于本机开发，公开发行仍需 Developer ID 签名和公证。
+GitHub Actions 的配置见 [macOS 发布签名说明](docs/macos-signing.md)。
+修补后的应用信息让 macOS 能把 LinkPilot 识别为 HTTP/HTTPS 浏览器处理器。
 
 ## 仓库结构
 

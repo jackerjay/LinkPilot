@@ -304,6 +304,7 @@ pub fn run() {
             commands::remove_custom_browser,
             commands::browser_set_enabled,
             commands::list_profiles,
+            commands::open_profile_privacy_settings,
             commands::route_open,
             commands::route_evaluate,
             commands::route_history,

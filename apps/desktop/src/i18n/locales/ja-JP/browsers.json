@@ -15,5 +15,17 @@
   "disabledTag": "非表示",
   "disabledTagTitle": "ask ポップアップから非表示",
   "hideFromPicker": "ask ポップアップから「{{name}}」を非表示にする",
-  "showInPicker": "ask ポップアップに「{{name}}」を表示する"
+  "showInPicker": "ask ポップアップに「{{name}}」を表示する",
+  "profileAccess": {
+    "required": "アクセス許可が必要",
+    "error": "macOS がブラウザの profile の読み取りをブロックしました。",
+    "action": "アクセスを許可",
+    "title": "{{name}} の profile へのアクセスを許可",
+    "description": "profile 一覧の表示と選択した profile でのリンクの起動には、{{name}} のアプリデータへのアクセスが必要です。",
+    "instructions": "「システム設定 → プライバシーとセキュリティ → ファイルとフォルダ」で LinkPilot を展開し、{{name}} を有効にしてください。",
+    "afterAllow": "一度拒否すると、macOS はシステムの許可ダイアログを再表示しません。許可した後、ここに戻って再スキャンしてください。まだブロックされる場合は LinkPilot を終了し、再度開いてください。",
+    "openSettings": "プライバシー設定を開く",
+    "later": "後で",
+    "close": "閉じる"
+  }
 }

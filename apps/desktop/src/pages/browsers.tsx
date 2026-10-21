@@ -2,14 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Plus, RefreshCcw, Trash2, User } from "lucide-react";
 import { AppIcon } from "@/components/AppIcon";
+import { ProfileAccessDialog } from "@/components/ProfileAccessDialog";
 import { appPathFromExecutable } from "@/lib/browsers";
 import { ipc } from "@/lib/ipc";
+import { isProfileAccessDenied } from "@/lib/profile-access";
 import type { BrowserProfile, InstalledBrowser } from "@/lib/types";
 
 interface Entry {
   browser: InstalledBrowser;
   profiles: BrowserProfile[];
   error?: string;
+  permissionDenied?: boolean;
   /** True when this entry came from `config.custom_browsers` rather
    *  than auto-detection. Drives the "custom" tag and remove button. */
   custom: boolean;
@@ -53,6 +56,7 @@ export function BrowsersPage() {
               browser: b,
               profiles: [],
               error: String(err),
+              permissionDenied: isProfileAccessDenied(err),
               custom: customIds.has(b.id),
               disabled,
             };
@@ -245,6 +249,7 @@ export function BrowsersPage() {
               key={e.browser.id}
               entry={e}
               onRemove={() => removeCustom(e.browser.id)}
+              onRetry={refresh}
               onToggleEnabled={(enabled) =>
                 toggleEnabled(e.browser.id, enabled)
               }
@@ -259,10 +264,12 @@ export function BrowsersPage() {
 function BrowserBlock({
   entry: e,
   onRemove,
+  onRetry,
   onToggleEnabled,
 }: {
   entry: Entry;
   onRemove: () => void;
+  onRetry: () => Promise<void>;
   onToggleEnabled: (enabled: boolean) => void;
 }) {
   const { t } = useTranslation("browsers");
@@ -322,12 +329,22 @@ function BrowserBlock({
                 alignItems: "center",
                 gap: 6,
                 marginTop: 6,
+                flexWrap: "wrap",
               }}
             >
-              <span className="mac-tag danger">{t("profilesErrorTag")}</span>
-              <span className="mac-muted" style={{ fontSize: 11.5 }}>
-                {e.error}
+              <span className="mac-tag danger">
+                {t(e.permissionDenied ? "profileAccess.required" : "profilesErrorTag")}
               </span>
+              <span className="mac-muted" style={{ fontSize: 11.5 }}>
+                {e.permissionDenied ? t("profileAccess.error") : e.error}
+              </span>
+              {e.permissionDenied && (
+                <ProfileAccessDialog browserName={e.browser.display_name} onRetry={onRetry}>
+                  <button type="button" className="mac-tbtn">
+                    {t("profileAccess.action")}
+                  </button>
+                </ProfileAccessDialog>
+              )}
             </div>
           )}
         </div>

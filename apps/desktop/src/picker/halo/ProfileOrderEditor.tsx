@@ -8,8 +8,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { AppIcon } from "@/components/AppIcon";
+import { ProfileAccessDialog } from "@/components/ProfileAccessDialog";
 import { appPathFromExecutable } from "@/lib/browsers";
 import { ipc } from "@/lib/ipc";
+import { isProfileAccessDenied } from "@/lib/profile-access";
 import type {
   BrowserProfile,
   ConfigDocument,
@@ -31,6 +33,7 @@ interface BrowserProfileCatalog {
   browser: InstalledBrowser;
   profiles: BrowserProfile[];
   error: string | null;
+  permissionDenied: boolean;
 }
 
 interface InitialDraft {
@@ -46,10 +49,12 @@ export function ProfileOrderEditor({
   onConfigChanged,
 }: ProfileOrderEditorProps) {
   const { t } = useTranslation("picker");
+  const { t: browserT } = useTranslation("browsers");
   const [catalog, setCatalog] = useState<BrowserProfileCatalog[]>([]);
   const [editingBrowserId, setEditingBrowserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [scanVersion, setScanVersion] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -63,9 +68,14 @@ export function ProfileOrderEditor({
           browsers.map(async (browser): Promise<BrowserProfileCatalog> => {
             try {
               const profiles = await ipc.listProfiles(browser.id);
-              return { browser, profiles, error: null };
+              return { browser, profiles, error: null, permissionDenied: false };
             } catch (e) {
-              return { browser, profiles: [], error: String(e) };
+              return {
+                browser,
+                profiles: [],
+                error: String(e),
+                permissionDenied: isProfileAccessDenied(e),
+              };
             }
           }),
         );
@@ -85,7 +95,7 @@ export function ProfileOrderEditor({
     return () => {
       alive = false;
     };
-  }, []);
+  }, [scanVersion]);
 
   const editingRow = useMemo(
     () => catalog.find((row) => row.browser.id === editingBrowserId) ?? null,
@@ -171,25 +181,29 @@ export function ProfileOrderEditor({
             const canConfigure = row.profiles.length > 1;
             const saved = hasSavedOrder(doc, row.browser.id);
             const hiddenCount = hiddenByBrowser.get(row.browser.id) ?? 0;
-            return (
+            const card = (
               <button
                 key={row.browser.id}
                 type="button"
                 className={`profile-order-browser-card${
-                  canConfigure ? "" : " disabled"
+                  canConfigure || row.permissionDenied ? "" : " disabled"
                 }${saved ? " saved" : ""}${
                   hiddenCount > 0 ? " has-hidden" : ""
                 }`}
-                disabled={!canConfigure}
-                onClick={() => setEditingBrowserId(row.browser.id)}
-                  title={
-                    hiddenCount > 0
-                    ? t("profileOrder.hiddenTitle", {
-                        count: hiddenCount,
-                      })
-                    : canConfigure
-                      ? t("profileOrder.configureTitle")
-                      : t("profileOrder.unavailableTitle")
+                disabled={!canConfigure && !row.permissionDenied}
+                onClick={
+                  row.permissionDenied
+                    ? undefined
+                    : () => setEditingBrowserId(row.browser.id)
+                }
+                title={
+                  row.permissionDenied
+                    ? browserT("profileAccess.action")
+                    : hiddenCount > 0
+                      ? t("profileOrder.hiddenTitle", { count: hiddenCount })
+                      : canConfigure
+                        ? t("profileOrder.configureTitle")
+                        : t("profileOrder.unavailableTitle")
                 }
               >
                 <span className="profile-order-browser-icon">
@@ -205,11 +219,13 @@ export function ProfileOrderEditor({
                     {row.browser.display_name}
                   </span>
                   <span className="profile-order-browser-meta">
-                    {row.error
-                      ? t("profileOrder.scanFailed")
-                      : t("profileOrder.profileCount", {
-                          count: row.profiles.length,
-                        })}
+                    {row.permissionDenied
+                      ? browserT("profileAccess.required")
+                      : row.error
+                        ? t("profileOrder.scanFailed")
+                        : t("profileOrder.profileCount", {
+                            count: row.profiles.length,
+                          })}
                   </span>
                 </span>
                 {hiddenCount > 0 && (
@@ -223,13 +239,26 @@ export function ProfileOrderEditor({
                   </span>
                 )}
                 <span className="profile-order-browser-status">
-                  {saved
-                    ? t("profileOrder.statusSaved")
-                    : canConfigure
-                      ? t("profileOrder.statusConfigure")
-                      : t("profileOrder.statusUnavailable")}
+                  {row.permissionDenied
+                    ? browserT("profileAccess.action")
+                    : saved
+                      ? t("profileOrder.statusSaved")
+                      : canConfigure
+                        ? t("profileOrder.statusConfigure")
+                        : t("profileOrder.statusUnavailable")}
                 </span>
               </button>
+            );
+            return row.permissionDenied ? (
+              <ProfileAccessDialog
+                key={row.browser.id}
+                browserName={row.browser.display_name}
+                onRetry={() => setScanVersion((version) => version + 1)}
+              >
+                {card}
+              </ProfileAccessDialog>
+            ) : (
+              card
             );
           })}
         </div>

@@ -39,6 +39,9 @@ jobs:
       - name: Check desktop crate
         run: cargo check -p linkpilot-desktop
 
+      - name: Test profile permission errors
+        run: cargo test -p linkpilot-desktop profile_scan_
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -62,6 +65,12 @@ jobs:
 
       - name: Build frontend
         run: corepack yarn run build
+
+      - name: Test profile permission recovery
+        run: corepack yarn run test:profile-access
+
+      - name: Test notarization failure handling
+        run: corepack yarn run test:notarize:mac
 
   desktop-bundle:
     name: Desktop bundle smoke test
@@ -88,6 +97,10 @@ jobs:
       - name: Install desktop dependencies
         working-directory: apps/desktop
         run: corepack yarn install --no-lockfile --non-interactive
+
+      - name: Test local signing order
+        working-directory: apps/desktop
+        run: corepack yarn run test:bundle:mac
 
       # Builds the .app bundle only (skips DMG packaging) in debug mode
       # so the Tauri bundling pipeline — icons, Info.plist, capabilities,

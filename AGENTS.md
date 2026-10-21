@@ -116,8 +116,11 @@ Three workflows in `.github/workflows/`:
   published version is **stamped from the tag** (`npm version <tag>
   --no-git-tag-version`), not read from the committed `package.json`.
 
-Release pipeline is **unsigned/unnotarized** — users hit
-`xattr -dr com.apple.quarantine LinkPilot.app` on first launch.
+Published releases through v0.5.8 are **unsigned/unnotarized**. Future release
+runs require Developer ID signing and Apple notarization, with no unsigned
+fallback. Configure the five Actions secrets in `docs/macos-signing.md`
+before pushing a new release tag. All bundle edits precede signing; app and
+DMG tickets are stapled before checksums and publication.
 
 ### Release-pipeline gotchas (learned the hard way at v0.5.0–v0.5.2)
 

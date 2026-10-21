@@ -15,5 +15,17 @@
   "disabledTag": "hidden",
   "disabledTagTitle": "Hidden from the ask popup picker",
   "hideFromPicker": "Hide \"{{name}}\" from the ask popup",
-  "showInPicker": "Show \"{{name}}\" in the ask popup"
+  "showInPicker": "Show \"{{name}}\" in the ask popup",
+  "profileAccess": {
+    "required": "Access required",
+    "error": "macOS blocked access to browser profiles.",
+    "action": "Authorize access",
+    "title": "Allow access to {{name}} profiles",
+    "description": "LinkPilot needs access to {{name}} app data to list its profiles and open links in the profile you choose.",
+    "instructions": "In System Settings → Privacy & Security → Files & Folders, expand LinkPilot and enable {{name}}.",
+    "afterAllow": "If access was previously denied, macOS will not show the system prompt again. After allowing access, return here and rescan. If access is still blocked, quit and reopen LinkPilot.",
+    "openSettings": "Open privacy settings",
+    "later": "Later",
+    "close": "Close"
+  }
 }

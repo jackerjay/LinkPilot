@@ -15,5 +15,17 @@
   "disabledTag": "已隱藏",
   "disabledTagTitle": "已從 ask 彈窗中隱藏",
   "hideFromPicker": "從 ask 彈窗中隱藏「{{name}}」",
-  "showInPicker": "在 ask 彈窗中顯示「{{name}}」"
+  "showInPicker": "在 ask 彈窗中顯示「{{name}}」",
+  "profileAccess": {
+    "required": "需要授權",
+    "error": "macOS 阻止了瀏覽器 profile 的讀取。",
+    "action": "重新授權",
+    "title": "允許讀取 {{name}} 的 profile",
+    "description": "LinkPilot 需要存取 {{name}} 的 App 資料，以顯示 profile 清單並在所選 profile 中開啟連結。",
+    "instructions": "在「系統設定 → 隱私權與安全性 → 檔案與檔案夾」中展開 LinkPilot，開啟 {{name}}。",
+    "afterAllow": "如果先前拒絕過授權，macOS 不會自動再次顯示系統授權對話框。允許存取後，回到此處重新掃描；若仍受阻，請結束並重新開啟 LinkPilot。",
+    "openSettings": "開啟權限設定",
+    "later": "稍後",
+    "close": "關閉"
+  }
 }

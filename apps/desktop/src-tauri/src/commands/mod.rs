@@ -7,7 +7,7 @@ use std::process::Command;
 use linkpilot_core::browser::{BrowserId, BrowserProfile, InstalledBrowser};
 use linkpilot_core::config::{ConfigDocument, LanguagePref, PickerStyle, Workspace, WriterId};
 use linkpilot_core::history::RouteRecord;
-use linkpilot_core::platform::SetDefaultOutcome;
+use linkpilot_core::platform::{PlatformError, SetDefaultOutcome};
 use linkpilot_core::protocol::DoctorReport;
 use linkpilot_core::routing::{
     Explained, Router, RoutingContext, RoutingDecision, Source, SourceKind,
@@ -304,12 +304,50 @@ pub fn browser_set_enabled(
 pub fn list_profiles(
     state: State<'_, AppState>,
     browser: BrowserId,
-) -> Result<Vec<BrowserProfile>, String> {
+) -> Result<Vec<BrowserProfile>, ProfileScanError> {
     state
         .platform
         .browser_inventory()
         .profiles(&browser)
-        .map_err(|e| e.to_string())
+        .map_err(ProfileScanError::from)
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ProfileScanError {
+    permission_denied: bool,
+    message: String,
+}
+
+impl From<PlatformError> for ProfileScanError {
+    fn from(error: PlatformError) -> Self {
+        Self {
+            permission_denied: matches!(
+                &error,
+                PlatformError::Io(io) if io.kind() == std::io::ErrorKind::PermissionDenied
+            ),
+            message: error.to_string(),
+        }
+    }
+}
+
+#[tauri::command]
+pub fn open_profile_privacy_settings(app: AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use tauri_plugin_opener::OpenerExt;
+
+        app.opener()
+            .open_url(
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders",
+                None::<&str>,
+            )
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        Err("Profile privacy settings are only available on macOS".to_string())
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -1307,7 +1345,35 @@ fn locate_bundled_daemon() -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_release_atom_meta, parse_tag_from_release_url};
+    use super::{parse_release_atom_meta, parse_tag_from_release_url, ProfileScanError};
+    use linkpilot_core::platform::PlatformError;
+
+    #[test]
+    fn profile_scan_permission_error_is_structured() {
+        let error = ProfileScanError::from(PlatformError::Io(std::io::Error::from(
+            std::io::ErrorKind::PermissionDenied,
+        )));
+        let json = serde_json::to_value(error).unwrap();
+        assert_eq!(json["permission_denied"], true);
+        assert!(json["message"].as_str().unwrap().contains("io error"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn profile_scan_eperm_is_a_permission_error() {
+        let error = ProfileScanError::from(PlatformError::Io(std::io::Error::from_raw_os_error(1)));
+        assert!(error.permission_denied);
+    }
+
+    #[test]
+    fn profile_scan_invalid_data_is_not_a_permission_error() {
+        let error = ProfileScanError::from(PlatformError::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "invalid profile JSON",
+        )));
+        assert!(!error.permission_denied);
+        assert!(error.message.contains("invalid profile JSON"));
+    }
 
     #[test]
     fn parses_standard_release_tag_url() {
