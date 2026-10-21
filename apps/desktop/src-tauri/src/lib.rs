@@ -6,7 +6,10 @@
 
 mod commands;
 mod dispatch;
+mod distribution;
+#[cfg(not(feature = "app-store"))]
 mod ipc_host;
+#[cfg(not(feature = "app-store"))]
 mod nmh_supervisor;
 mod picker;
 mod state;
@@ -16,7 +19,9 @@ mod url_handler;
 
 use std::sync::Arc;
 
-use linkpilot_core::config::{default_config_path, ConfigStore};
+#[cfg(not(feature = "app-store"))]
+use linkpilot_core::config::default_config_path;
+use linkpilot_core::config::ConfigStore;
 use linkpilot_core::history::RouteHistory;
 use linkpilot_core::platform::PlatformProvider;
 use tauri::{Emitter, Manager, RunEvent, WindowEvent};
@@ -24,6 +29,7 @@ use tauri_plugin_deep_link::DeepLinkExt;
 
 pub use state::{AppState, DaemonMode};
 
+#[cfg(not(feature = "app-store"))]
 fn probe_existing_daemon(endpoint: &linkpilot_core::endpoint::Endpoint) -> bool {
     use linkpilot_core::protocol::Request;
     let req = Request::StatePing {
@@ -32,10 +38,18 @@ fn probe_existing_daemon(endpoint: &linkpilot_core::endpoint::Endpoint) -> bool 
     linkpilot_ipc::client::send(endpoint, req).is_ok()
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(feature = "app-store")))]
 fn make_platform(bundle_id: String) -> Arc<dyn PlatformProvider> {
     Arc::new(linkpilot_platform_mac::MacProvider::new(bundle_id))
 }
+
+#[cfg(all(target_os = "macos", feature = "app-store"))]
+fn make_platform(bundle_id: String) -> Arc<dyn PlatformProvider> {
+    Arc::new(linkpilot_platform_mac::store::StoreProvider::new(bundle_id))
+}
+
+#[cfg(all(feature = "app-store", feature = "direct-distribution"))]
+compile_error!("Build the App Store edition with --no-default-features --features app-store");
 
 #[cfg(not(target_os = "macos"))]
 fn make_platform(_bundle_id: String) -> Arc<dyn PlatformProvider> {
@@ -44,6 +58,11 @@ fn make_platform(_bundle_id: String) -> Arc<dyn PlatformProvider> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    if let Err(error) = linkpilot_platform_mac::store::require_sandbox() {
+        eprintln!("{error}");
+        return;
+    }
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -55,6 +74,12 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            if distribution::APP_STORE && app.config().identifier != "app.linkpilot.store" {
+                return Err(anyhow::anyhow!(
+                    "The App Store edition requires the Store bundle identifier"
+                )
+                .into());
+            }
             // Menubar-only behaviour (Raycast / Alfred style). The Dock
             // icon and Cmd+Tab presence go away; the tray icon + main
             // window are the only UI surface. Set early so the policy
@@ -68,14 +93,26 @@ pub fn run() {
             // patch-info-plist.sh hasn't run on the Tauri-dev binary).
             #[cfg(target_os = "macos")]
             {
-                let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             }
 
+            #[cfg(not(feature = "app-store"))]
             let config_path =
                 default_config_path().map_err(|e| anyhow::anyhow!("resolve config path: {e}"))?;
+            #[cfg(feature = "app-store")]
+            let config_path = linkpilot_platform_mac::store::application_support_directory()?
+                .join("LinkPilot/linkpilot.config.json");
             let (config_store, created) = ConfigStore::load_or_init(config_path.clone())
                 .map_err(|e| anyhow::anyhow!("load config {}: {e}", config_path.display()))?;
             if created {
+                if distribution::APP_STORE {
+                    let mut doc = config_store.document();
+                    doc.settings.auto_check_updates = false;
+                    // Direct-edition starter rules include profile/extension actions.
+                    // A new Store container starts with user-authored rules only.
+                    doc.rules.clear();
+                    config_store.replace(doc, linkpilot_core::config::WriterId::Gui)?;
+                }
                 tracing::info!(path = %config_path.display(), "wrote first-run config");
             }
 
@@ -87,6 +124,7 @@ pub fn run() {
             // headless `linkpilot-daemon` binary uses. Shared via Arc so the
             // ipc_host handler (below) and AppState's Tauri commands both see
             // identical config/history snapshots.
+            #[cfg(not(feature = "app-store"))]
             let runtime = Arc::new(linkpilot_core::daemon::DaemonRuntime::new(
                 config_store.clone(),
                 Arc::clone(&history),
@@ -123,7 +161,7 @@ pub fn run() {
             // it — otherwise every `tauri dev` would write a plist pointing at
             // the throwaway target/debug binary (same reason the daemon
             // LaunchAgent auto-install below is production-only).
-            #[cfg(all(target_os = "macos", not(debug_assertions)))]
+            #[cfg(all(target_os = "macos", not(debug_assertions), not(feature = "app-store")))]
             {
                 let want = config_store.document().settings.launch_at_login;
                 if let Err(err) = platform.autostart().set_enabled(want) {
@@ -186,31 +224,34 @@ pub fn run() {
             // Inspector history is degraded in client mode (we don't see the
             // daemon's in-memory history); M3 wires `lpt history` through to
             // the daemon and the GUI can call the same path.
-            let endpoint = linkpilot_ipc::path::default_endpoint();
-            let daemon_mode = if probe_existing_daemon(&endpoint) {
-                tracing::info!(
-                    endpoint = %endpoint.display(),
-                    "external linkpilot-daemon detected; GUI running in client mode"
-                );
-                DaemonMode::External
-            } else {
-                let handler = std::sync::Arc::new(ipc_host::DaemonHandler::new(
-                    Arc::clone(&runtime),
-                    state.clone(),
-                    app.handle().clone(),
-                ));
-                match linkpilot_ipc::server::serve(endpoint, handler) {
-                    Ok(ipc) => {
-                        state.attach_ipc(ipc);
-                        DaemonMode::InProcess
+            #[cfg(not(feature = "app-store"))]
+            {
+                let endpoint = linkpilot_ipc::path::default_endpoint();
+                let daemon_mode = if probe_existing_daemon(&endpoint) {
+                    tracing::info!(
+                        endpoint = %endpoint.display(),
+                        "external linkpilot-daemon detected; GUI running in client mode"
+                    );
+                    DaemonMode::External
+                } else {
+                    let handler = std::sync::Arc::new(ipc_host::DaemonHandler::new(
+                        Arc::clone(&runtime),
+                        state.clone(),
+                        app.handle().clone(),
+                    ));
+                    match linkpilot_ipc::server::serve(endpoint, handler) {
+                        Ok(ipc) => {
+                            state.attach_ipc(ipc);
+                            DaemonMode::InProcess
+                        }
+                        Err(err) => {
+                            tracing::warn!(?err, "ipc server failed to start; GUI still works");
+                            DaemonMode::InProcess
+                        }
                     }
-                    Err(err) => {
-                        tracing::warn!(?err, "ipc server failed to start; GUI still works");
-                        DaemonMode::InProcess
-                    }
-                }
-            };
-            state.set_daemon_mode(daemon_mode);
+                };
+                state.set_daemon_mode(daemon_mode);
+            }
 
             // First-run auto-install of the daemon LaunchAgent (production
             // builds only; dev builds skip so iterating doesn't pollute
@@ -219,7 +260,7 @@ pub fn run() {
             // doesn't exist yet, write it + launchctl-load so users get a
             // backgrounded daemon without any CLI ceremony. Idempotent —
             // re-runs are no-ops because the plist will already exist.
-            #[cfg(all(target_os = "macos", not(debug_assertions)))]
+            #[cfg(all(target_os = "macos", not(debug_assertions), not(feature = "app-store")))]
             {
                 if let Ok(false) =
                     linkpilot_platform_mac::launch_agent::daemon_plist_path().map(|p| p.exists())
@@ -245,7 +286,7 @@ pub fn run() {
             }
 
             app.manage(state);
-            tray::install(&app.handle())?;
+            tray::install(app.handle())?;
             // Browser-picker state for the Ask UI (see picker.rs).
             app.manage(picker::PickerState::default());
 
@@ -253,7 +294,7 @@ pub fn run() {
             // see the GUI without having to find the menu-bar icon. The tray
             // / Dock reopen handlers below keep it accessible after the user
             // closes it.
-            tray::show_main_window(&app.handle());
+            tray::show_main_window(app.handle());
 
             Ok(())
         })
@@ -312,6 +353,8 @@ pub fn run() {
             commands::request_set_default_browser,
             commands::import_config,
             commands::export_config,
+            commands::import_config_dialog,
+            commands::export_config_dialog,
             commands::update_fetch_metadata,
             commands::update_download,
             commands::app_icon,

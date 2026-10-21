@@ -271,7 +271,6 @@ fn build_popover<R: Runtime>(
         .inner_size(POPOVER_W, POPOVER_H)
         .min_inner_size(POPOVER_W, POPOVER_H)
         .max_inner_size(POPOVER_W, POPOVER_H)
-        .transparent(true)
         .always_on_top(true)
         .resizable(false)
         .maximizable(false)
@@ -284,6 +283,10 @@ fn build_popover<R: Runtime>(
         .visible(false)
         .focused(true);
 
+    #[cfg(not(feature = "app-store"))]
+    {
+        builder = builder.transparent(true);
+    }
     match rect.and_then(|r| popover_position(app, r)) {
         Some((x, y)) => builder = builder.position(x, y),
         None => builder = builder.center(),
@@ -388,7 +391,7 @@ pub fn note_popover_hidden<R: Runtime>(app: &AppHandle<R>) {
 }
 
 fn apply_glass<R: Runtime>(window: &tauri::WebviewWindow<R>) {
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", feature = "direct-distribution"))]
     {
         use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
         // HudWindow = Spotlight / Raycast / Cmd-Tab vibrancy. Same
@@ -404,7 +407,7 @@ fn apply_glass<R: Runtime>(window: &tauri::WebviewWindow<R>) {
             tracing::warn!(?err, "tray: vibrancy failed");
         }
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(all(target_os = "macos", feature = "direct-distribution")))]
     {
         let _ = window;
     }

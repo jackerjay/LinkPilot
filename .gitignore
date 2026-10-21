@@ -6,7 +6,9 @@ Cargo.lock.bak
 # Node
 node_modules/
 dist/
+dist-store/
 .vite/
+__pycache__/
 
 # Tauri
 apps/desktop/src-tauri/target/

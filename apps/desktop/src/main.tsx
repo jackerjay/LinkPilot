@@ -1,3 +1,4 @@
+import { isAppStore } from "@/lib/distribution";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -12,6 +13,7 @@ import "./styles/app.css";
 // and tray webviews each go through main.tsx, so this single call covers
 // every window.
 bootstrapI18n();
+if (isAppStore) document.documentElement.dataset.distribution = "app-store";
 
 // Tauri renders the same frontendDist in every window; we pick which
 // component tree to render based on a query parameter the Rust side

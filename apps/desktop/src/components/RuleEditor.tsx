@@ -1,3 +1,4 @@
+import { isAppStore } from "@/lib/distribution";
 // Structured editor for a single Rule. Replaces the JSON-textarea editor.
 
 import { useState } from "react";
@@ -230,7 +231,7 @@ function MatcherEditor({ value, browsers, onChange, depth = 0 }: MatcherProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {MATCHER_OPS.map((op) => (
+            {MATCHER_OPS.filter((op) => !isAppStore || !["source-browser", "source-profile"].includes(op)).map((op) => (
               <SelectItem key={op} value={op}>
                 {op}
               </SelectItem>
@@ -490,7 +491,7 @@ function ActionEditor({ value, browsers, onChange }: ActionProps) {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {ACTION_KINDS.map((k) => (
+          {ACTION_KINDS.filter((k) => !isAppStore || k !== "keep-source").map((k) => (
             <SelectItem key={k} value={k}>
               {k}
             </SelectItem>

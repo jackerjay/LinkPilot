@@ -11,6 +11,7 @@ members = [
     "crates/headless-daemon",
     "apps/desktop/src-tauri",
     "tools/icon-padder",
+    "tools/sandbox-probe",
 ]
 
 [workspace.package]

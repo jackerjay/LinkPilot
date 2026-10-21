@@ -20,6 +20,14 @@ use url::Url;
 
 use crate::{state::AppState, tray};
 
+fn replace_config(state: &AppState, doc: ConfigDocument) -> Result<(), String> {
+    crate::distribution::validate_document(&doc)?;
+    state
+        .config
+        .replace(doc, WriterId::Gui)
+        .map_err(|e| e.to_string())
+}
+
 // ----------------------------------------------------------------------------
 // config
 
@@ -30,10 +38,7 @@ pub fn config_get(state: State<'_, AppState>) -> ConfigDocument {
 
 #[tauri::command]
 pub fn config_replace(state: State<'_, AppState>, doc: ConfigDocument) -> Result<(), String> {
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 #[tauri::command]
@@ -44,20 +49,14 @@ pub fn rule_upsert(state: State<'_, AppState>, rule: Rule) -> Result<(), String>
     } else {
         doc.rules.push(rule);
     }
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 #[tauri::command]
 pub fn rule_delete(state: State<'_, AppState>, id: RuleId) -> Result<(), String> {
     let mut doc = state.config.document();
     doc.rules.retain(|r| r.id != id);
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 // ----------------------------------------------------------------------------
@@ -74,10 +73,7 @@ pub fn workspace_upsert(state: State<'_, AppState>, workspace: Workspace) -> Res
     } else {
         doc.workspaces.push(workspace);
     }
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 #[tauri::command]
@@ -92,10 +88,7 @@ pub fn workspace_delete(state: State<'_, AppState>, id: String) -> Result<(), St
             rule.workspace_id = None;
         }
     }
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 #[tauri::command]
@@ -109,10 +102,7 @@ pub fn workspace_set_enabled(
         return Err(format!("workspace not found: {id}"));
     };
     ws.enabled = enabled;
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 /// Master rule-evaluation kill-switch. Flips
@@ -123,10 +113,7 @@ pub fn workspace_set_enabled(
 pub fn set_smart_routing(state: State<'_, AppState>, enabled: bool) -> Result<(), String> {
     let mut doc = state.config.document();
     doc.settings.smart_routing_enabled = enabled;
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 /// Flip "Launch at Login". Unlike a bare `config_replace`, this also
@@ -139,6 +126,7 @@ pub fn set_smart_routing(state: State<'_, AppState>, enabled: bool) -> Result<()
 /// `set_enabled` is a no-op, so this degrades to a plain settings write.
 #[tauri::command]
 pub fn set_launch_at_login(state: State<'_, AppState>, enabled: bool) -> Result<(), String> {
+    crate::distribution::require_direct("Launch at login")?;
     state
         .platform
         .autostart()
@@ -146,10 +134,7 @@ pub fn set_launch_at_login(state: State<'_, AppState>, enabled: bool) -> Result<
         .map_err(|e| e.to_string())?;
     let mut doc = state.config.document();
     doc.settings.launch_at_login = enabled;
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 /// Persist the user's UI display language preference. `System` defers to
@@ -163,10 +148,7 @@ pub fn set_language(
 ) -> Result<(), String> {
     let mut doc = state.config.document();
     doc.settings.language = language;
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())?;
+    replace_config(state.inner(), doc)?;
     tray::update_menu_language(&app, language);
     Ok(())
 }
@@ -179,10 +161,7 @@ pub fn set_language(
 pub fn set_picker_style(state: State<'_, AppState>, style: PickerStyle) -> Result<(), String> {
     let mut doc = state.config.document();
     doc.settings.picker_style = style;
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 /// Persist a user-customized visible profile ordering for one browser. An
@@ -195,6 +174,7 @@ pub fn set_profile_order(
     browser: String,
     profile_ids: Vec<String>,
 ) -> Result<(), String> {
+    crate::distribution::require_direct("Profile ordering")?;
     let mut doc = state.config.document();
     if profile_ids.is_empty() {
         doc.settings.profile_orders.remove(&browser);
@@ -212,10 +192,7 @@ pub fn set_profile_order(
             .collect();
         doc.settings.profile_orders.insert(browser, deduped);
     }
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 // ----------------------------------------------------------------------------
@@ -255,26 +232,21 @@ pub fn add_custom_browser(
     state: State<'_, AppState>,
     browser: InstalledBrowser,
 ) -> Result<(), String> {
+    crate::distribution::require_direct("Custom browsers")?;
     let mut doc = state.config.document();
     if let Some(existing) = doc.custom_browsers.iter_mut().find(|b| b.id == browser.id) {
         *existing = browser;
     } else {
         doc.custom_browsers.push(browser);
     }
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 #[tauri::command]
 pub fn remove_custom_browser(state: State<'_, AppState>, id: BrowserId) -> Result<(), String> {
     let mut doc = state.config.document();
     doc.custom_browsers.retain(|b| b.id != id);
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 /// Flip a browser's visibility in the ask-popup picker. `enabled = false`
@@ -294,10 +266,7 @@ pub fn browser_set_enabled(
     } else if !list.iter().any(|existing| existing == &id) {
         list.push(id);
     }
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 #[tauri::command]
@@ -332,6 +301,7 @@ impl From<PlatformError> for ProfileScanError {
 
 #[tauri::command]
 pub fn open_profile_privacy_settings(app: AppHandle) -> Result<(), String> {
+    crate::distribution::require_direct("Profile access")?;
     #[cfg(target_os = "macos")]
     {
         use tauri_plugin_opener::OpenerExt;
@@ -478,19 +448,52 @@ pub fn doctor(state: State<'_, AppState>) -> DoctorReport {
 
 #[tauri::command]
 pub fn import_config(state: State<'_, AppState>, path: PathBuf) -> Result<(), String> {
+    crate::distribution::require_direct("Path-based configuration import")?;
     let raw = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
     let doc: ConfigDocument = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
-    state
-        .config
-        .replace(doc, WriterId::Gui)
-        .map_err(|e| e.to_string())
+    replace_config(state.inner(), doc)
 }
 
 #[tauri::command]
 pub fn export_config(state: State<'_, AppState>, path: PathBuf) -> Result<(), String> {
+    crate::distribution::require_direct("Path-based configuration export")?;
     let doc = state.config.document();
     let json = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn import_config_dialog(state: State<'_, AppState>) -> Result<bool, String> {
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    {
+        let Some(raw) = linkpilot_platform_mac::store::read_config_file()? else {
+            return Ok(false);
+        };
+        let doc = serde_json::from_str(&raw).map_err(|e| format!("Invalid configuration: {e}"))?;
+        replace_config(state.inner(), doc)?;
+        Ok(true)
+    }
+    #[cfg(not(all(target_os = "macos", feature = "app-store")))]
+    {
+        let _ = state;
+        Err("Use path-based configuration import in this edition".into())
+    }
+}
+
+#[tauri::command]
+pub fn export_config_dialog(state: State<'_, AppState>) -> Result<bool, String> {
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    {
+        let doc = state.config.document();
+        crate::distribution::validate_document(&doc)?;
+        let json = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;
+        Ok(linkpilot_platform_mac::store::write_config_file(&json)?.is_some())
+    }
+    #[cfg(not(all(target_os = "macos", feature = "app-store")))]
+    {
+        let _ = state;
+        Err("Use path-based configuration export in this edition".into())
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -548,6 +551,7 @@ const RELEASES_ATOM_URL: &str = "https://github.com/jackerjay/LinkPilot/releases
 pub async fn update_fetch_metadata(
     request: UpdateMetadataRequest,
 ) -> Result<UpdateCheckResult, String> {
+    crate::distribution::require_direct("External updates")?;
     tauri::async_runtime::spawn_blocking(move || {
         fetch_update_metadata_blocking(&request.current_version)
     })
@@ -814,10 +818,7 @@ fn compare_versions(left: &str, right: &str) -> i32 {
 
 fn version_parts(version: &str) -> Vec<u32> {
     let normalized = normalize_version(version);
-    let core = normalized
-        .split(|c| c == '+' || c == '-')
-        .next()
-        .unwrap_or("");
+    let core = normalized.split(['+', '-']).next().unwrap_or("");
     core.split('.')
         .map(|part| part.parse::<u32>().unwrap_or(0))
         .collect()
@@ -857,6 +858,7 @@ pub async fn update_download(
     state: State<'_, AppState>,
     request: UpdateDownloadRequest,
 ) -> Result<UpdateDownload, String> {
+    crate::distribution::require_direct("External update downloads")?;
     let parsed = Url::parse(&request.url).map_err(|e| format!("invalid update URL: {e}"))?;
     if parsed.scheme() != "https" || parsed.host_str() != Some("github.com") {
         return Err("update downloads must come from GitHub release assets".to_string());
@@ -1082,12 +1084,16 @@ pub struct PickedApp {
 pub fn pick_app() -> Result<Option<PickedApp>, String> {
     #[cfg(target_os = "macos")]
     {
-        return linkpilot_platform_mac::app_picker::choose_app().map(|opt| {
+        #[cfg(feature = "app-store")]
+        let picked = linkpilot_platform_mac::store::choose_app();
+        #[cfg(not(feature = "app-store"))]
+        let picked = linkpilot_platform_mac::app_picker::choose_app();
+        picked.map(|opt| {
             opt.map(|a| PickedApp {
                 name: a.name,
                 bundle_id: a.bundle_id,
             })
-        });
+        })
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -1107,19 +1113,22 @@ pub fn app_icon(request: AppIconRequest) -> Option<AppIcon> {
             .filter(|s| !s.is_empty())
             .map(std::path::Path::new);
         let name = request.name.as_deref().filter(|s| !s.is_empty());
-        let png_path =
-            match linkpilot_platform_mac::app_icon::ensure_png(bundle, path, name, request.size) {
-                Ok(p) => p,
-                Err(err) => {
-                    tracing::debug!(?err, ?bundle, ?path, ?name, "app_icon: extraction failed");
-                    return None;
-                }
-            };
+        #[cfg(feature = "app-store")]
+        let image = linkpilot_platform_mac::store::icon_png(bundle, path, request.size);
+        #[cfg(not(feature = "app-store"))]
+        let image = linkpilot_platform_mac::app_icon::ensure_png(bundle, path, name, request.size);
+        let png_path = match image {
+            Ok(p) => p,
+            Err(err) => {
+                tracing::debug!(?err, ?bundle, ?path, ?name, "app_icon: extraction failed");
+                return None;
+            }
+        };
         let bytes = std::fs::read(&png_path).ok()?;
         let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
-        return Some(AppIcon {
+        Some(AppIcon {
             data_url: format!("data:image/png;base64,{b64}"),
-        });
+        })
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -1147,11 +1156,18 @@ pub struct CliInstallStatus {
 
 #[tauri::command]
 pub fn cli_install_status() -> CliInstallStatus {
+    if crate::distribution::APP_STORE {
+        return CliInstallStatus {
+            bundled_path: None,
+            default_target: String::new(),
+            already_installed: false,
+        };
+    }
     let bundled = locate_bundled_lp();
     let default_target = default_install_target();
     let already_installed = match (bundled.as_ref(), &default_target) {
         (Some(b), t) => std::fs::read_link(t)
-            .map(|link| link == PathBuf::from(b))
+            .map(|link| link == std::path::Path::new(b))
             .unwrap_or(false),
         _ => false,
     };
@@ -1164,6 +1180,7 @@ pub fn cli_install_status() -> CliInstallStatus {
 
 #[tauri::command]
 pub fn cli_install_to_path(target: Option<String>) -> Result<String, String> {
+    crate::distribution::require_direct("CLI installation")?;
     #[cfg(target_os = "macos")]
     {
         let bundled = locate_bundled_lp().ok_or_else(|| {
@@ -1183,7 +1200,7 @@ pub fn cli_install_to_path(target: Option<String>) -> Result<String, String> {
         // `lpt`, treat the call as a no-op success. Otherwise replace it.
         if target_path.symlink_metadata().is_ok() {
             if let Ok(existing) = std::fs::read_link(&target_path) {
-                if existing == PathBuf::from(&bundled) {
+                if existing == std::path::Path::new(&bundled) {
                     return Ok(target_path.display().to_string());
                 }
             }
@@ -1251,6 +1268,15 @@ pub struct DaemonServiceStatus {
 
 #[tauri::command]
 pub fn daemon_service_status(state: tauri::State<'_, AppState>) -> DaemonServiceStatus {
+    if crate::distribution::APP_STORE {
+        return DaemonServiceStatus {
+            bundled_path: None,
+            plist_exists: false,
+            loaded: false,
+            pid: None,
+            gui_mode: "in-process",
+        };
+    }
     #[cfg(target_os = "macos")]
     {
         let bundled = locate_bundled_daemon();
@@ -1259,7 +1285,7 @@ pub fn daemon_service_status(state: tauri::State<'_, AppState>) -> DaemonService
             crate::state::DaemonMode::InProcess => "in-process",
             crate::state::DaemonMode::External => "external",
         };
-        return DaemonServiceStatus {
+        DaemonServiceStatus {
             bundled_path: bundled,
             plist_exists: agent_status
                 .as_ref()
@@ -1268,7 +1294,7 @@ pub fn daemon_service_status(state: tauri::State<'_, AppState>) -> DaemonService
             loaded: agent_status.as_ref().map(|s| s.loaded).unwrap_or(false),
             pid: agent_status.and_then(|s| s.pid),
             gui_mode,
-        };
+        }
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -1285,6 +1311,7 @@ pub fn daemon_service_status(state: tauri::State<'_, AppState>) -> DaemonService
 
 #[tauri::command]
 pub fn daemon_service_install() -> Result<DaemonServiceStatus, String> {
+    crate::distribution::require_direct("Daemon installation")?;
     #[cfg(target_os = "macos")]
     {
         let bundled = locate_bundled_daemon().ok_or_else(|| {
@@ -1303,6 +1330,7 @@ pub fn daemon_service_install() -> Result<DaemonServiceStatus, String> {
 
 #[tauri::command]
 pub fn daemon_service_uninstall() -> Result<DaemonServiceStatus, String> {
+    crate::distribution::require_direct("Daemon removal")?;
     #[cfg(target_os = "macos")]
     {
         linkpilot_platform_mac::launch_agent::uninstall_daemon().map_err(|e| e.to_string())?;
@@ -1347,6 +1375,39 @@ fn locate_bundled_daemon() -> Option<String> {
 mod tests {
     use super::{parse_release_atom_meta, parse_tag_from_release_url, ProfileScanError};
     use linkpilot_core::platform::PlatformError;
+
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    #[test]
+    fn store_rejected_target_preserves_saved_configuration() {
+        use std::sync::Arc;
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root =
+            std::env::temp_dir().join(format!("linkpilot-store-{}-{unique}", std::process::id()));
+        let path = root.join("config.json");
+        let (config, _) = linkpilot_core::config::ConfigStore::load_or_init(path.clone()).unwrap();
+        let state = crate::state::AppState::new(
+            config,
+            Arc::new(linkpilot_core::history::RouteHistory::new()),
+            Arc::new(linkpilot_core::platform::StubProvider),
+            Arc::new(linkpilot_core::observations::ObservationsStore::new(
+                root.join("observations.ndjson"),
+                root.join("dismissed.json"),
+            )),
+        );
+        let mut doc = state.config.document();
+        doc.rules.clear();
+        doc.settings.auto_check_updates = false;
+        super::replace_config(&state, doc.clone()).unwrap();
+        let before = std::fs::read(&path).unwrap();
+        doc.default_target.profile = Some("Default".into());
+        assert!(super::replace_config(&state, doc).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        assert!(state.config.document().default_target.profile.is_none());
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn profile_scan_permission_error_is_structured() {

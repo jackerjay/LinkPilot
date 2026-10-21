@@ -11,7 +11,10 @@
     "bundle:mac": "bash ./scripts/bundle-mac.sh",
     "test:bundle:mac": "node --test ./scripts/bundle-mac.test.mjs",
     "test:notarize:mac": "node --test ./scripts/notarize-mac.test.mjs",
-    "test:profile-access": "node --experimental-strip-types --test ./scripts/profile-access.test.mjs"
+    "test:profile-access": "node --experimental-strip-types --test ./scripts/profile-access.test.mjs",
+    "bundle:store": "bash ./scripts/bundle-store.sh",
+    "package:store": "python3 ./scripts/package-store.py",
+    "test:package:store": "python3 -m unittest discover -s scripts -p 'test_package_store.py'"
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",

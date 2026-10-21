@@ -1,3 +1,4 @@
+import { isAppStore } from "@/lib/distribution";
 // Visual card grid for picking the Halo variant. Lives in Settings →
 // Appearance. Each card renders a live mini-version of the wheel so the
 // user can see what they're choosing — the previous dropdown forced them
@@ -121,11 +122,11 @@ export function PickerStyleChooser({
           className="mac-tbtn primary"
           onClick={tryPicker}
           disabled={tryPending}
-          title={t("style.openTitle")}
+          title={t(isAppStore ? "app:store.pickerDescription" : "style.openTitle")}
         >
           {tryPending ? t("style.opening") : t("style.tryPicker")}
         </button>
-        <span className="picker-style-hint">{t("style.hint")}</span>
+        <span className="picker-style-hint">{t(isAppStore ? "app:store.pickerDescription" : "style.hint")}</span>
       </div>
       {tryError && <div className="picker-style-error">{tryError}</div>}
     </div>

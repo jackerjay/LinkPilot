@@ -98,6 +98,8 @@ export const ipc = {
   doctor: () => invoke<DoctorReport>("doctor"),
   importConfig: (path: string) => invoke<void>("import_config", { path }),
   exportConfig: (path: string) => invoke<void>("export_config", { path }),
+  importConfigDialog: () => invoke<boolean>("import_config_dialog"),
+  exportConfigDialog: () => invoke<boolean>("export_config_dialog"),
   updateFetchMetadata: (request: UpdateMetadataRequest) =>
     invoke<UpdateCheckResult>("update_fetch_metadata", { request }),
   updateDownload: (request: UpdateDownloadRequest) =>

@@ -488,6 +488,26 @@ fn lookup(id: &BrowserId) -> Option<&'static KnownBrowser> {
     REGISTRY.iter().find(|e| e.id == id.0.as_str())
 }
 
+/// Share the direct edition's registry without scanning browser data directories
+/// or spawning plist utilities from the sandbox.
+#[cfg(feature = "app-store")]
+pub(crate) fn store_browsers() -> Vec<InstalledBrowser> {
+    REGISTRY
+        .iter()
+        .filter_map(|entry| {
+            let app = crate::store::application_path(entry.bundle_id)?;
+            Some(InstalledBrowser {
+                id: BrowserId::new(entry.id),
+                display_name: entry.display_name.into(),
+                kind: entry.kind,
+                executable: app.join("Contents/MacOS").join(entry.binary),
+                platform_app_id: Some(entry.bundle_id.into()),
+                profile_root: None,
+            })
+        })
+        .collect()
+}
+
 impl BrowserInventory for MacInventory {
     fn installed_browsers(&self) -> Result<Vec<InstalledBrowser>> {
         let asroot = application_support_root();

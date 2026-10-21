@@ -1,3 +1,4 @@
+import { isAppStore } from "@/lib/distribution";
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
@@ -118,7 +119,7 @@ export function MenuBarPage({ configEpoch }: Props) {
   return (
     <div>
       <h2 className="mac-h2">{t("title")}</h2>
-      <p className="mac-subtitle">{t("subtitle")}</p>
+      <p className="mac-subtitle">{t(isAppStore ? "app:store.overviewSubtitle" : "subtitle")}</p>
 
       {/* At-a-glance stats */}
       <div className="mac-stat-grid">
@@ -175,13 +176,13 @@ export function MenuBarPage({ configEpoch }: Props) {
           <span style={{ color: "var(--mac-fg-muted)" }}>
             <Bolt size={15} strokeWidth={1.8} />
           </span>
-          <span className="grow mac-row-label">{t("status.daemon")}</span>
+          <span className="grow mac-row-label">{t(isAppStore ? "app:store.engine" : "status.daemon")}</span>
           <span
             className={`mac-dot ${doctor ? "ok" : "warn"}`}
             title={
               doctor
-                ? t("status.daemonTitleRunning")
-                : t("status.daemonTitleUnreachable")
+                ? t(isAppStore ? "app:store.engineRunning" : "status.daemonTitleRunning")
+                : t(isAppStore ? "app:store.engineUnavailable" : "status.daemonTitleUnreachable")
             }
           />
           <span className="mac-row-value">
@@ -263,8 +264,8 @@ export function MenuBarPage({ configEpoch }: Props) {
             title={t("recent.emptyTitle")}
             hint={
               <Trans
-                i18nKey="recent.emptyHint"
-                ns="menuBar"
+                i18nKey={isAppStore ? "store.emptyHint" : "recent.emptyHint"}
+                ns={isAppStore ? "app" : "menuBar"}
                 components={{
                   code: (
                     <span className="mac-mono" style={{ margin: "0 2px" }} />
@@ -450,7 +451,7 @@ function SetupHero({
               className="mac-row-label"
               style={{ marginBottom: 8, fontSize: 12 }}
             >
-              {t("setupDefaultTarget.advancedLabel")}
+              {t(isAppStore ? "app:store.pickBrowser" : "setupDefaultTarget.advancedLabel")}
             </div>
             <div
               style={{

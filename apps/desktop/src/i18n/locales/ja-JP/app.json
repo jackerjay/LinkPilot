@@ -16,5 +16,24 @@
   "updates": {
     "tag": "更新",
     "checksumMissing": "このリリースには macOS DMG の checksums.txt エントリがないため、未検証のインストーラーの自動ダウンロードを拒否しました。"
+  },
+  "store": {
+    "title": "App Store 版",
+    "description": "ブラウザ単位でリンクを振り分けます。プロファイルの指定、ブラウザデータへのアクセス、プライベートモードや新規ウィンドウの制御は行いません。設定で既定の転送先を選んでください。",
+    "updates": "アップデートは App Store から提供されます。この版では CLI、外部バックグラウンドサービス、LaunchAgent を利用できません。",
+    "engine": "ルーティングエンジン",
+    "browserCount": "ブラウザ {{browsers}} 個",
+    "settingsSubtitle": "既定のブラウザ、転送先、外観、ローカルの操作履歴。",
+    "overviewSubtitle": "ルーティングエンジンの状態と最近の判定。",
+    "emptyHint": "LinkPilot でリンクを開くと、ここに振り分けの履歴が表示されます。",
+    "pickBrowser": "または一覧からブラウザを選択",
+    "pickerDescription": "ブラウザ選択画面をプレビューし、選択したブラウザにテストリンクを送信します。",
+    "engineRunning": "ルーティングエンジンは実行中です",
+    "engineUnavailable": "ルーティングエンジンを利用できません",
+    "openTest": "テストリンクを開く",
+    "testSubtitle": "入力時は判定のみ行います。「テストリンクを開く」を押すとブラウザが起動します。",
+    "imported": "設定を読み込みました。",
+    "exported": "設定を書き出しました。",
+    "defaultBrowserHint": "macOS が変更の確認を求めます。"
   }
 }

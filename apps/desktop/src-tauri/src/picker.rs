@@ -210,7 +210,6 @@ pub fn show_picker(
         .inner_size(WIN_W, WIN_H)
         .min_inner_size(WIN_W, WIN_H)
         .max_inner_size(WIN_W, WIN_H)
-        .transparent(true)
         // macOS draws a 1px hairline + drop shadow on every window by
         // default. With apply_glass we used to cover that with a 16px
         // rounded NSVisualEffectView, so the shadow traced the rounded
@@ -231,6 +230,10 @@ pub fn show_picker(
         // fullscreen-auxiliary, and macOS pins it there.
         .visible(false)
         .focused(true);
+    #[cfg(not(feature = "app-store"))]
+    {
+        builder = builder.transparent(true);
+    }
     match center_position_on_cursor_monitor(app, WIN_W, WIN_H) {
         Some((x, y)) => builder = builder.position(x, y),
         None => builder = builder.center(),
@@ -277,10 +280,9 @@ pub fn show_picker(
 
     // Sync blocking wait — we're a worker thread, this doesn't tie up
     // the Tauri main event loop.
-    let result = match rx.recv_timeout(Duration::from_secs(WINDOW_TIMEOUT_SECS)) {
-        Ok(v) => v,
-        Err(_) => None,
-    };
+    let result = rx
+        .recv_timeout(Duration::from_secs(WINDOW_TIMEOUT_SECS))
+        .unwrap_or_default();
 
     if let Some(win) = app.get_webview_window(WINDOW_LABEL) {
         let _ = win.close();

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "LinkPilot Store",
+  "identifier": "app.linkpilot.store",
+  "build": {
+    "frontendDist": "../dist-store",
+    "beforeBuildCommand": "npm run build -- --outDir dist-store"
+  },
+  "app": {
+    "macOSPrivateApi": false,
+    "security": {
+      "capabilities": ["store"],
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "targets": ["app"],
+    "category": "Utility",
+    "resources": {
+      "PrivacyInfo.xcprivacy": "PrivacyInfo.xcprivacy"
+    },
+    "macOS": {
+      "entitlements": "Entitlements.store.plist",
+      "infoPlist": "Info.store.plist"
+    }
+  }
+}

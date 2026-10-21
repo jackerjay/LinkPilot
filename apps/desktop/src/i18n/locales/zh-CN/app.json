@@ -16,5 +16,24 @@
   "updates": {
     "tag": "更新",
     "checksumMissing": "该发行版缺少 macOS DMG 的 checksums.txt 校验项；拒绝自动下载未经校验的安装包。"
+  },
+  "store": {
+    "title": "App Store 版",
+    "description": "按浏览器路由链接，不指定 profile、不请求浏览器数据权限，也不控制无痕模式和新窗口。请在设置中选择默认路由浏览器。",
+    "updates": "更新由 App Store 提供。本版不提供 CLI 安装、外部后台服务和 LaunchAgent。",
+    "engine": "路由引擎",
+    "browserCount": "{{browsers}} 个浏览器",
+    "settingsSubtitle": "默认浏览器、路由目标、外观和本地行为记录。",
+    "overviewSubtitle": "路由引擎状态和最近的路由决策。",
+    "emptyHint": "通过 LinkPilot 打开链接后，路由记录会显示在这里。",
+    "pickBrowser": "或从列表中选择浏览器",
+    "pickerDescription": "预览浏览器选择器，并将测试链接发送到选中的浏览器。",
+    "engineRunning": "路由引擎正在运行",
+    "engineUnavailable": "路由引擎不可用",
+    "openTest": "打开测试链接",
+    "testSubtitle": "输入时仅计算路由结果；点击“打开测试链接”才会启动浏览器。",
+    "imported": "配置已导入。",
+    "exported": "配置已导出。",
+    "defaultBrowserHint": "macOS 会显示确认弹窗。"
   }
 }

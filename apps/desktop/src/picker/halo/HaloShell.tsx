@@ -19,6 +19,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Check, Copy, Scissors } from "lucide-react";
 import { AppIcon } from "@/components/AppIcon";
+import { isAppStore } from "@/lib/distribution";
 import {
   DEFAULT_HALO_GEOMETRY,
   type HaloGeometry,
@@ -526,6 +527,7 @@ export function HaloShell({
       </div>
 
       <div className="pk-pop-foot">
+        {!isAppStore && <>
         <span className="pk-foot-group">
           <span className="pk-kbd">{SUMMON_KEY_LABEL}</span>{" "}
           {t("halo.footer.summon")}
@@ -537,6 +539,7 @@ export function HaloShell({
         <span className="pk-foot-group">
           <span className="pk-kbd">⏎</span> {t("halo.footer.default")}
         </span>
+        </>}
         <span className="pk-foot-group">
           <span className="pk-kbd">C</span> {t("halo.footer.copy")}
         </span>

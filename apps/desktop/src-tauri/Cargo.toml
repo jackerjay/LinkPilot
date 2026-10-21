@@ -6,6 +6,13 @@ rust-version.workspace = true
 license.workspace = true
 description = "LinkPilot desktop app — Tauri shell hosting the daemon, tray, and config UI."
 
+[features]
+# Cargo owns private window API selection. Keep it out of Tauri's automatic
+# dependency-feature rewriting so plain cargo check and Store builds both work.
+default = ["direct-distribution"]
+direct-distribution = ["tauri/macos-private-api", "dep:window-vibrancy"]
+app-store = ["linkpilot-platform-mac/app-store"]
+
 [lib]
 name = "linkpilot_desktop"
 path = "src/lib.rs"
@@ -27,7 +34,7 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 url = { workspace = true }
-tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-deep-link = "2"
 tauri-plugin-opener = "2"
 base64 = "0.22"
@@ -35,7 +42,7 @@ base64 = "0.22"
 [target.'cfg(target_os = "macos")'.dependencies]
 linkpilot-platform-mac = { workspace = true }
 # Translucent + frosted-glass background for the picker window.
-window-vibrancy = "0.6"
+window-vibrancy = { version = "0.6", optional = true }
 # Raw NSWindow message sends for the picker — sets the collection
 # behavior so the window can float over a full-screen Space, and
 # raises the level above floating apps.
