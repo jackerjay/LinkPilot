@@ -53,8 +53,9 @@ macOS では、LinkPilot はインストール済みの以下のブラウザを�
 
 ## インストール
 
-現在の release artifacts は署名されていません。macOS は初回起動時に quarantine
-を付与する場合があります。必要に応じて、インストール後に quarantine フラグを削除してください。
+v0.5.9 以降の macOS 配布物は Developer ID で署名され、Apple の公証を受けています。
+インストール後はそのまま開けます。quarantine の削除は不要です。
+管理者向けの設定は[リリース署名の認証情報](docs/macos-signing.md)を参照してください。
 
 ### Homebrew（推奨）
 
@@ -63,9 +64,7 @@ LinkPilot は専用 tap `jackerjay/homebrew-linkpilot` で配布しています�
 ```sh
 brew tap jackerjay/linkpilot
 
-# GUI アプリ — LinkPilot.app を /Applications に配置します。ビルドは未署名のため、
-# cask の postflight が quarantine フラグを自動で外します（postflight が shell
-# コマンドを実行するので、初回のみ Homebrew が tap-trust の確認を表示します）。
+# GUI アプリ — 署名・公証済みの LinkPilot.app を /Applications に配置します。
 brew install --cask jackerjay/linkpilot/linkpilot
 
 # CLI のみ — `lpt` と `linkpilot-daemon` を PATH に入れます。
@@ -87,7 +86,6 @@ curl -L "https://github.com/jackerjay/LinkPilot/releases/latest/download/LinkPil
 hdiutil attach LinkPilot.dmg
 cp -R "/Volumes/LinkPilot/LinkPilot.app" /Applications/
 hdiutil detach "/Volumes/LinkPilot"
-xattr -dr com.apple.quarantine /Applications/LinkPilot.app
 open /Applications/LinkPilot.app
 ```
 

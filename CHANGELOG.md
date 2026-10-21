@@ -6,6 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.9] — 2026-10-21
+
+### Fixed
+
+- **Browser profile permission recovery.** When macOS denies access to a
+  browser's profile data, Browsers and Settings show a browser-specific
+  recovery dialog with a link to Files & Folders privacy settings and a
+  rescan action. Permission failures no longer look like empty profiles.
+- **Local app signing.** The macOS bundle script signs the final patched
+  app and its embedded CLI and daemon, then verifies the complete seal.
+
+### Changed
+
+- **Signed and notarized macOS releases.** Both Apple Silicon and Intel
+  downloads use Developer ID signing and Apple notarization. App and DMG
+  tickets are stapled and Gatekeeper acceptance is checked before release.
+  Signing credentials remain in GitHub Actions secrets; releases fail if
+  credentials, signing, or notarization are invalid.
+
 ## [0.5.8] — 2026-06-10
 
 ### Added
