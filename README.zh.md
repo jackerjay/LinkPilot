@@ -53,7 +53,7 @@ LinkPilot 当前聚焦 macOS。
 
 ## 安装
 
-从 v0.5.9 起，macOS 发布产物使用 Developer ID 签名并通过 Apple 公证。
+从 v0.5.10 起，macOS 发布产物使用 Developer ID 签名并通过 Apple 公证。
 安装后直接打开，无需移除 quarantine。维护者配置见[发布签名凭据](docs/macos-signing.md)。
 
 ### Homebrew（推荐）

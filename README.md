@@ -64,7 +64,7 @@ On macOS, LinkPilot auto-detects these installed browsers:
 
 ## Install
 
-Releases from v0.5.9 use Developer ID signing and Apple notarization.
+Releases from v0.5.10 use Developer ID signing and Apple notarization.
 Open the installed app normally; removing quarantine is not required.
 For maintainer setup, see [release signing secrets](docs/macos-signing.md).
 

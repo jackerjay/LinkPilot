@@ -56,7 +56,8 @@ Gatekeeper verification may require network access.
 Existing published releases (including v0.5.8) remain unsigned. Immutable
 GitHub Release assets cannot be replaced; ship a new version and tag to
 distribute the fix. Update Homebrew versions and checksums to that new release
-after publication. The current v0.5.8 cask still handles its unsigned assets.
+after publication. From v0.5.10, the cask preserves quarantine and relies on
+the signed app and its stapled notarization ticket.
 
 `npm run bundle:mac` remains a separate local build: it can select your Apple
 Development identity and does not submit anything to Apple.
