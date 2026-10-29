@@ -571,11 +571,14 @@ export function SettingsPage({
           />
         </div>
         </>}
-        <div className="mac-row">
-          <span className="grow mac-row-label">{t("general.configFile")}</span>
+        <div
+          className="mac-row"
+          style={{ alignItems: "flex-start", flexDirection: "column", gap: 4 }}
+        >
+          <span className="mac-row-label">{t("general.configFile")}</span>
           <span
             className="select-text mac-mono mac-muted"
-            style={{ fontSize: 11 }}
+            style={{ fontSize: 11, overflowWrap: "anywhere", width: "100%" }}
             title={configPath ?? undefined}
           >
             {configPath ?? "…"}
