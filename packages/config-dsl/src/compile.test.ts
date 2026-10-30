@@ -195,6 +195,7 @@ describe("compile()", () => {
       record_query_strings: false,
       // The daemon defaults this true; the DSL preserves that.
       smart_routing_enabled: true,
+      ask_quick_open_modifier: "command",
     });
   });
 
@@ -208,6 +209,7 @@ describe("compile()", () => {
           historyRetentionDays: 30,
           recordQueryStrings: true,
           smartRoutingEnabled: false,
+          askQuickOpenModifier: "option",
         },
       }),
     );
@@ -216,7 +218,17 @@ describe("compile()", () => {
       history_retention_days: 30,
       record_query_strings: true,
       smart_routing_enabled: false,
+      ask_quick_open_modifier: "option",
     });
+  });
+
+  test("settings: Ask quick open can be disabled", () => {
+    const out = compile(defineConfig({
+      defaultTarget: browser.arc(),
+      rules: [],
+      settings: { askQuickOpenModifier: "off" },
+    }));
+    expect(out.settings.ask_quick_open_modifier).toBe("off");
   });
 
   test("RouteBuilder modifiers stick", () => {

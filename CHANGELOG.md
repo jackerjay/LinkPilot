@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.11] — 2026-10-30
+
+### Added
+
+- **Ask quick open.** Hold Command on a link that would show the Ask picker
+  to open the configured default target directly. Settings, CLI, and the
+  TypeScript DSL can select Command, Option, Control, Shift, or Off. Missing
+  or failed default targets still fall back to the picker.
+
 ## [0.5.10] — 2026-10-21
 
 ### Fixed

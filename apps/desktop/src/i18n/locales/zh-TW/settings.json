@@ -21,6 +21,11 @@
     "label": "預設目標",
     "description": "<strong>沒有規則命中</strong>時連結開啟的位置。修改會重寫設定檔。"
   },
+  "quickOpen": {
+    "label": "Ask 快速開啟",
+    "description": "按住此鍵點選原本會顯示 Ask 選擇器的連結，直接使用上方預設目標開啟。預設目標無法使用時，仍顯示選擇器。",
+    "off": "關閉"
+  },
   "appearance": {
     "card": "外觀",
     "themeLabel": "主題",

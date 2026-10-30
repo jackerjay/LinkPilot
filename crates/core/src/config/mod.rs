@@ -146,6 +146,10 @@ pub struct Settings {
     /// most macOS-native ("baseline") — Bezel and Crown are opt-in.
     #[serde(default)]
     pub picker_style: PickerStyle,
+    /// Hold this modifier while opening an Ask link to use `default_target`
+    /// without showing the picker. Off disables the shortcut.
+    #[serde(default)]
+    pub ask_quick_open_modifier: AskQuickOpenModifier,
     /// User-customized visible profile order, per browser id. The picker
     /// uses this to place profiles in specific wheel slots — important
     /// because keyboard 1–9 shortcuts follow position order.
@@ -201,6 +205,18 @@ pub enum PickerStyle {
     Crown,
 }
 
+/// Modifier used for Ask's quick-open gesture on macOS.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AskQuickOpenModifier {
+    Off,
+    #[default]
+    Command,
+    Option,
+    Control,
+    Shift,
+}
+
 /// Persisted UI language preference. Frontend renders the actual
 /// strings; core stores the choice and exposes it via IPC + CLI so
 /// `lpt settings language` and the Settings page agree.
@@ -245,6 +261,7 @@ impl Default for Settings {
             auto_check_updates: true,
             smart_routing_enabled: true,
             picker_style: PickerStyle::Frosted,
+            ask_quick_open_modifier: AskQuickOpenModifier::default(),
             profile_orders: BTreeMap::new(),
             disabled_browsers: Vec::new(),
             language: LanguagePref::System,
@@ -272,4 +289,47 @@ pub enum WriterId {
     File,
     Cli,
     TsCompiled,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_settings_default_to_command_quick_open() {
+        let settings: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(
+            settings.ask_quick_open_modifier,
+            AskQuickOpenModifier::Command
+        );
+        assert_eq!(
+            Settings::default().ask_quick_open_modifier,
+            settings.ask_quick_open_modifier
+        );
+    }
+
+    #[test]
+    fn quick_open_modifier_round_trips_and_rejects_unknown_keys() {
+        for (value, modifier) in [
+            ("off", AskQuickOpenModifier::Off),
+            ("command", AskQuickOpenModifier::Command),
+            ("option", AskQuickOpenModifier::Option),
+            ("control", AskQuickOpenModifier::Control),
+            ("shift", AskQuickOpenModifier::Shift),
+        ] {
+            let settings: Settings = serde_json::from_value(serde_json::json!({
+                "ask_quick_open_modifier": value
+            }))
+            .unwrap();
+            assert_eq!(settings.ask_quick_open_modifier, modifier);
+            assert_eq!(
+                serde_json::to_value(settings).unwrap()["ask_quick_open_modifier"],
+                value
+            );
+        }
+        assert!(serde_json::from_value::<Settings>(serde_json::json!({
+            "ask_quick_open_modifier": "caps-lock"
+        }))
+        .is_err());
+    }
 }

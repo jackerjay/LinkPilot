@@ -13,6 +13,7 @@ use crate::state::AppState;
 /// the resulting decision. Any errors are logged and a `route-failed` event
 /// is emitted so the GUI can surface them.
 pub fn dispatch_system_url(state: &AppState, app: &AppHandle, url: String) {
+    let shortcut_pressed = dispatch::ask_shortcut_pressed(state);
     // The Apple Event delivered by tauri-plugin-deep-link doesn't carry the
     // sender, so we ask the platform crate's opener detector — on macOS that
     // returns the most-recently-active app other than LinkPilot itself.
@@ -45,7 +46,7 @@ pub fn dispatch_system_url(state: &AppState, app: &AppHandle, url: String) {
     state.history.log(record.clone());
     let _ = app.emit("route-logged", &record);
 
-    match dispatch::execute(app, state, &decision, &url) {
+    match dispatch::execute(app, state, &decision, &url, shortcut_pressed) {
         LaunchOutcome::Launched(_) | LaunchOutcome::Skipped | LaunchOutcome::Pending => {}
         LaunchOutcome::Failed(err) => {
             tracing::error!(%err, %url, "url_handler: launch failed");

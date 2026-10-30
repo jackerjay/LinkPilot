@@ -21,6 +21,11 @@
     "label": "Default target",
     "description": "Where to open links when <strong>no rule matches</strong>. Changing this rewrites the config file."
   },
+  "quickOpen": {
+    "label": "Ask quick open",
+    "description": "Hold this key while clicking a link that would show the Ask picker to open it in the default target above. If the default target is unavailable, the picker still appears.",
+    "off": "Off"
+  },
   "appearance": {
     "card": "Appearance",
     "themeLabel": "Theme",

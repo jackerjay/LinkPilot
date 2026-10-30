@@ -357,7 +357,14 @@ pub fn route_open(
     app: AppHandle,
     state: State<'_, AppState>,
     request: RouteRequest,
+    modifiers: Option<dispatch::ClickModifiers>,
 ) -> Result<RoutingDecision, String> {
+    let shortcut_pressed = match modifiers {
+        Some(keys) => state
+            .config
+            .with_document(|doc| keys.is_pressed(doc.settings.ask_quick_open_modifier)),
+        None => dispatch::ask_shortcut_pressed(state.inner()),
+    };
     let context = build_context(&request);
     let doc = state.config.document();
     let explained = Router::new(&doc).evaluate_explained(&context);
@@ -367,7 +374,13 @@ pub fn route_open(
     state.history.log(record.clone());
     let _ = app.emit("route-logged", &record);
 
-    match dispatch::execute(&app, state.inner(), &decision, &request.url) {
+    match dispatch::execute(
+        &app,
+        state.inner(),
+        &decision,
+        &request.url,
+        shortcut_pressed,
+    ) {
         LaunchOutcome::Launched(_) | LaunchOutcome::Skipped | LaunchOutcome::Pending => {}
         LaunchOutcome::Failed(err) => return Err(err),
     }

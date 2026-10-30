@@ -60,6 +60,8 @@ export interface DslSettings {
   historyRetentionDays?: number | null;
   recordQueryStrings?: boolean;
   smartRoutingEnabled?: boolean;
+  /** Modifier held on Ask links to use the default target. Defaults to command. */
+  askQuickOpenModifier?: "off" | "command" | "option" | "control" | "shift";
 }
 
 export interface DslConfig {

@@ -109,6 +109,8 @@ export interface Settings {
    *  Settings page or `lpt settings picker-style …`; the picker
    *  window reads it once on open. */
   picker_style: PickerStyle;
+  /** Hold this modifier on Ask links to open the default target directly. */
+  ask_quick_open_modifier: AskQuickOpenModifier;
   /** Per-browser visible profile ordering. Keys are browser ids ("chrome",
    *  "edge", "arc"). Empty/missing means default sort. A non-empty list is
    *  the complete visible Halo inventory; profiles missing from the list are
@@ -147,6 +149,8 @@ export interface Suggestion {
 
 /** Mirrors `core::config::PickerStyle`. */
 export type PickerStyle = "frosted" | "bezel" | "crown";
+
+export type AskQuickOpenModifier = "off" | "command" | "option" | "control" | "shift";
 
 /** Mirrors `core::config::LanguagePref`. Kept in sync with
  *  `src/i18n/languages.ts::LanguagePref`. */

@@ -34,6 +34,13 @@ export interface RouteRequest {
   from_profile?: string | null;
 }
 
+export interface ClickModifiers {
+  command: boolean;
+  option: boolean;
+  control: boolean;
+  shift: boolean;
+}
+
 export const ipc = {
   configGet: () => invoke<ConfigDocument>("config_get"),
   configReplace: (doc: ConfigDocument) =>
@@ -65,8 +72,8 @@ export const ipc = {
 
   routeEvaluate: (request: RouteRequest) =>
     invoke<Explained>("route_evaluate", { request }),
-  routeOpen: (request: RouteRequest) =>
-    invoke<RoutingDecision>("route_open", { request }),
+  routeOpen: (request: RouteRequest, modifiers?: ClickModifiers) =>
+    invoke<RoutingDecision>("route_open", { request, modifiers }),
   routeHistory: (limit = 100) =>
     invoke<RouteRecord[]>("route_history", { limit }),
 

@@ -33,6 +33,8 @@ LinkPilot 当前聚焦 macOS。
 - 按 host、path、来源应用、来源浏览器、来源 profile 路由 URL。
 - 常见 Chromium / Firefox 系浏览器、Arc、Safari 类应用路由和自定义浏览器的识别与 profile 枚举。
 - Ask picker：Halo profile 选择环（Frosted / Bezel / Crown 三种风格）、键盘快捷键、每浏览器 profile 排序、暗色模式，以及 Settings 里的真实测试 URL。
+- Ask 快速打开：按住 Command 点击 Ask 链接，直接使用配置的默认目标。在「设置 → 默认目标」中可改用 Option、Control、Shift 或关闭；默认目标不可用时仍显示选择器。
+  请保持按键直到 LinkPilot 收到链接；应用尚未启动时也需保持。
 - 界面语言支持 English、简体中文、繁體中文、日本語，并可选择跟随系统语言。
 - 自动检查 GitHub Release 更新，下载的 DMG 会校验 SHA-256，再由用户在 Settings 中手动打开安装包。
 - 后台 daemon 与 Unix socket IPC，主窗口关闭后仍可继续路由。
@@ -192,6 +194,7 @@ lpt settings smart-routing off
 lpt settings launch-at-login on
 lpt settings auto-updates off
 lpt settings picker-style crown        # frosted | bezel | crown
+lpt settings ask-quick-open command    # command | option | control | shift | off
 lpt settings language zh-CN            # system | en | zh-CN | zh-TW | ja-JP
 lpt settings history-retention 30
 
