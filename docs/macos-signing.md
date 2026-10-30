@@ -62,6 +62,26 @@ the signed app and its stapled notarization ticket.
 `npm run bundle:mac` remains a separate local build: it can select your Apple
 Development identity and does not submit anything to Apple.
 
+## Recovering an interrupted release
+
+Ticket delivery can fail with `stapler` exit code 68 after Apple has already
+accepted the archive. The helper retries only that error, up to five times
+with a five-second delay, for both stapling and validation. Rejected
+submissions and other ticket errors still stop publication.
+
+The Release workflow also supports a manual run from `main`. Set `tag` to
+the existing release tag. Application sources come from that tag; the
+notarization helper comes from the workflow commit so an older failed tag
+can use a corrected delivery helper without moving the tag.
+
+If Apple Silicon finished successfully, set `reuse_arm_run_id` to its
+original workflow run ID. Recovery cross-compiles only Intel on an Apple
+Silicon runner, then reuses the ARM artifact after verifying both builds
+have the same source commit. Regular tag releases still build each
+architecture natively. Cargo caches are saved on failure so a later retry
+can reuse compiled dependencies. All signing, notarization, ticket, and
+Gatekeeper checks remain required before the combined release is published.
+
 ## References
 
 - [Apple: Developer ID certificates](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/)

@@ -4,30 +4,66 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build
+        type: string
+        required: true
+      reuse_arm_run_id:
+        description: Optional run whose Apple Silicon artifact should be reused
+        type: string
+        required: false
 
 permissions:
   contents: write
+  actions: read
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+  NOTARIZE_SCRIPT: ${{ github.event_name == 'workflow_dispatch' && '.release-tools/apps/desktop/scripts/notarize-mac.sh' || 'apps/desktop/scripts/notarize-mac.sh' }}
 
 jobs:
   build-macos:
     name: Build macOS (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
     strategy:
       # Don't abort the other arch on a single failure — both legs are
       # informative for triage. The `publish` job has `needs:` on the
       # whole matrix, so a half-green run still won't publish.
       fail-fast: false
       matrix:
-        include:
-          - arch: aarch64
-            target: aarch64-apple-darwin
-            runner: macos-14    # Apple-Silicon GitHub runner
-          - arch: x86_64
-            target: x86_64-apple-darwin
-            runner: macos-15-intel    # Intel GitHub runner (macos-13 retired 2025-12)
+        # Normal releases build each architecture natively. Recovery reuses
+        # the completed ARM artifact and cross-compiles Intel on Apple Silicon.
+        include: ${{ fromJSON(inputs.reuse_arm_run_id && '[{"arch":"x86_64","target":"x86_64-apple-darwin","runner":"macos-14"}]' || '[{"arch":"aarch64","target":"aarch64-apple-darwin","runner":"macos-14"},{"arch":"x86_64","target":"x86_64-apple-darwin","runner":"macos-15-intel"}]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Validate release tag and record source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          node -e 'if (require("./apps/desktop/package.json").version !== process.env.RELEASE_TAG.slice(1)) process.exit(1)'
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # A failed tag keeps its original source. Only the signing helper comes
+      # from this workflow's commit, so recovery can fix delivery retries.
+      - name: Checkout recovery signing helper
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .release-tools
+          sparse-checkout: apps/desktop/scripts/notarize-mac.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
 
       - name: Import Developer ID and validate notarization credentials
         shell: bash
@@ -97,6 +133,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: macos-${{ matrix.arch }}
+          cache-on-failure: true
 
       - name: Install desktop dependencies
         working-directory: apps/desktop
@@ -163,7 +200,7 @@ jobs:
             --options runtime --timestamp "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
           ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/LinkPilot.zip"
-          bash apps/desktop/scripts/notarize-mac.sh "$RUNNER_TEMP/LinkPilot.zip" "$APP"
+          bash "$NOTARIZE_SCRIPT" "$RUNNER_TEMP/LinkPilot.zip" "$APP"
           spctl --assess --type execute --verbose=2 "$APP"
 
       # DMG built with create-dmg, not `tauri build --bundles dmg` (which
@@ -183,7 +220,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${RELEASE_TAG#v}"
           brew install create-dmg
           STAGE="$(mktemp -d)"
           cp -R target/${{ matrix.target }}/release/bundle/macos/LinkPilot.app "$STAGE/"
@@ -204,10 +241,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DMG="dist/release/LinkPilot_${GITHUB_REF_NAME#v}_${{ matrix.arch }}.dmg"
+          DMG="dist/release/LinkPilot_${RELEASE_TAG#v}_${{ matrix.arch }}.dmg"
           codesign --force --sign "$APPLE_SIGNING_IDENTITY" --keychain "$APPLE_KEYCHAIN" \
             --timestamp "$DMG"
-          bash apps/desktop/scripts/notarize-mac.sh "$DMG" "$DMG"
+          bash "$NOTARIZE_SCRIPT" "$DMG" "$DMG"
           codesign --verify --strict --verbose=2 "$DMG"
           spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
 
@@ -268,10 +305,35 @@ jobs:
     needs: build-macos
     runs-on: ubuntu-latest
     steps:
+      - name: Validate reused artifact source
+        if: inputs.reuse_arm_run_id
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_RUN_ID: ${{ inputs.reuse_arm_run_id }}
+          EXPECTED_SHA: ${{ needs.build-macos.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]
+          SOURCE_SHA="$(gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN_ID" --jq .head_sha)"
+          if [[ "$SOURCE_SHA" != "$EXPECTED_SHA" ]]; then
+            echo "::error::Reused ARM artifact was built from a different source commit."
+            exit 1
+          fi
+
       - name: Download arch artifacts
         uses: actions/download-artifact@v8
         with:
           path: dist/incoming
+
+      - name: Download previously verified ARM artifact
+        if: inputs.reuse_arm_run_id
+        uses: actions/download-artifact@v8
+        with:
+          name: release-aarch64
+          path: dist/incoming/release-aarch64
+          run-id: ${{ inputs.reuse_arm_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Combine artifacts + unified checksums
         shell: bash
@@ -295,8 +357,10 @@ jobs:
       - name: Create GitHub Release (draft, with assets)
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ needs.build-macos.outputs.source_sha }}
           draft: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
           generate_release_notes: true
           files: dist/release/*
 
@@ -308,8 +372,8 @@ jobs:
           # and `gh release edit` dies with "not a git repository".
           # GH_REPO tells gh which repo to act on without a working tree.
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
-          IS_PRERELEASE: ${{ contains(github.ref_name, '-') }}
+          TAG: ${{ env.RELEASE_TAG }}
+          IS_PRERELEASE: ${{ contains(env.RELEASE_TAG, '-') }}
         run: |
           set -euo pipefail
           gh release edit "$TAG" \

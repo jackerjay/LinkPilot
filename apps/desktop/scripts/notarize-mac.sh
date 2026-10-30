@@ -30,5 +30,23 @@ if [[ "$SUBMIT_STATUS" != 0 ]] || ! node -e '
   echo "Notarization failed; release publication stopped." >&2
   exit 1
 fi
-xcrun stapler staple "$2"
-xcrun stapler validate "$2"
+retry_stapler() {
+  local action="$1" target="$2" stapler_status stapler_attempt
+  for stapler_attempt in 1 2 3 4 5; do
+    if xcrun stapler "$action" "$target"; then
+      return 0
+    else
+      stapler_status=$?
+    fi
+    # CloudKit ticket delivery can lose its connection after Apple has
+    # accepted the submission. Never retry a permanent signature error.
+    if [[ "$stapler_status" != 68 || "$stapler_attempt" == 5 ]]; then
+      echo "stapler $action failed after $stapler_attempt attempt(s); publication stopped." >&2
+      return "$stapler_status"
+    fi
+    echo "stapler $action returned 68; retrying after 5s ($stapler_attempt/5)." >&2
+    sleep 5
+  done
+}
+retry_stapler staple "$2"
+retry_stapler validate "$2"

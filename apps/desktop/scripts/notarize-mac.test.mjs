@@ -17,7 +17,11 @@ if (args[1] === 'submit') {
   process.exit(Number(process.env.TEST_SUBMIT_EXIT));
 }
 if (args[1] === 'log') fs.writeFileSync(args.at(-1), JSON.stringify({ issues: [] }));
-if (args[0] === 'stapler' && args[1] === process.env.TEST_STAPLER_FAIL) process.exit(1);
+if (args[0] === 'stapler' && args[1] === process.env.TEST_STAPLER_FAIL) {
+  const attempts = fs.readFileSync(path.join(process.env.TEST_ROOT, 'calls'), 'utf8')
+    .trim().split('\\n').map(JSON.parse).filter(call => call[0] === 'stapler' && call[1] === args[1]).length;
+  if (attempts <= Number(process.env.TEST_STAPLER_FAILURES)) process.exit(Number(process.env.TEST_STAPLER_EXIT));
+}
 `;
 
 function run(t, env = {}) {
@@ -26,6 +30,7 @@ function run(t, env = {}) {
   const bin = join(root, 'bin');
   mkdirSync(bin);
   writeFileSync(join(bin, 'xcrun'), fakeXcrun, { mode: 0o755 });
+  writeFileSync(join(bin, 'sleep'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
   const result = spawnSync('/bin/bash', [script, 'LinkPilot.zip', 'LinkPilot.app'], {
     encoding: 'utf8',
     env: {
@@ -36,6 +41,8 @@ function run(t, env = {}) {
       TEST_STATUS: 'Accepted',
       TEST_SUBMIT_EXIT: '0',
       TEST_STAPLER_FAIL: '',
+      TEST_STAPLER_EXIT: '1',
+      TEST_STAPLER_FAILURES: 'Infinity',
       ...env,
     },
   });
@@ -72,5 +79,26 @@ test('stapling or ticket validation failures fail the release', t => {
     const result = run(t, { TEST_STAPLER_FAIL: step });
     assert.notEqual(result.status, 0);
     assert.equal(result.calls.at(-1)[1], step);
+    assert.equal(result.calls.filter(args => args[0] === 'stapler' && args[1] === step).length, 1);
+  }
+});
+
+test('transient ticket delivery errors retry the affected step without resubmitting', t => {
+  for (const step of ['staple', 'validate']) {
+    const result = run(t, { TEST_STAPLER_FAIL: step, TEST_STAPLER_EXIT: '68', TEST_STAPLER_FAILURES: '2' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.calls.filter(args => args[1] === 'submit').length, 1);
+    assert.equal(result.calls.filter(args => args[0] === 'stapler' && args[1] === step).length, 3);
+    assert.equal(result.calls.at(-1)[1], 'validate');
+  }
+});
+
+test('persistent ticket delivery errors stop after five attempts', t => {
+  for (const step of ['staple', 'validate']) {
+    const result = run(t, { TEST_STAPLER_FAIL: step, TEST_STAPLER_EXIT: '68' });
+    assert.equal(result.status, 68);
+    assert.equal(result.calls.filter(args => args[0] === 'stapler' && args[1] === step).length, 5);
+    assert.equal(result.calls.at(-1)[1], step);
+    assert.match(result.stderr, /publication stopped/);
   }
 });
