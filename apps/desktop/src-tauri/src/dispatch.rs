@@ -4,6 +4,7 @@
 use std::collections::{HashMap, HashSet};
 
 use linkpilot_core::browser::{apply_profile_order, BrowserTarget};
+use linkpilot_core::config::AskQuickOpenModifier;
 use linkpilot_core::platform::UrlLauncher;
 use linkpilot_core::routing::RoutingDecision;
 use tauri::AppHandle;
@@ -36,6 +37,56 @@ enum OpenPlan {
     Ask,
 }
 
+/// Preserve an in-app click's keys across the asynchronous renderer handoff.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(default)]
+pub struct ClickModifiers {
+    command: bool,
+    option: bool,
+    control: bool,
+    shift: bool,
+}
+
+impl ClickModifiers {
+    pub fn is_pressed(&self, modifier: AskQuickOpenModifier) -> bool {
+        match modifier {
+            AskQuickOpenModifier::Off => false,
+            AskQuickOpenModifier::Command => self.command,
+            AskQuickOpenModifier::Option => self.option,
+            AskQuickOpenModifier::Control => self.control,
+            AskQuickOpenModifier::Shift => self.shift,
+        }
+    }
+}
+
+/// Capture at the URL entry point, before routing or profile discovery can
+/// outlive the user's key press. Never read modifier state on a picker worker.
+pub fn ask_shortcut_pressed(state: &AppState) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        let modifier = state
+            .config
+            .with_document(|doc| doc.settings.ask_quick_open_modifier);
+        linkpilot_platform_mac::keyboard::is_modifier_pressed(modifier)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = state;
+        false
+    }
+}
+
+fn ask_shortcut_target<'a>(
+    decision: &RoutingDecision,
+    default_target: &'a BrowserTarget,
+    shortcut_pressed: bool,
+) -> Option<&'a BrowserTarget> {
+    (shortcut_pressed
+        && matches!(decision, RoutingDecision::Ask { .. })
+        && default_target.browser.0 != "system")
+        .then_some(default_target)
+}
+
 /// Carry out the launch side of a routing decision. Pure plumbing — the
 /// decision is assumed already logged to history by the caller.
 pub fn execute(
@@ -43,6 +94,7 @@ pub fn execute(
     state: &AppState,
     decision: &RoutingDecision,
     raw_url: &str,
+    shortcut_pressed: bool,
 ) -> LaunchOutcome {
     if let Err(error) = crate::distribution::validate_document(&state.config.document()) {
         return LaunchOutcome::Failed(error);
@@ -57,6 +109,23 @@ pub fn execute(
     // default target. dispatch::execute runs once per URL open, which
     // for power users routing many links a minute adds up.
     let default_target = state.config.with_document(|doc| doc.default_target.clone());
+
+    if let Some(target) = ask_shortcut_target(decision, &default_target, shortcut_pressed) {
+        let installed_ids = installed_browser_ids(state);
+        if plan_open_target(target, target, &installed_ids) == OpenPlan::Primary {
+            match open_with_default_fallback(state.platform.url_launcher(), target, target, &parsed)
+            {
+                Ok(launched) => {
+                    tracing::info!(?launched, "dispatch: Ask quick-open — default target");
+                    record_ask_observation(state, raw_url, &launched);
+                    return LaunchOutcome::Launched(launched);
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "dispatch: Ask quick-open failed — showing picker");
+                }
+            }
+        }
+    }
 
     match decision {
         RoutingDecision::Open { target, .. } => {
@@ -374,8 +443,8 @@ fn resolve_ask(
     Some(target)
 }
 
-/// Append a behavior observation when the user resolves an ask
-/// picker. Silently no-ops when `Settings.behavior_log_enabled = false`
+/// Append a behavior observation when the user resolves an ask picker or
+/// quick-opens its default target. Silently no-ops when `Settings.behavior_log_enabled = false`
 /// or when the URL has no parseable host (data: / javascript: / etc.).
 /// Errors are logged and swallowed — losing one observation is never
 /// worth blocking the launch.
@@ -466,6 +535,104 @@ mod tests {
 
     fn installed(ids: &[&str]) -> HashSet<String> {
         ids.iter().map(|id| (*id).to_string()).collect()
+    }
+
+    fn ask() -> RoutingDecision {
+        RoutingDecision::Ask {
+            candidates: Vec::new(),
+            reason: "Ask rule".into(),
+        }
+    }
+
+    #[test]
+    fn ask_shortcut_reads_configured_modifier_from_click_snapshot() {
+        for (key, expected) in [
+            ("command", AskQuickOpenModifier::Command),
+            ("option", AskQuickOpenModifier::Option),
+            ("control", AskQuickOpenModifier::Control),
+            ("shift", AskQuickOpenModifier::Shift),
+        ] {
+            let click: ClickModifiers =
+                serde_json::from_value(serde_json::json!({ (key): true })).unwrap();
+            for modifier in [
+                AskQuickOpenModifier::Off,
+                AskQuickOpenModifier::Command,
+                AskQuickOpenModifier::Option,
+                AskQuickOpenModifier::Control,
+                AskQuickOpenModifier::Shift,
+            ] {
+                assert_eq!(click.is_pressed(modifier), modifier == expected);
+                assert!(!ClickModifiers::default().is_pressed(modifier));
+            }
+        }
+    }
+
+    #[test]
+    fn ask_shortcut_requires_held_key_and_configured_default() {
+        let default_target = BrowserTarget::new(BrowserId::new("safari"));
+        assert!(ask_shortcut_target(&ask(), &default_target, false).is_none());
+        assert!(ask_shortcut_target(&ask(), &default_target, true).is_some());
+        let unconfigured = BrowserTarget::new(BrowserId::new("system"));
+        assert!(ask_shortcut_target(&ask(), &unconfigured, true).is_none());
+    }
+
+    #[test]
+    fn ask_shortcut_never_overrides_other_routing_actions() {
+        let default_target = BrowserTarget::new(BrowserId::new("safari"));
+        for decision in [
+            RoutingDecision::Open {
+                target: BrowserTarget::new(BrowserId::new("chrome")),
+                matched_rule: None,
+                reason: "Open rule".into(),
+            },
+            RoutingDecision::Block {
+                reason: "Block rule".into(),
+            },
+            RoutingDecision::Allow {
+                reason: "Keep source".into(),
+            },
+        ] {
+            assert!(ask_shortcut_target(&decision, &default_target, true).is_none());
+        }
+    }
+
+    #[test]
+    fn ask_shortcut_missing_default_keeps_picker_plan() {
+        let default_target = BrowserTarget::new(BrowserId::new("missing-browser"));
+        let decision = ask();
+        let target = ask_shortcut_target(&decision, &default_target, true).unwrap();
+        assert_eq!(
+            plan_open_target(target, target, &installed(&["safari"])),
+            OpenPlan::Ask
+        );
+    }
+
+    #[test]
+    fn ask_shortcut_launches_configured_target_once() {
+        let launcher = ScriptedLauncher::new(vec![Ok(())]);
+        let default_target = BrowserTarget::new(BrowserId::new("safari"));
+        let decision = ask();
+        let target = ask_shortcut_target(&decision, &default_target, true).unwrap();
+        let launched = open_with_default_fallback(&launcher, target, target, &url()).unwrap();
+        assert_eq!(launched.browser.0, "safari");
+        assert_eq!(launcher.calls().len(), 1);
+    }
+
+    #[cfg(not(feature = "app-store"))]
+    #[test]
+    fn ask_shortcut_preserves_default_profile_and_launch_flags() {
+        let mut default_target = BrowserTarget::new(BrowserId::new("chrome"));
+        default_target.profile = Some("Work".into());
+        default_target.incognito = true;
+        default_target.new_window = true;
+        let decision = ask();
+        let target = ask_shortcut_target(&decision, &default_target, true).unwrap();
+        let launcher = ScriptedLauncher::new(vec![Ok(())]);
+        open_with_default_fallback(&launcher, target, target, &url()).unwrap();
+        let calls = launcher.calls();
+        assert_eq!(calls[0].profile.as_deref(), Some("Work"));
+        assert!(calls[0].incognito);
+        assert!(calls[0].new_window);
     }
 
     #[cfg(all(target_os = "macos", feature = "app-store"))]

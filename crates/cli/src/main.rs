@@ -331,6 +331,9 @@ enum SettingsAction {
     /// Set the visual style of the browser+profile picker wheel.
     /// One of `frosted` (default), `bezel`, or `crown`.
     PickerStyle { value: String },
+    /// Hold a modifier on Ask links to open the default target without a picker.
+    /// One of `command` (default), `option`, `control`, `shift`, or `off`.
+    AskQuickOpen { value: String },
     /// Set the UI display language. One of `system` (default, follow OS),
     /// `en`, `zh-CN`, `zh-TW`, `ja-JP`.
     Language { value: String },
@@ -593,6 +596,20 @@ fn main() -> Result<()> {
                     }
                 };
                 run_settings_set(cli.config, |s| s.picker_style = style)
+            }
+            SettingsAction::AskQuickOpen { value } => {
+                use linkpilot_core::config::AskQuickOpenModifier;
+                let modifier = match value.to_ascii_lowercase().as_str() {
+                    "off" => AskQuickOpenModifier::Off,
+                    "command" => AskQuickOpenModifier::Command,
+                    "option" => AskQuickOpenModifier::Option,
+                    "control" => AskQuickOpenModifier::Control,
+                    "shift" => AskQuickOpenModifier::Shift,
+                    other => bail!(
+                        "unknown Ask quick-open modifier '{other}' (expected command | option | control | shift | off)"
+                    ),
+                };
+                run_settings_set(cli.config, |s| s.ask_quick_open_modifier = modifier)
             }
             SettingsAction::Language { value } => {
                 // Match the on-disk kebab-case serde form so `lpt settings

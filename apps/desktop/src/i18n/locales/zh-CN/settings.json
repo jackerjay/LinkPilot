@@ -21,6 +21,11 @@
     "label": "默认目标",
     "description": "<strong>没有规则命中</strong>时链接打开的位置。修改会重写配置文件。"
   },
+  "quickOpen": {
+    "label": "Ask 快速打开",
+    "description": "按住此键点击原本会弹出 Ask 选择器的链接，直接使用上方默认目标打开。默认目标不可用时，仍显示选择器。",
+    "off": "关闭"
+  },
   "appearance": {
     "card": "外观",
     "themeLabel": "主题",

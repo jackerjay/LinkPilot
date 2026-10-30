@@ -27,11 +27,16 @@ const config = defineConfig({
     route.fromApp("Slack").to(browser.chrome.profile("Work")),
   ],
   workspaces: [{ id: "work", displayName: "Work" }],
-  settings: { smartRoutingEnabled: true },
+  settings: { smartRoutingEnabled: true, askQuickOpenModifier: "command" },
 });
 
 printConfig(config);
 ```
+
+`askQuickOpenModifier` selects the key held on Ask links to open `defaultTarget`
+without showing the picker: `command` (default), `option`, `control`, `shift`, or
+`off`. Other routing actions are unaffected; an unavailable default still shows
+the picker.
 
 Then:
 

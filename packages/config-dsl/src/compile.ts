@@ -56,6 +56,7 @@ function compileSettings(s: DslSettings | undefined): SettingsJson {
     history_retention_days: s?.historyRetentionDays ?? null,
     record_query_strings: s?.recordQueryStrings ?? false,
     smart_routing_enabled: s?.smartRoutingEnabled ?? true,
+    ask_quick_open_modifier: s?.askQuickOpenModifier ?? "command",
   };
 }
 

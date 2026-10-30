@@ -3,7 +3,7 @@ import { isAppStore } from "@/lib/distribution";
 // the daemon evaluates the rules and returns the decision + the full
 // MatcherEval tree, which we render exactly like the Inspector does.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { AppIcon } from "@/components/AppIcon";
 import { AppPickerButton } from "@/components/AppPickerButton";
@@ -61,13 +61,18 @@ export function TestUrlPage({ configEpoch }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
 
-  const openTestLink = async () => {
+  const openTestLink = async (event: MouseEvent<HTMLButtonElement>) => {
     setOpening(true);
     setError(null);
     try {
       await ipc.routeOpen({
         url: url.trim(), from_app: fromApp.trim() || null,
         from_app_bundle_id: fromAppBundleId,
+      }, {
+        command: event.metaKey,
+        option: event.altKey,
+        control: event.ctrlKey,
+        shift: event.shiftKey,
       });
     } catch (error) {
       setError(String(error));
@@ -164,7 +169,7 @@ export function TestUrlPage({ configEpoch }: Props) {
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t("urlPlaceholder")}
             />
-            {isAppStore && <button type="button" className="mac-tbtn primary" disabled={opening || !url.trim()} onClick={() => void openTestLink()}>
+            {isAppStore && <button type="button" className="mac-tbtn primary" disabled={opening || !url.trim()} onClick={(event) => void openTestLink(event)}>
               {t("app:store.openTest")}
             </button>}
           </div>

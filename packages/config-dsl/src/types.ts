@@ -67,6 +67,7 @@ export interface SettingsJson {
   history_retention_days: number | null;
   record_query_strings: boolean;
   smart_routing_enabled: boolean;
+  ask_quick_open_modifier: "off" | "command" | "option" | "control" | "shift";
 }
 
 /** Top-level config document. v0.2 schema_version is 1. */

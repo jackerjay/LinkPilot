@@ -38,6 +38,10 @@ The current app includes:
 - Ask picker with Halo profile wheel (Frosted / Bezel / Crown styles),
   keyboard shortcuts, per-browser profile ordering, dark mode, and a
   Settings test URL flow that opens real browsers.
+- Ask quick open: hold Command while clicking an Ask link to use the configured
+  default target directly. In Settings → Default target, choose Command, Option,
+  Control, Shift, or Off. An unavailable default still shows the picker.
+  Keep the key held until LinkPilot receives the link, including during startup.
 - Localized UI for English, Simplified Chinese, Traditional Chinese, and
   Japanese, with a system-language option.
 - Automatic GitHub Release update checks with SHA-256 verified DMG
@@ -207,6 +211,7 @@ lpt settings smart-routing off
 lpt settings launch-at-login on
 lpt settings auto-updates off
 lpt settings picker-style crown        # frosted | bezel | crown
+lpt settings ask-quick-open command    # command | option | control | shift | off
 lpt settings language zh-CN            # system | en | zh-CN | zh-TW | ja-JP
 lpt settings history-retention 30
 
