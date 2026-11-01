@@ -64,6 +64,7 @@ export interface WorkspaceJson {
 
 export interface SettingsJson {
   launch_at_login: boolean;
+  auto_check_updates: boolean;
   history_retention_days: number | null;
   record_query_strings: boolean;
   smart_routing_enabled: boolean;

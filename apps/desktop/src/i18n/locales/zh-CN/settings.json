@@ -47,9 +47,10 @@
     "checkNow": "检查更新",
     "checking": "检查中…",
     "downloading": "下载中…",
+    "installRestart": "安装并重启",
     "openInstaller": "打开安装包",
     "openRelease": "打开发布页",
-    "autoUpdate": "自动检查并下载更新",
+    "autoUpdate": "自动下载并静默安装更新",
     "launchAtLogin": "开机自启",
     "configFile": "配置文件"
   },
@@ -94,12 +95,13 @@
     "errorTag": "错误"
   },
   "updateState": {
+    "installing": "正在校验并安装更新，LinkPilot 将静默重启。",
     "idle": "本次会话还未检查过更新。",
     "checking": "正在检查 GitHub Releases…",
     "downloading": "发现 {{version}} 版本。正在下载 {{asset}}…",
-    "downloaded": "{{version}} 已下载完成。点击「打开安装包」升级。",
+    "downloaded": "版本 {{version}} 已下载，点击“安装并重启”即可升级。",
     "upToDate": "LinkPilot 当前版本 {{version}} 已是最新。",
-    "errorWithVersion": "发现 {{version}} 版本，但安装包下载失败：{{error}}",
+    "errorWithVersion": "版本 {{version}} 可用，但更新失败：{{error}}",
     "errorPlain": "更新检查失败：{{error}}"
   }
 }

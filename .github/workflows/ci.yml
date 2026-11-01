@@ -36,6 +36,19 @@ jobs:
       - name: Test
         run: cargo test --workspace --exclude linkpilot-desktop
 
+      - name: Test official signed update and tamper rejection
+        run: |
+          case "$(uname -m)" in
+            arm64) update_arch=aarch64 ;;
+            x86_64) update_arch=x86_64 ;;
+            *) exit 1 ;;
+          esac
+          export LINKPILOT_TEST_DMG="$RUNNER_TEMP/LinkPilot_0.5.11_${update_arch}.dmg"
+          curl --fail --location --retry 3 --max-time 120 \
+            "https://github.com/jackerjay/LinkPilot/releases/download/v0.5.11/LinkPilot_0.5.11_${update_arch}.dmg" \
+            --output "$LINKPILOT_TEST_DMG"
+          cargo test -p linkpilot-updater signed_release_authentication_and_tamper_rejection -- --ignored
+
       - name: Check desktop crate
         run: cargo check -p linkpilot-desktop
 
@@ -81,6 +94,9 @@ jobs:
 
       - name: Test profile permission recovery
         run: corepack yarn run test:profile-access
+
+      - name: Test silent update flow
+        run: npm run test:updates
 
       - name: Test notarization failure handling
         run: corepack yarn run test:notarize:mac

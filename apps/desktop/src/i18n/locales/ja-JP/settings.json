@@ -47,9 +47,10 @@
     "checkNow": "今すぐ確認",
     "checking": "確認中…",
     "downloading": "ダウンロード中…",
+    "installRestart": "インストールして再起動",
     "openInstaller": "インストーラーを開く",
     "openRelease": "リリースページを開く",
-    "autoUpdate": "更新を自動でチェックしてダウンロード",
+    "autoUpdate": "更新を自動でダウンロードしてインストール",
     "launchAtLogin": "ログイン時に起動",
     "configFile": "設定ファイル"
   },
@@ -94,12 +95,13 @@
     "errorTag": "エラー"
   },
   "updateState": {
+    "installing": "更新を検証してインストールしています。LinkPilot は静かに再起動します。",
     "idle": "このセッションではまだ更新チェックを実行していません。",
     "checking": "GitHub Releases を確認中…",
     "downloading": "バージョン {{version}} が利用可能です。{{asset}} をダウンロード中…",
-    "downloaded": "{{version}} をダウンロードしました。「インストーラーを開く」をクリックしてアップグレード。",
+    "downloaded": "バージョン {{version}} をダウンロードしました。インストールして再起動してください。",
     "upToDate": "LinkPilot は {{version}} で最新の状態です。",
-    "errorWithVersion": "バージョン {{version}} が利用可能ですが、インストーラーのダウンロードに失敗しました：{{error}}",
+    "errorWithVersion": "バージョン {{version}} が利用可能ですが、更新に失敗しました: {{error}}",
     "errorPlain": "更新チェックに失敗しました：{{error}}"
   }
 }

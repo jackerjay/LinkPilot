@@ -294,7 +294,13 @@ pub fn run() {
             // see the GUI without having to find the menu-bar icon. The tray
             // / Dock reopen handlers below keep it accessible after the user
             // closes it.
-            tray::show_main_window(app.handle());
+            #[cfg(all(target_os = "macos", feature = "direct-distribution"))]
+            let background = linkpilot_updater::background_restart();
+            #[cfg(not(all(target_os = "macos", feature = "direct-distribution")))]
+            let background = false;
+            if !background {
+                tray::show_main_window(app.handle());
+            }
 
             Ok(())
         })
@@ -357,6 +363,7 @@ pub fn run() {
             commands::export_config_dialog,
             commands::update_fetch_metadata,
             commands::update_download,
+            commands::update_install,
             commands::app_icon,
             commands::pick_app,
             commands::cli_install_status,
@@ -375,6 +382,12 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building LinkPilot")
         .run(|app, event| {
+            #[cfg(all(target_os = "macos", feature = "direct-distribution"))]
+            if let RunEvent::Ready = event {
+                if let Err(error) = linkpilot_updater::acknowledge_startup() {
+                    tracing::error!(%error, "update startup acknowledgement failed");
+                }
+            }
             // macOS: clicking the Dock icon after the window is hidden fires
             // Reopen — bring the main window back instead of being silent.
             #[cfg(target_os = "macos")]

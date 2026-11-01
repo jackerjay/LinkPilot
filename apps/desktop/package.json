@@ -1,7 +1,7 @@
 {
   "name": "linkpilot-desktop",
   "private": true,
-  "version": "0.5.11",
+  "version": "0.5.12",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,7 @@
     "bundle:mac": "bash ./scripts/bundle-mac.sh",
     "test:bundle:mac": "node --test ./scripts/bundle-mac.test.mjs",
     "test:notarize:mac": "node --test ./scripts/notarize-mac.test.mjs",
+    "test:updates": "node --experimental-strip-types --test scripts/update-flow.test.mjs",
     "test:profile-access": "node --experimental-strip-types --test ./scripts/profile-access.test.mjs",
     "bundle:store": "bash ./scripts/bundle-store.sh",
     "package:store": "python3 ./scripts/package-store.py",

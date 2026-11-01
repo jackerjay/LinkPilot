@@ -47,9 +47,10 @@
     "checkNow": "Check now",
     "checking": "Checking…",
     "downloading": "Downloading…",
+    "installRestart": "Install and restart",
     "openInstaller": "Open installer",
     "openRelease": "Open release",
-    "autoUpdate": "Automatically check and download updates",
+    "autoUpdate": "Automatically download and install updates",
     "launchAtLogin": "Launch at login",
     "configFile": "Configuration file"
   },
@@ -94,12 +95,13 @@
     "errorTag": "error"
   },
   "updateState": {
+    "installing": "Verifying and installing update. LinkPilot will restart quietly.",
     "idle": "No update check has run in this session.",
     "checking": "Checking GitHub Releases…",
     "downloading": "Version {{version}} is available. Downloading {{asset}}…",
-    "downloaded": "Version {{version}} is downloaded. Click Open installer to upgrade.",
+    "downloaded": "Version {{version}} is downloaded. Install and restart to upgrade.",
     "upToDate": "LinkPilot is up to date at {{version}}.",
-    "errorWithVersion": "Version {{version}} is available, but the installer download failed: {{error}}",
+    "errorWithVersion": "Version {{version}} is available, but the update failed: {{error}}",
     "errorPlain": "Update check failed: {{error}}"
   }
 }

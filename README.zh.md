@@ -36,7 +36,7 @@ LinkPilot 当前聚焦 macOS。
 - Ask 快速打开：按住 Command 点击 Ask 链接，直接使用配置的默认目标。在「设置 → 默认目标」中可改用 Option、Control、Shift 或关闭；默认目标不可用时仍显示选择器。
   请保持按键直到 LinkPilot 收到链接；应用尚未启动时也需保持。
 - 界面语言支持 English、简体中文、繁體中文、日本語，并可选择跟随系统语言。
-- 自动检查 GitHub Release 更新，下载的 DMG 会校验 SHA-256，再由用户在 Settings 中手动打开安装包。
+- 自动下载并静默安装 GitHub Release 更新，校验 SHA-256、Apple 签名和公证，启动失败自动恢复旧版。
 - 后台 daemon 与 Unix socket IPC，主窗口关闭后仍可继续路由。
 - 菜单栏托盘、Inspector、Test URL 模拟器、浏览器管理、Settings 和 onboarding。
 - `lpt` CLI：打开 URL、管理规则、查看配置、安装 daemon、检查默认浏览器状态。
@@ -96,11 +96,16 @@ open /Applications/LinkPilot.app
 2. 安装后台 daemon LaunchAgent。
 3. 把内置的 `lpt` 命令安装到 `~/.local/bin`。
 
-Settings 默认会在启动后检查 GitHub Releases 中是否有新版本。如果发现新的
-macOS DMG，LinkPilot 会下载到本地更新缓存，比对 release 的 `checksums.txt`
-里的 SHA-256，再提示你点击 “Open installer” 手动升级。没有 `checksums.txt`
-的 release 会被视为未验证，自动下载会被拒绝。可以在
-Settings → General → Updates 中关闭这一行为。
+直接分发版默认在启动后及每六小时检查 GitHub Releases。开启自动更新后，
+下载 DMG，校验 SHA-256、Apple Developer ID 签名和公证，再静默安装并重启。
+新版启动失败会恢复旧应用；同一失败版本不会反复自动重试。
+Settings 提供手动重试和打开 DMG 的备用入口。正在使用浏览器选择器时，
+安装延后至下次检查。应用目录需要可写；更新不会弹出管理员提权请求。
+
+可在 Settings → General → Updates、`lpt settings auto-updates off`，
+或 DSL `settings.autoCheckUpdates: false` 关闭自动更新。
+早于 0.5.12 的版本需先手动升级一次，之后才有静默安装能力。
+App Store 版由 Apple 更新。详见[更新与故障恢复](docs/updates.md)。
 
 ## 支持语言
 

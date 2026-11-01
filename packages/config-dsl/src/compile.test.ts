@@ -191,6 +191,7 @@ describe("compile()", () => {
     const out = compile(defineConfig({ defaultTarget: browser.arc(), rules: [] }));
     expect(out.settings).toEqual({
       launch_at_login: false,
+      auto_check_updates: true,
       history_retention_days: null,
       record_query_strings: false,
       // The daemon defaults this true; the DSL preserves that.
@@ -206,6 +207,7 @@ describe("compile()", () => {
         rules: [],
         settings: {
           launchAtLogin: true,
+          autoCheckUpdates: false,
           historyRetentionDays: 30,
           recordQueryStrings: true,
           smartRoutingEnabled: false,
@@ -215,6 +217,7 @@ describe("compile()", () => {
     );
     expect(out.settings).toEqual({
       launch_at_login: true,
+      auto_check_updates: false,
       history_retention_days: 30,
       record_query_strings: true,
       smart_routing_enabled: false,

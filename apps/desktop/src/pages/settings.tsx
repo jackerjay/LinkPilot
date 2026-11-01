@@ -35,12 +35,14 @@ interface Props {
   configEpoch: number;
   updateCheck: UpdateCheckState;
   onCheckForUpdates: () => Promise<void>;
+  onInstallUpdate: () => Promise<void>;
 }
 
 export function SettingsPage({
   configEpoch,
   updateCheck,
   onCheckForUpdates,
+  onInstallUpdate,
 }: Props) {
   const { t } = useTranslation("settings");
   const { t: tSuggestions } = useTranslation("suggestions");
@@ -306,7 +308,8 @@ export function SettingsPage({
   };
 
   const openDownloadedInstaller = async () => {
-    if (updateCheck.status !== "downloaded") return;
+    if (updateCheck.status !== "downloaded" && updateCheck.status !== "error") return;
+    if (!updateCheck.download) return;
     setError(null);
     try {
       await openPath(updateCheck.download.path);
@@ -546,11 +549,11 @@ export function SettingsPage({
         {isAppStore && <div className="mac-row"><span className="mac-muted">{t("app:store.updates")}</span></div>}
         {!isAppStore && <>
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
-          <div className="grow">
+          <div className="grow" style={{ minWidth: 0 }}>
             <div className="mac-row-label">{t("general.updatesLabel")}</div>
             <div
               className="mac-muted"
-              style={{ fontSize: 11.5, marginTop: 2 }}
+              style={{ fontSize: 11.5, marginTop: 2, overflowWrap: "anywhere" }}
             >
               {describeUpdateCheck(t, updateCheck)}
             </div>
@@ -562,7 +565,8 @@ export function SettingsPage({
               onClick={() => void onCheckForUpdates()}
               disabled={
                 updateCheck.status === "checking" ||
-                updateCheck.status === "downloading"
+                updateCheck.status === "downloading" ||
+                updateCheck.status === "installing"
               }
             >
               {updateCheck.status === "checking"
@@ -571,14 +575,23 @@ export function SettingsPage({
                   ? t("general.downloading")
                   : t("general.checkNow")}
             </button>
-            {updateCheck.status === "downloaded" && (
+            {(updateCheck.status === "downloaded" || updateCheck.status === "error") && updateCheck.download && (
+              <>
               <button
                 type="button"
                 className="mac-tbtn primary"
+                onClick={() => void onInstallUpdate()}
+              >
+                {t("general.installRestart")}
+              </button>
+              <button
+                type="button"
+                className="mac-tbtn"
                 onClick={() => void openDownloadedInstaller()}
               >
                 {t("general.openInstaller")}
               </button>
+              </>
             )}
             {updateCheck.status === "error" && updateCheck.result && (
               <button
@@ -898,6 +911,8 @@ function describeUpdateCheck(
         version: displayVersion(state.result.latestVersion),
         asset: state.result.asset.name,
       });
+    case "installing":
+      return t("updateState.installing");
     case "downloaded":
       return t("updateState.downloaded", {
         version: displayVersion(state.result.latestVersion),

@@ -57,6 +57,8 @@ export interface DslWorkspace {
  */
 export interface DslSettings {
   launchAtLogin?: boolean;
+  /** Automatically download and silently install signed releases. Defaults to true. */
+  autoCheckUpdates?: boolean;
   historyRetentionDays?: number | null;
   recordQueryStrings?: boolean;
   smartRoutingEnabled?: boolean;
