@@ -2165,7 +2165,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-cli"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "anyhow",
  "clap",
@@ -2173,15 +2173,18 @@ dependencies = [
  "linkpilot-core",
  "linkpilot-ipc",
  "linkpilot-platform-mac",
+ "linkpilot-updater",
  "serde_json",
+ "tempfile",
  "tracing",
  "tracing-subscriber",
  "url",
+ "uuid",
 ]
 
 [[package]]
 name = "linkpilot-core"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "libc",
  "notify",
@@ -2195,7 +2198,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-desktop"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2204,6 +2207,7 @@ dependencies = [
  "linkpilot-platform-linux",
  "linkpilot-platform-mac",
  "linkpilot-platform-win",
+ "linkpilot-updater",
  "objc2 0.5.2",
  "serde",
  "serde_json",
@@ -2219,7 +2223,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-headless-daemon"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "anyhow",
  "clap",
@@ -2233,14 +2237,14 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-icon-padder"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "image",
 ]
 
 [[package]]
 name = "linkpilot-ipc"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "linkpilot-core",
  "serde",
@@ -2253,7 +2257,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-native-host"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "anyhow",
  "linkpilot-core",
@@ -2264,14 +2268,14 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-platform-linux"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "linkpilot-core",
 ]
 
 [[package]]
 name = "linkpilot-platform-mac"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "core-foundation",
  "core-foundation-sys",
@@ -2289,17 +2293,31 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-platform-win"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "linkpilot-core",
 ]
 
 [[package]]
 name = "linkpilot-sandbox-probe"
-version = "0.5.11"
+version = "0.5.12"
 dependencies = [
  "linkpilot-core",
  "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "linkpilot-updater"
+version = "0.5.12"
+dependencies = [
+ "anyhow",
+ "libc",
+ "linkpilot-platform-mac",
+ "semver",
+ "serde",
+ "serde_json",
+ "tempfile",
  "uuid",
 ]
 

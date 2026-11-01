@@ -53,6 +53,7 @@ function compileWorkspace(w: DslWorkspace): WorkspaceJson {
 function compileSettings(s: DslSettings | undefined): SettingsJson {
   return {
     launch_at_login: s?.launchAtLogin ?? false,
+    auto_check_updates: s?.autoCheckUpdates ?? true,
     history_retention_days: s?.historyRetentionDays ?? null,
     record_query_strings: s?.recordQueryStrings ?? false,
     smart_routing_enabled: s?.smartRoutingEnabled ?? true,

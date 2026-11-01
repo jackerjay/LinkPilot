@@ -20,6 +20,7 @@ export type UpdateCheckState =
   | { status: "idle" }
   | { status: "checking" }
   | { status: "downloading"; result: UpdateCheckResult }
+  | { status: "installing"; result: UpdateCheckResult }
   | {
       status: "downloaded";
       result: UpdateCheckResult;
@@ -31,6 +32,7 @@ export type UpdateCheckState =
       error: string;
       checkedAt: number;
       result?: UpdateCheckResult;
+      download?: UpdateDownload;
     };
 
 export function checkForUpdates(

@@ -6,6 +6,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.12] — 2026-11-01
+
+### Added
+
+- Direct-distribution updates now download, verify Developer ID signing and
+  notarization, and install silently with a background restart. Checks run on
+  startup and every six hours; the existing automatic-updates switch controls
+  installation too. App Store builds continue to use Apple's update mechanism.
+- Atomic app replacement with startup confirmation and rollback, preservation
+  of independent background services, and a manual installer fallback.
+- Failed versions pause automatic retries. Settings can explicitly retry, and
+  the config DSL exposes `settings.autoCheckUpdates`.
+
+### Security
+
+- Reject unsigned, modified, wrong-team, wrong-identity, wrong-architecture and
+  non-newer applications. Missing release checksums block downloads natively.
+
 ## [0.5.11] — 2026-10-30
 
 ### Added

@@ -127,9 +127,8 @@ pub struct Settings {
     pub history_retention_days: Option<u32>,
     #[serde(default)]
     pub record_query_strings: bool,
-    /// Check GitHub Releases for newer LinkPilot builds when the GUI app
-    /// starts. The app only reports availability; installation remains a
-    /// user-driven download flow while releases are unsigned.
+    /// Automatically check, download and silently install signed GitHub
+    /// Releases on startup and every six hours. Store updates use Apple.
     #[serde(default = "default_auto_check_updates")]
     pub auto_check_updates: bool,
     /// Master kill-switch for rule evaluation. When false the router

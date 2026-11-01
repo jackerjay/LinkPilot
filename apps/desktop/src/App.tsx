@@ -1,3 +1,4 @@
+import { createUpdateRunner } from "@/lib/update-flow";
 import { isAppStore } from "@/lib/distribution";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -120,7 +121,6 @@ export default function App() {
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckState>({
     status: "idle",
   });
-  const autoUpdateCheckStartedRef = useRef(false);
   // When non-null, the main content area renders the workspace detail
   // page for this id instead of whatever `tab` is. Sidebar workspace
   // clicks set this; sidebar tab clicks clear it.
@@ -164,67 +164,36 @@ export default function App() {
     refreshSidebarData();
   }, [refreshSidebarData, configEpoch]);
 
+  const updateTranslation = useRef(t);
+  updateTranslation.current = t;
+  const [runUpdate] = useState(() => createUpdateRunner({
+    currentVersion: getVersion,
+    check: checkForUpdates,
+    download: (result) => ipc.updateDownload({
+      url: result.asset.downloadUrl,
+      version: result.latestVersion,
+      asset_name: result.asset.name,
+      expected_bytes: result.asset.size,
+      expected_sha256: result.asset.sha256,
+    }),
+    install: (version, automatic) => ipc.updateInstall({ version, automatic }),
+    enabled: async () => (await ipc.configGet()).settings.auto_check_updates,
+    state: setUpdateCheck,
+    checksumMissing: () => updateTranslation.current("updates.checksumMissing"),
+  }));
   const runUpdateCheck = useCallback(async () => {
-    if (isAppStore) return;
-    setUpdateCheck({ status: "checking" });
-    try {
-      const currentVersion = await getVersion();
-      const result = await checkForUpdates(currentVersion);
-      if (!result.available) {
-        setUpdateCheck({ status: "up-to-date", result });
-        return;
-      }
-
-      if (!result.asset.sha256) {
-        // Refuse to auto-download an unverified DMG. Releases ship a
-        // `checksums.txt`; if it's missing or doesn't list our asset,
-        // the user can still grab the installer manually from the
-        // release page — but we never write an unverified binary to
-        // the updates dir on their behalf.
-        setUpdateCheck({
-          status: "error",
-          error: t("updates.checksumMissing"),
-          checkedAt: Date.now(),
-          result,
-        });
-        return;
-      }
-      setUpdateCheck({ status: "downloading", result });
-      try {
-        const download = await ipc.updateDownload({
-          url: result.asset.downloadUrl,
-          version: result.latestVersion,
-          asset_name: result.asset.name,
-          expected_bytes: result.asset.size,
-          expected_sha256: result.asset.sha256,
-        });
-        setUpdateCheck({ status: "downloaded", result, download });
-      } catch (downloadErr) {
-        const error =
-          downloadErr instanceof Error ? downloadErr.message : String(downloadErr);
-        setUpdateCheck({
-          status: "error",
-          error,
-          checkedAt: Date.now(),
-          result,
-        });
-      }
-    } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      setUpdateCheck({ status: "error", error, checkedAt: Date.now() });
-    }
-  }, []);
+    if (!isAppStore) await runUpdate();
+  }, [runUpdate]);
+  const installUpdate = useCallback(async () => {
+    if (!isAppStore) await runUpdate(false, true);
+  }, [runUpdate]);
 
   useEffect(() => {
-    if (isAppStore || showOnboarding) return;
-    if (!config?.settings.auto_check_updates) {
-      autoUpdateCheckStartedRef.current = false;
-      return;
-    }
-    if (autoUpdateCheckStartedRef.current) return;
-    autoUpdateCheckStartedRef.current = true;
-    void runUpdateCheck();
-  }, [config?.settings.auto_check_updates, runUpdateCheck, showOnboarding]);
+    if (isAppStore || showOnboarding || !config?.settings.auto_check_updates) return;
+    void runUpdate(true);
+    const timer = window.setInterval(() => void runUpdate(true), 6 * 60 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [config?.settings.auto_check_updates, runUpdate, showOnboarding]);
 
   // Reconcile i18next with the persisted language preference. Re-runs
   // whenever ConfigDocument is reloaded (fsnotify echo, Settings save,
@@ -556,6 +525,7 @@ export default function App() {
                     configEpoch={configEpoch}
                     updateCheck={updateCheck}
                     onCheckForUpdates={runUpdateCheck}
+                    onInstallUpdate={installUpdate}
                   />
                 )}
               </>

@@ -548,6 +548,7 @@ pub struct UpdateCheckResult {
     pub published_at: Option<String>,
     pub available: bool,
     pub checked_at: u64,
+    pub install_error: Option<String>,
 }
 
 // We resolve the latest release via the `github.com` redirect rather than
@@ -615,6 +616,13 @@ fn fetch_update_metadata_blocking(current_version: &str) -> Result<UpdateCheckRe
 
     let normalized_current = normalize_version(current_version);
     let available = compare_versions(&latest_version, &normalized_current) > 0;
+    #[cfg(all(target_os = "macos", feature = "direct-distribution"))]
+    let install_error = linkpilot_core::config::default_config_path()
+        .ok()
+        .and_then(|path| path.parent().map(|p| p.join("updates")))
+        .and_then(|dir| linkpilot_updater::last_failure(&dir, &latest_version));
+    #[cfg(not(all(target_os = "macos", feature = "direct-distribution")))]
+    let install_error = None;
 
     let checked_at = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -638,6 +646,7 @@ fn fetch_update_metadata_blocking(current_version: &str) -> Result<UpdateCheckRe
         published_at,
         available,
         checked_at,
+        install_error,
     })
 }
 
@@ -852,6 +861,64 @@ pub struct UpdateDownloadRequest {
     pub expected_sha256: Option<String>,
 }
 
+#[derive(serde::Deserialize)]
+pub struct UpdateInstallRequest {
+    pub version: String,
+    pub automatic: bool,
+}
+
+#[tauri::command]
+pub async fn update_install(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    request: UpdateInstallRequest,
+) -> Result<bool, String> {
+    crate::distribution::require_direct("External update installation")?;
+    #[cfg(all(target_os = "macos", feature = "direct-distribution"))]
+    {
+        if request.automatic && !state.config.document().settings.auto_check_updates {
+            return Ok(false);
+        }
+        let updates = state
+            .config
+            .path()
+            .parent()
+            .ok_or("missing config directory")?
+            .join("updates");
+        let config = state.config.clone();
+        let handle = app.clone();
+        let handed_off = tauri::async_runtime::spawn_blocking(move || {
+            linkpilot_updater::prepare_and_spawn(
+                &updates,
+                &request.version,
+                request.automatic,
+                || {
+                    use tauri::Manager;
+                    (!request.automatic || config.document().settings.auto_check_updates)
+                        && handle
+                            .state::<crate::picker::PickerState>()
+                            .pending
+                            .lock()
+                            .map(|p| p.is_none())
+                            .unwrap_or(false)
+                },
+            )
+        })
+        .await
+        .map_err(|e| format!("installer task: {e}"))?
+        .map_err(|e| format!("{e:#}"))?;
+        if handed_off {
+            app.exit(0);
+        }
+        Ok(handed_off)
+    }
+    #[cfg(not(all(target_os = "macos", feature = "direct-distribution")))]
+    {
+        let _ = (app, state, request.version, request.automatic);
+        Err("Silent updates are unavailable for this edition".into())
+    }
+}
+
 /// The repo whose release assets we trust. Pinned here (not just inferred
 /// from the URL) so a compromised renderer can't redirect the download to
 /// a fork. Keep in sync with the frontend's `LATEST_RELEASE_API` URL.
@@ -890,6 +957,9 @@ pub async fn update_download(
 
     let asset_name = safe_update_asset_name(&request.asset_name)?;
     let expected_sha256 = normalize_expected_sha256(request.expected_sha256.as_deref())?;
+    if expected_sha256.is_none() {
+        return Err("Release checksum is required before downloading an update".into());
+    }
     let Some(config_dir) = state.config.path().parent().map(PathBuf::from) else {
         return Err("could not locate LinkPilot config directory".to_string());
     };

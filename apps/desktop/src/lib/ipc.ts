@@ -111,6 +111,8 @@ export const ipc = {
     invoke<UpdateCheckResult>("update_fetch_metadata", { request }),
   updateDownload: (request: UpdateDownloadRequest) =>
     invoke<UpdateDownload>("update_download", { request }),
+  updateInstall: (request: { version: string; automatic: boolean }) =>
+    invoke<boolean>("update_install", { request }),
 
   appIcon: (request: AppIconRequest) =>
     invoke<AppIcon | null>("app_icon", { request }),
@@ -189,6 +191,7 @@ export interface UpdateCheckResult {
   publishedAt: string | null;
   available: boolean;
   checkedAt: number;
+  installError: string | null;
 }
 
 export interface UpdateDownloadRequest {

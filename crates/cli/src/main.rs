@@ -47,6 +47,14 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Command {
+    #[cfg(target_os = "macos")]
+    #[command(name = "__update-worker", hide = true)]
+    UpdateWorker {
+        #[arg(long)]
+        job: PathBuf,
+        #[arg(long)]
+        token: String,
+    },
     /// Open a URL through the LinkPilot router.
     Open {
         url: String,
@@ -322,7 +330,7 @@ enum SettingsAction {
     /// install/uninstall is owned by the GUI and currently CLI-only flips
     /// the persisted preference.
     LaunchAtLogin { value: OnOff },
-    /// Toggle startup checks for newer GitHub Release builds.
+    /// Toggle automatic download and silent installation of signed releases.
     AutoUpdates { value: OnOff },
     /// Toggle whether URL query strings are kept in route history.
     RecordQueryStrings { value: OnOff },
@@ -508,6 +516,8 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        #[cfg(target_os = "macos")]
+        Command::UpdateWorker { job, token } => linkpilot_updater::run_worker(&job, &token),
         Command::Open {
             url,
             from_app,
