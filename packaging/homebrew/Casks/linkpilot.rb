@@ -19,10 +19,10 @@ cask "linkpilot" do
   # named `LinkPilot_<version>_aarch64.dmg` and `..._x86_64.dmg`.
   arch arm: "aarch64", intel: "x86_64"
 
-  # Per-arch DMG hashes from the v0.5.11 release `checksums.txt`.
-  version "0.5.11"
-  sha256 arm:   "68b64abef89de46ebd1719d6e09d2bd2ec989dbd56288219ac337d283c46dfeb",
-         intel: "0d0bcfbebb3c406cfe3d5ae89e12589dec39a3647b980e80fbf7854860368048"
+  # Per-arch DMG hashes from the v0.5.12 release `checksums.txt`.
+  version "0.5.12"
+  sha256 arm:   "db913516ac963977551abe13d27d6e6e4504d0cfd6147a4eed5a8d022b610555",
+         intel: "b76275aa759a7b5d216707240cfb9af67a3a0ef3b5875598ff25711dc1077055"
 
   url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/LinkPilot_#{version}_#{arch}.dmg"
   name "LinkPilot"
@@ -40,7 +40,7 @@ cask "linkpilot" do
     strategy :github_releases
   end
 
-  auto_updates false
+  auto_updates true
   # Matches Info.plist LSMinimumSystemVersion (12.0 = Monterey). Cask's
   # idiomatic form is the symbol alone — implicitly "this or newer".
   depends_on macos: :monterey

@@ -27,13 +27,13 @@ class LinkpilotCli < Formula
   # URL — formula and resource alike — uses one source of truth. Homebrew
   # infers the formula version from this release URL, so bump this tag on
   # every release rather than declaring the version a second time.
-  release_tag = "v0.5.11"
+  release_tag = "v0.5.12"
 
   # The release.yml matrix builds CLI + daemon natively per arch and
   # publishes one tarball each. No more lipo — Apple-Silicon users get
   # the aarch64 binary, Intel users get x86_64.
   #
-  # SHAs are the per-arch tarball hashes from the v0.5.11 release
+  # SHAs are the per-arch tarball hashes from the v0.5.12 release
   # `checksums.txt` (main `lpt` tarball + the `daemon` resource each).
   # `brew style` (FormulaAudit/ComponentsOrder) forbids bare url/sha256
   # directly inside top-level on_arm/on_intel — they must be nested under
@@ -42,21 +42,21 @@ class LinkpilotCli < Formula
   on_macos do
     on_arm do
       url "https://github.com/jackerjay/LinkPilot/releases/download/#{release_tag}/lpt-macos-aarch64.tar.gz"
-      sha256 "21eef1fc10427f3096b4bf9e7d9008920fdc1705cbf3ccb2bdc1c18b2655728c"
+      sha256 "b0ca3ff71f3d611df21ed8f20f4344f7cc3cf4f46ec20f9add3e9540b97e88c7"
 
       resource "daemon" do
         url "https://github.com/jackerjay/LinkPilot/releases/download/#{release_tag}/linkpilot-daemon-macos-aarch64.tar.gz"
-        sha256 "faaa56a6e9741b6efc39f5f64aaf641d6c0930d04471d36fdbe0898b29c7d1d8"
+        sha256 "39c7475a2d09e70867b792bd49020f0899b1143f23d67768429a1c639afc7ad5"
       end
     end
 
     on_intel do
       url "https://github.com/jackerjay/LinkPilot/releases/download/#{release_tag}/lpt-macos-x86_64.tar.gz"
-      sha256 "e48e38c91828a7dc1ebc8ffad3668fe348d13f6fb0b9609c3ac8ac182af9a6e2"
+      sha256 "0b2bc53a4ad37988079c01a76ce4124369cfe70ab956ab4efb5f7487450402f7"
 
       resource "daemon" do
         url "https://github.com/jackerjay/LinkPilot/releases/download/#{release_tag}/linkpilot-daemon-macos-x86_64.tar.gz"
-        sha256 "c3bc1d1447684ef18907ac5ca3113000dc1fcafd5be9aad23e5cb0c9a469e349"
+        sha256 "77c5225ae85f07e32f862be9d15f113ddd2b4d53eebff2089b0485d207fdb5d7"
       end
     end
   end

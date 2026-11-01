@@ -44,6 +44,11 @@ From v0.5.10, the app is Developer ID signed and Apple notarized. The cask
 preserves Homebrew quarantine so macOS can verify the download normally.
 Pass `--appdir=/tmp/...` to test without replacing an installed app.
 
+From v0.5.12, the GUI installs signed updates itself and the cask declares
+`auto_updates true`. Older installations need one manual upgrade with
+`brew upgrade --cask --greedy jackerjay/linkpilot/linkpilot`. Use the same
+command when automatic updates are disabled in the app.
+
 Uninstall with the canonical Homebrew commands:
 
 ```sh
