@@ -97,7 +97,7 @@ Three workflows in `.github/workflows/`:
   - `frontend`: tsc + vite build on `ubuntu-latest`
   - `desktop-bundle`: `tauri build --debug --bundles app` smoke test on `macos-latest`
 - **`release.yml`** (on `v*.*.*` tag)
-  - Matrix over `{aarch64-apple-darwin on macos-14, x86_64-apple-darwin on macos-15-intel}`.
+  - Matrix over `{aarch64-apple-darwin on macos-15, x86_64-apple-darwin on macos-15-intel}`.
     Each leg runs natively — no `lipo`, no `universal-apple-darwin` target.
   - Per leg: builds `lpt` + `linkpilot-daemon` + Tauri
     `--target <arch> --bundles app`, embeds the CLI and daemon into
