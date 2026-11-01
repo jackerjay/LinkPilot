@@ -35,9 +35,10 @@ jobs:
       # whole matrix, so a half-green run still won't publish.
       fail-fast: false
       matrix:
+        # macos-14 retires on 2026-11-02; use the supported Apple Silicon image.
         # Normal releases build each architecture natively. Recovery reuses
         # the completed ARM artifact and cross-compiles Intel on Apple Silicon.
-        include: ${{ fromJSON(inputs.reuse_arm_run_id && '[{"arch":"x86_64","target":"x86_64-apple-darwin","runner":"macos-14"}]' || '[{"arch":"aarch64","target":"aarch64-apple-darwin","runner":"macos-14"},{"arch":"x86_64","target":"x86_64-apple-darwin","runner":"macos-15-intel"}]') }}
+        include: ${{ fromJSON(inputs.reuse_arm_run_id && '[{"arch":"x86_64","target":"x86_64-apple-darwin","runner":"macos-15"}]' || '[{"arch":"aarch64","target":"aarch64-apple-darwin","runner":"macos-15"},{"arch":"x86_64","target":"x86_64-apple-darwin","runner":"macos-15-intel"}]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
