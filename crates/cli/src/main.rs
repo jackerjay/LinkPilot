@@ -339,7 +339,7 @@ enum SettingsAction {
     /// Set the visual style of the browser+profile picker wheel.
     /// One of `frosted` (default), `bezel`, or `crown`.
     PickerStyle { value: String },
-    /// Hold a modifier on Ask links to open the default target without a picker.
+    /// Hold a modifier to skip Ask rules and continue matching later rules.
     /// One of `command` (default), `option`, `control`, `shift`, or `off`.
     AskQuickOpen { value: String },
     /// Set the UI display language. One of `system` (default, follow OS),

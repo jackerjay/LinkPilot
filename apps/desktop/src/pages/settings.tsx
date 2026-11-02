@@ -412,10 +412,14 @@ export function SettingsPage({
             <span className="mac-muted">{t("common:status.loading", "Loading…")}</span>
           )}
         </div>
+      </div>
+
+      <div className="mac-card-title">{t("quickOpen.label")}</div>
+      <div className="mac-card">
         <div className="mac-row" style={{ alignItems: "flex-start" }}>
-          <div className="grow">
+          <div className="grow" style={{ minWidth: 0 }}>
             <div id="ask-quick-open-label" className="mac-row-label">
-              {t("quickOpen.label")}
+              {t("quickOpen.modifier")}
             </div>
             <div className="mac-muted" style={{ fontSize: 11.5, marginTop: 2 }}>
               {t("quickOpen.description")}

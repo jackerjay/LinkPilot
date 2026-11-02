@@ -109,7 +109,7 @@ export interface Settings {
    *  Settings page or `lpt settings picker-style …`; the picker
    *  window reads it once on open. */
   picker_style: PickerStyle;
-  /** Hold this modifier on Ask links to open the default target directly. */
+  /** Hold this modifier to skip Ask and continue matching later rules. */
   ask_quick_open_modifier: AskQuickOpenModifier;
   /** Per-browser visible profile ordering. Keys are browser ids ("chrome",
    *  "edge", "arc"). Empty/missing means default sort. A non-empty list is

@@ -23,7 +23,8 @@
   },
   "quickOpen": {
     "label": "Ask 快速開啟",
-    "description": "按住此鍵點選原本會顯示 Ask 選擇器的連結，直接使用上方預設目標開啟。預設目標無法使用時，仍顯示選擇器。",
+    "modifier": "快捷鍵",
+    "description": "按住此鍵跳過 Ask，預設依列表順序執行後續第一個符合的非 Ask 規則。開啟連結時使用該規則的瀏覽器與 profile；沒有後續符合的規則時仍顯示選擇器。",
     "off": "關閉"
   },
   "appearance": {
