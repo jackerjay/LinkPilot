@@ -45,17 +45,13 @@ impl RequestHandler for DaemonHandler {
             } => {
                 let shortcut_pressed = dispatch::ask_shortcut_pressed(&self.state);
                 let raw_url = context.url.clone();
-                let (explained, record) = self.runtime.evaluate_and_log(context);
+                let (explained, record) = self
+                    .runtime
+                    .evaluate_and_log_with_ask_shortcut(context, shortcut_pressed);
                 let _ = self.app.emit("route-logged", &record);
                 let decision = explained.decision;
 
-                match dispatch::execute(
-                    &self.app,
-                    &self.state,
-                    &decision,
-                    &raw_url,
-                    shortcut_pressed,
-                ) {
+                match dispatch::execute(&self.app, &self.state, &decision, &raw_url) {
                     LaunchOutcome::Launched(_)
                     | LaunchOutcome::Skipped
                     | LaunchOutcome::Pending => {}

@@ -33,10 +33,23 @@ const config = defineConfig({
 printConfig(config);
 ```
 
-`askQuickOpenModifier` selects the key held on Ask links to open `defaultTarget`
-without showing the picker: `command` (default), `option`, `control`, `shift`, or
-`off`. Other routing actions are unaffected; an unavailable default still shows
-the picker.
+`askQuickOpenModifier` selects the key held to skip matching Ask rules and
+continue matching later rules: `command` (default), `option`, `control`,
+`shift`, or `off`. The first matching non-Ask rule in list order takes effect.
+Open actions use that rule’s browser and profile; Block and Keep-source rules
+still take effect. If no later rule matches,
+the picker remains instead of falling back to an unspecified browser profile.
+
+For example, this configuration normally shows Ask. With Command held,
+GitHub links open Profile 1 and other links open the literal Default profile:
+
+```ts
+rules: [
+  route.always().ask(),
+  route.host("github.com").to(browser.chrome.profile("Profile 1")),
+  route.always().to(browser.chrome.profile("Default")),
+],
+```
 
 Then:
 

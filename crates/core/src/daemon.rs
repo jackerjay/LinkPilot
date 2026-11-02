@@ -94,8 +94,19 @@ impl DaemonRuntime {
     /// decision afterwards (launch directly vs. spawn picker, emit event
     /// to webview vs. stay silent).
     pub fn evaluate_and_log(&self, context: RoutingContext) -> (Explained, RouteRecord) {
+        self.evaluate_and_log_with_ask_shortcut(context, false)
+    }
+
+    /// GUI embeddings capture the modifier before routing so history records
+    /// the rule selected after skipping Ask, including its profile and trace.
+    pub fn evaluate_and_log_with_ask_shortcut(
+        &self,
+        context: RoutingContext,
+        shortcut_pressed: bool,
+    ) -> (Explained, RouteRecord) {
         let doc = self.config.document();
-        let explained = Router::new(&doc).evaluate_explained(&context);
+        let explained =
+            Router::new(&doc).evaluate_explained_with_ask_shortcut(&context, shortcut_pressed);
         let record = RouteRecord::with_explanation(
             context,
             explained.decision.clone(),
@@ -452,6 +463,49 @@ mod tests {
             }
             other => panic!("expected ask-unsupported-headless Error, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn ask_shortcut_logs_the_following_rule_and_profile_once() {
+        let rt = fixture();
+        let mut doc = rt.config.document();
+        let mut ask = doc.rules[0].clone();
+        ask.when = crate::rules::MatcherTree::Always;
+        ask.then = crate::rules::Action::Ask;
+        let mut next = doc.rules[1].clone();
+        next.when = crate::rules::MatcherTree::Always;
+        next.then = crate::rules::Action::Open {
+            target: crate::browser::BrowserTarget::new(crate::browser::BrowserId::new("chrome"))
+                .with_profile("Profile 2"),
+        };
+        let expected_id = next.id.clone();
+        doc.rules = vec![ask, next];
+        rt.config
+            .replace(doc, crate::config::WriterId::Gui)
+            .unwrap();
+        let context = RoutingContext {
+            url: "https://example.com".into(),
+            source: crate::routing::Source {
+                kind: crate::routing::SourceKind::System,
+                app_name: None,
+                bundle_id: None,
+                browser: None,
+                profile: None,
+            },
+            navigation: None,
+            environment: None,
+        };
+        let (explained, record) = rt.evaluate_and_log_with_ask_shortcut(context, true);
+        assert!(
+            matches!(explained.decision, RoutingDecision::Open { target, .. } if target.profile.as_deref() == Some("Profile 2"))
+        );
+        assert_eq!(record.matched_rule, Some(expected_id));
+        assert!(record.explanation.is_some());
+        assert_eq!(rt.history.len(), 1);
+        assert_eq!(
+            serde_json::to_value(&record).unwrap(),
+            serde_json::to_value(&rt.history.recent(1)[0]).unwrap()
+        );
     }
 
     fn tmp_pid_path() -> PathBuf {

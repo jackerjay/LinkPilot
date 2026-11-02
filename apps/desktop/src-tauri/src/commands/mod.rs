@@ -367,20 +367,15 @@ pub fn route_open(
     };
     let context = build_context(&request);
     let doc = state.config.document();
-    let explained = Router::new(&doc).evaluate_explained(&context);
+    let explained =
+        Router::new(&doc).evaluate_explained_with_ask_shortcut(&context, shortcut_pressed);
     let decision = explained.decision.clone();
     let record =
         RouteRecord::with_explanation(context.clone(), decision.clone(), explained.explanation);
     state.history.log(record.clone());
     let _ = app.emit("route-logged", &record);
 
-    match dispatch::execute(
-        &app,
-        state.inner(),
-        &decision,
-        &request.url,
-        shortcut_pressed,
-    ) {
+    match dispatch::execute(&app, state.inner(), &decision, &request.url) {
         LaunchOutcome::Launched(_) | LaunchOutcome::Skipped | LaunchOutcome::Pending => {}
         LaunchOutcome::Failed(err) => return Err(err),
     }

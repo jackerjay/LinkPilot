@@ -145,8 +145,8 @@ pub struct Settings {
     /// most macOS-native ("baseline") — Bezel and Crown are opt-in.
     #[serde(default)]
     pub picker_style: PickerStyle,
-    /// Hold this modifier while opening an Ask link to use `default_target`
-    /// without showing the picker. Off disables the shortcut.
+    /// Hold this modifier to skip matching Ask rules and continue with later
+    /// rules. Without a later match the picker remains. Off disables this.
     #[serde(default)]
     pub ask_quick_open_modifier: AskQuickOpenModifier,
     /// User-customized visible profile order, per browser id. The picker

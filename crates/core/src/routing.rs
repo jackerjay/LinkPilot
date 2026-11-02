@@ -101,6 +101,16 @@ impl<'a> Router<'a> {
     }
 
     pub fn evaluate_explained(&self, ctx: &RoutingContext) -> Explained {
+        self.evaluate_explained_with_ask_shortcut(ctx, false)
+    }
+
+    /// With the Ask shortcut held, skip matching Ask rules and continue in
+    /// priority order. If no later rule matches, preserve the first Ask.
+    pub fn evaluate_explained_with_ask_shortcut(
+        &self,
+        ctx: &RoutingContext,
+        shortcut_pressed: bool,
+    ) -> Explained {
         // Master kill-switch: when smart routing is off we don't even
         // peek at the rules — open in default_target and report it
         // honestly so the Inspector / history can show *why* a route
@@ -114,11 +124,13 @@ impl<'a> Router<'a> {
                 explanation: None,
             };
         }
-        // Walk rules in declared order and stop at the first match.
+        // Walk rules in declared order and stop at the first match,
+        // except Ask matches skipped by the held shortcut below.
         // List order IS priority (top of list wins) — there is no
         // numeric priority field, so ties / duplicates are
         // structurally impossible. Drag-to-reorder in the GUI and
         // `lpt rules move` in the CLI both mutate this list.
+        let mut skipped_ask: Option<Explained> = None;
         for rule in &self.config.rules {
             if !rule.enabled {
                 continue;
@@ -142,11 +154,35 @@ impl<'a> Router<'a> {
             }
             let eval = eval_tree(&rule.when, ctx);
             if eval.matched() {
-                return Explained {
+                let mut explained = Explained {
                     decision: decide_from_action(&rule.then, Some(rule.id.clone()), &rule.note),
                     explanation: Some(eval),
                 };
+                if shortcut_pressed && matches!(rule.then, Action::Ask) {
+                    if skipped_ask.is_none() {
+                        skipped_ask = Some(explained);
+                    }
+                    continue;
+                }
+                if skipped_ask.is_some() {
+                    match &mut explained.decision {
+                        RoutingDecision::Open { reason, .. }
+                        | RoutingDecision::Allow { reason }
+                        | RoutingDecision::Ask { reason, .. }
+                        | RoutingDecision::Block { reason } => {
+                            reason.insert_str(0, "Ask quick open — ")
+                        }
+                    }
+                }
+                return explained;
             }
+        }
+
+        if let Some(mut explained) = skipped_ask {
+            if let RoutingDecision::Ask { reason, .. } = &mut explained.decision {
+                reason.insert_str(0, "Ask quick open: no later rule matched — ");
+            }
+            return explained;
         }
 
         Explained {
@@ -390,6 +426,178 @@ mod tests {
             navigation: None,
             environment: None,
         }
+    }
+
+    fn ask_rule(host: &str) -> Rule {
+        let mut ask = rule(host, "unused");
+        ask.then = Action::Ask;
+        ask.note = Some("Choose a browser".into());
+        ask
+    }
+
+    #[test]
+    fn ask_shortcut_continues_matching_in_priority_order_and_preserves_target() {
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("chrome")));
+        let mut work = rule("example.com", "brave");
+        let mut target = BrowserTarget::new(BrowserId::new("brave")).with_profile("Profile 2");
+        target.incognito = true;
+        target.new_window = true;
+        target.workspace = Some("Work".into());
+        work.then = Action::Open {
+            target: target.clone(),
+        };
+        let expected_id = work.id.clone();
+        config.rules = vec![
+            ask_rule("example.com"),
+            rule("unrelated.example", "safari"),
+            ask_rule("example.com"),
+            work,
+            rule("example.com", "firefox"),
+        ];
+        let explained = Router::new(&config)
+            .evaluate_explained_with_ask_shortcut(&ctx("https://example.com/a"), true);
+        match explained.decision {
+            RoutingDecision::Open {
+                target: actual,
+                matched_rule,
+                reason,
+            } => {
+                assert_eq!(actual, target);
+                assert_eq!(matched_rule, Some(expected_id));
+                assert!(reason.starts_with("Ask quick open"));
+            }
+            other => panic!("expected the later Open rule, got {other:?}"),
+        }
+        assert!(
+            matches!(explained.explanation, Some(MatcherEval::UrlHost { matched: true, pattern }) if pattern == "example.com")
+        );
+    }
+
+    #[test]
+    fn ask_shortcut_not_pressed_keeps_first_ask() {
+        let config = ConfigDocument {
+            rules: vec![ask_rule("example.com"), rule("example.com", "chrome")],
+            ..Default::default()
+        };
+        let explained = Router::new(&config)
+            .evaluate_explained_with_ask_shortcut(&ctx("https://example.com"), false);
+        assert!(
+            matches!(explained.decision, RoutingDecision::Ask { reason, .. } if reason == "Choose a browser")
+        );
+    }
+
+    #[test]
+    fn ask_shortcut_without_later_match_keeps_picker_instead_of_global_default() {
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("chrome")));
+        config.rules = vec![
+            ask_rule("example.com"),
+            rule("other.example", "firefox"),
+            ask_rule("example.com"),
+        ];
+        let explained = Router::new(&config)
+            .evaluate_explained_with_ask_shortcut(&ctx("https://example.com"), true);
+        assert!(
+            matches!(explained.decision, RoutingDecision::Ask { reason, .. } if reason.contains("no later rule matched") && reason.contains("Choose a browser"))
+        );
+        assert!(explained.explanation.is_some());
+    }
+
+    #[test]
+    fn ask_shortcut_respects_disabled_rules_and_workspaces() {
+        let mut config = ConfigDocument::default();
+        let mut disabled = rule("example.com", "firefox");
+        disabled.enabled = false;
+        let mut workspace_rule = rule("example.com", "chrome");
+        workspace_rule.workspace_id = Some("paused".into());
+        config.workspaces.push(crate::config::Workspace {
+            id: "paused".into(),
+            display_name: "Paused".into(),
+            description: None,
+            enabled: false,
+        });
+        config.rules = vec![
+            ask_rule("example.com"),
+            disabled,
+            workspace_rule,
+            rule("example.com", "safari"),
+        ];
+        let decision = Router::new(&config)
+            .evaluate_explained_with_ask_shortcut(&ctx("https://example.com"), true)
+            .decision;
+        assert!(
+            matches!(decision, RoutingDecision::Open { target, .. } if target.browser.0 == "safari")
+        );
+    }
+
+    #[test]
+    fn ask_shortcut_never_changes_an_earlier_non_ask_decision() {
+        for action in [
+            Action::Open {
+                target: BrowserTarget::new(BrowserId::new("brave")),
+            },
+            Action::Block,
+            Action::KeepSource,
+        ] {
+            let mut config = ConfigDocument::default();
+            let mut first = rule("example.com", "brave");
+            first.then = action;
+            config.rules = vec![
+                first,
+                ask_rule("example.com"),
+                rule("example.com", "chrome"),
+            ];
+            let router = Router::new(&config);
+            let context = ctx("https://example.com");
+            assert_eq!(
+                serde_json::to_value(router.evaluate_explained_with_ask_shortcut(&context, true))
+                    .unwrap(),
+                serde_json::to_value(router.evaluate_explained(&context)).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn ask_shortcut_honors_later_block_and_keep_source() {
+        for action in [Action::Block, Action::KeepSource] {
+            let mut config = ConfigDocument::default();
+            let block = matches!(action, Action::Block);
+            let mut next = rule("example.com", "unused");
+            next.then = action;
+            config.rules = vec![ask_rule("example.com"), next, rule("example.com", "chrome")];
+            let decision = Router::new(&config)
+                .evaluate_explained_with_ask_shortcut(&ctx("https://example.com"), true)
+                .decision;
+            if block {
+                assert!(
+                    matches!(decision, RoutingDecision::Block { reason } if reason.starts_with("Ask quick open"))
+                );
+            } else {
+                assert!(
+                    matches!(decision, RoutingDecision::Allow { reason } if reason.starts_with("Ask quick open"))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn ask_shortcut_preserves_default_when_no_ask_rule_matched_or_routing_is_off() {
+        let mut config = ConfigDocument::with_default(BrowserTarget::new(BrowserId::new("safari")));
+        config.rules = vec![ask_rule("other.example"), rule("other.example", "chrome")];
+        let context = ctx("https://example.com");
+        let router = Router::new(&config);
+        assert_eq!(
+            serde_json::to_value(router.evaluate_explained_with_ask_shortcut(&context, true))
+                .unwrap(),
+            serde_json::to_value(router.evaluate_explained(&context)).unwrap()
+        );
+        config.rules[0].when = MatcherTree::Always;
+        config.settings.smart_routing_enabled = false;
+        let router = Router::new(&config);
+        assert_eq!(
+            serde_json::to_value(router.evaluate_explained_with_ask_shortcut(&context, true))
+                .unwrap(),
+            serde_json::to_value(router.evaluate_explained(&context)).unwrap()
+        );
     }
 
     #[test]

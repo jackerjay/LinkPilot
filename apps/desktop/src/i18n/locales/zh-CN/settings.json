@@ -23,7 +23,8 @@
   },
   "quickOpen": {
     "label": "Ask 快速打开",
-    "description": "按住此键点击原本会弹出 Ask 选择器的链接，直接使用上方默认目标打开。默认目标不可用时，仍显示选择器。",
+    "modifier": "快捷键",
+    "description": "按住此键跳过 Ask，默认按列表顺序执行后续第一个匹配的非 Ask 规则。打开链接时使用该规则的浏览器和 profile；没有后续匹配时仍显示选择器。",
     "off": "关闭"
   },
   "appearance": {

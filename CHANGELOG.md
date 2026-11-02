@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.13] — 2026-11-02
+
+### Changed
+
+- Ask quick open now skips matching Ask rules and continues through later
+  rules in priority order. The first matching non-Ask rule takes effect,
+  preserving its profile and launch
+  flags. With no later match, the picker remains. Inspector/history records
+  the actual selected rule instead of the skipped Ask decision.
+- Clarify the first-match behavior in Settings in all four languages and
+  in the CLI/config DSL documentation.
+
 ## [0.5.12] — 2026-11-01
 
 ### Added

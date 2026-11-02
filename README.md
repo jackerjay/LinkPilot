@@ -38,9 +38,12 @@ The current app includes:
 - Ask picker with Halo profile wheel (Frosted / Bezel / Crown styles),
   keyboard shortcuts, per-browser profile ordering, dark mode, and a
   Settings test URL flow that opens real browsers.
-- Ask quick open: hold Command while clicking an Ask link to use the configured
-  default target directly. In Settings → Default target, choose Command, Option,
-  Control, Shift, or Off. An unavailable default still shows the picker.
+- Ask quick open: hold Command to skip matching Ask rules and continue through
+  later rules in order. The first matching non-Ask rule takes effect; Open
+  actions use that rule’s browser and profile.
+  Put an Open rule with a fixed profile after Ask to choose the shortcut target.
+  Without a later match, the picker still appears. Settings → Ask quick open
+  selects Command, Option, Control, Shift, or Off.
   Keep the key held until LinkPilot receives the link, including during startup.
 - Localized UI for English, Simplified Chinese, Traditional Chinese, and
   Japanese, with a system-language option.
