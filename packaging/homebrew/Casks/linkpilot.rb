@@ -19,10 +19,10 @@ cask "linkpilot" do
   # named `LinkPilot_<version>_aarch64.dmg` and `..._x86_64.dmg`.
   arch arm: "aarch64", intel: "x86_64"
 
-  # Per-arch DMG hashes from the v0.5.12 release `checksums.txt`.
-  version "0.5.12"
-  sha256 arm:   "db913516ac963977551abe13d27d6e6e4504d0cfd6147a4eed5a8d022b610555",
-         intel: "b76275aa759a7b5d216707240cfb9af67a3a0ef3b5875598ff25711dc1077055"
+  # Per-arch DMG hashes from the v0.5.13 release `checksums.txt`.
+  version "0.5.13"
+  sha256 arm:   "dc14b23525e61862f134163c89703bfed54bff65cc2deda7d05ab6969996f273",
+         intel: "158853c42058d2e021f5377945b66ea642c4bf26c0012aa3fd2dcc337e789605"
 
   url "https://github.com/jackerjay/LinkPilot/releases/download/v#{version}/LinkPilot_#{version}_#{arch}.dmg"
   name "LinkPilot"
