@@ -29,6 +29,21 @@ use tauri_plugin_deep_link::DeepLinkExt;
 
 pub use state::{AppState, DaemonMode};
 
+fn should_show_main_window(args: impl IntoIterator<Item = std::ffi::OsString>) -> bool {
+    args.into_iter().all(|arg| {
+        #[cfg(target_os = "macos")]
+        if arg == linkpilot_platform_mac::LAUNCH_AT_LOGIN_ARG {
+            return false;
+        }
+        #[cfg(all(target_os = "macos", feature = "direct-distribution"))]
+        if arg == linkpilot_updater::BACKGROUND_ARG {
+            return false;
+        }
+        let _ = arg;
+        true
+    })
+}
+
 #[cfg(not(feature = "app-store"))]
 fn probe_existing_daemon(endpoint: &linkpilot_core::endpoint::Endpoint) -> bool {
     use linkpilot_core::protocol::Request;
@@ -290,15 +305,14 @@ pub fn run() {
             // Browser-picker state for the Ask UI (see picker.rs).
             app.manage(picker::PickerState::default());
 
-            // Show the main window once on launch so the first-time user can
+            // Show the main window on an explicit launch so the first-time user can
             // see the GUI without having to find the menu-bar icon. The tray
             // / Dock reopen handlers below keep it accessible after the user
             // closes it.
-            #[cfg(all(target_os = "macos", feature = "direct-distribution"))]
-            let background = linkpilot_updater::background_restart();
-            #[cfg(not(all(target_os = "macos", feature = "direct-distribution")))]
-            let background = false;
-            if !background {
+            // Login launches and update restarts leave the menu-bar app running
+            // without activating its window. Startup reconciliation above also
+            // refreshes existing login items with the login marker.
+            if should_show_main_window(std::env::args_os().skip(1)) {
                 tray::show_main_window(app.handle());
             }
 
@@ -382,6 +396,11 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building LinkPilot")
         .run(|app, event| {
+            if let RunEvent::Ready = event {
+                if let Some(window) = app.get_webview_window("main") {
+                    tracing::debug!(visible = ?window.is_visible(), "main window ready");
+                }
+            }
             #[cfg(all(target_os = "macos", feature = "direct-distribution"))]
             if let RunEvent::Ready = event {
                 if let Err(error) = linkpilot_updater::acknowledge_startup() {
@@ -392,9 +411,55 @@ pub fn run() {
             // Reopen — bring the main window back instead of being silent.
             #[cfg(target_os = "macos")]
             if let RunEvent::Reopen { .. } = event {
+                tracing::debug!("explicit reopen requested");
                 tray::show_main_window(app);
             }
             #[cfg(not(target_os = "macos"))]
             let _ = (app, event);
         });
+}
+
+#[cfg(test)]
+mod startup_tests {
+    use super::should_show_main_window;
+
+    fn show_for(args: &[&str]) -> bool {
+        should_show_main_window(args.iter().map(std::ffi::OsString::from))
+    }
+
+    #[test]
+    fn explicit_launch_shows_main_window() {
+        assert!(show_for(&[]));
+        assert!(show_for(&["-psn_0_12345"]));
+        assert!(show_for(&["--launch-at-login-extra"]));
+    }
+
+    #[test]
+    fn main_window_starts_hidden_until_explicitly_shown() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let main = config["app"]["windows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|window| window["label"] == "main")
+            .unwrap();
+        assert_eq!(main["visible"], false);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn login_launch_keeps_main_window_hidden() {
+        assert!(!show_for(&[linkpilot_platform_mac::LAUNCH_AT_LOGIN_ARG]));
+        assert!(!show_for(&[
+            "-psn_0_12345",
+            linkpilot_platform_mac::LAUNCH_AT_LOGIN_ARG
+        ]));
+    }
+
+    #[cfg(all(target_os = "macos", feature = "direct-distribution"))]
+    #[test]
+    fn update_restart_still_keeps_main_window_hidden() {
+        assert!(!show_for(&[linkpilot_updater::BACKGROUND_ARG]));
+    }
 }

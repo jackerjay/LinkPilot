@@ -4,9 +4,12 @@
 //! / signed bundle; the LaunchAgent approach works for an unsigned dev build
 //! and is forward-compatible.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use linkpilot_core::platform::{Autostart, PlatformError, Result};
+
+/// Distinguishes a login launch from an explicit request to open the UI.
+pub const LAUNCH_AT_LOGIN_ARG: &str = "--launch-at-login";
 
 pub struct MacAutostart {
     label: String,
@@ -42,8 +45,19 @@ impl Autostart for MacAutostart {
             }
         } else {
             let exe = std::env::current_exe().map_err(PlatformError::Io)?;
-            let body = format!(
-                r#"<?xml version="1.0" encoding="UTF-8"?>
+            let body = launch_agent_plist(&self.label, &exe);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(PlatformError::Io)?;
+            }
+            std::fs::write(&path, body).map_err(PlatformError::Io)?;
+            Ok(())
+        }
+    }
+}
+
+fn launch_agent_plist(label: &str, exe: &Path) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -52,6 +66,7 @@ impl Autostart for MacAutostart {
     <key>ProgramArguments</key>
     <array>
         <string>{exe}</string>
+        <string>{LAUNCH_AT_LOGIN_ARG}</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -62,14 +77,42 @@ impl Autostart for MacAutostart {
 </dict>
 </plist>
 "#,
-                label = self.label,
-                exe = exe.display(),
-            );
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent).map_err(PlatformError::Io)?;
-            }
-            std::fs::write(&path, body).map_err(PlatformError::Io)?;
-            Ok(())
-        }
+        label = label,
+        exe = exe.display(),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    #[test]
+    fn login_launch_passes_background_marker_as_a_separate_argument() {
+        let exe = Path::new("/Applications/LinkPilot 测试.app/Contents/MacOS/linkpilot-desktop");
+        let body = launch_agent_plist("app.linkpilot.desktop", exe);
+        let mut child = Command::new("/usr/bin/plutil")
+            .args(["-convert", "json", "-o", "-", "-"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(body.as_bytes())
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert!(output.status.success());
+        let plist: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(plist["Label"], "app.linkpilot.desktop");
+        assert_eq!(
+            plist["ProgramArguments"],
+            serde_json::json!([exe.to_str().unwrap(), LAUNCH_AT_LOGIN_ARG])
+        );
+        assert_eq!(plist["RunAtLoad"], true);
+        assert_eq!(plist["KeepAlive"], false);
     }
 }

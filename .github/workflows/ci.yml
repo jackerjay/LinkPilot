@@ -55,6 +55,9 @@ jobs:
       - name: Test profile permission errors
         run: cargo test -p linkpilot-desktop profile_scan_
 
+      - name: Test startup window behavior
+        run: cargo test --locked -p linkpilot-desktop startup_tests
+
       - name: Test App Store policy
         env:
           TAURI_CONFIG: '{"app":{"macOSPrivateApi":false,"security":{"capabilities":["store"]}}}'

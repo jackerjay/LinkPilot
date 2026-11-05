@@ -2165,7 +2165,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-cli"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "anyhow",
  "clap",
@@ -2184,7 +2184,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-core"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "libc",
  "notify",
@@ -2198,7 +2198,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-desktop"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2223,7 +2223,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-headless-daemon"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "anyhow",
  "clap",
@@ -2237,14 +2237,14 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-icon-padder"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "image",
 ]
 
 [[package]]
 name = "linkpilot-ipc"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "linkpilot-core",
  "serde",
@@ -2257,7 +2257,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-native-host"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "anyhow",
  "linkpilot-core",
@@ -2268,14 +2268,14 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-platform-linux"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "linkpilot-core",
 ]
 
 [[package]]
 name = "linkpilot-platform-mac"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "core-foundation",
  "core-foundation-sys",
@@ -2293,14 +2293,14 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-platform-win"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "linkpilot-core",
 ]
 
 [[package]]
 name = "linkpilot-sandbox-probe"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "linkpilot-core",
  "serde_json",
@@ -2309,7 +2309,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-updater"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "anyhow",
  "libc",

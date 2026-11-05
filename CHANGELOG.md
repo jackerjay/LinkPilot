@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.14] — 2026-11-05
+
+### Fixed
+
+- Launch at Login now starts the menu-bar app silently without opening the
+  main window. Explicit launches and reopening the app still show the UI;
+  existing login items are refreshed on the next production launch.
+
 ## [0.5.13] — 2026-11-02
 
 ### Changed
