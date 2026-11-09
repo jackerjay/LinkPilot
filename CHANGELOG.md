@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.16] — 2026-11-09
+
+### Fixed
+
+- Match native Helper compilation to the supported macOS 12 minimum, avoiding
+  an availability-runtime linker failure in architecture-specific release builds.
+- Add explicit release-mode Helper linking to CI before creating release tags.
+
 ## [0.5.15] — 2026-11-09
 
 ### Added

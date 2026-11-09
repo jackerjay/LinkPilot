@@ -20,6 +20,7 @@ permissions:
   actions: read
 
 env:
+  MACOSX_DEPLOYMENT_TARGET: "12.0"
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
   NOTARIZE_SCRIPT: ${{ github.event_name == 'workflow_dispatch' && '.release-tools/apps/desktop/scripts/notarize-mac.sh' || 'apps/desktop/scripts/notarize-mac.sh' }}
 
