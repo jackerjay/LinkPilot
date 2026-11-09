@@ -17,6 +17,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   errors for missing/denied/stale profiles without discarding the selected target.
 - Independent Helper signing/notarization and architecture-specific ZIP assets
   in the release workflow, with real signed App Sandbox integration checks.
+- English, Simplified Chinese, Traditional Chinese and Japanese App Store copy
+  and screenshots, including explicit optional-Helper requirements.
+
+### Fixed
+
+- Declare all four supported interface languages in the signed macOS bundle,
+  so App Store language detection no longer reports English alone.
 
 ## [0.5.14] — 2026-11-05
 

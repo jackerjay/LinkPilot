@@ -110,6 +110,12 @@ jobs:
       - name: Test signing team identity
         run: python3 -m unittest discover -s scripts -p 'test_signing_team.py'
 
+      - name: Validate localized App Store assets
+        working-directory: .
+        run: |
+          python3 scripts/validate_store_metadata.py
+          python3 -m unittest discover -s scripts -p 'test_store_metadata.py'
+
   desktop-bundle:
     name: Desktop bundle smoke test
     runs-on: macos-latest

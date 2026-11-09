@@ -68,6 +68,11 @@ plutil -replace NSUserActivityTypes -json '["NSUserActivityTypeBrowsingWeb"]' "$
 # / Spotlight metadata and matches what other browsers use.
 plutil -replace LSApplicationCategoryType -string "public.app-category.utilities" "$PLIST"
 
+# React/i18next owns localized resources, so there are no native .lproj folders
+# for App Store processing to discover. Declare the languages actually shipped.
+plutil -replace CFBundleDevelopmentRegion -string "en" "$PLIST"
+plutil -replace CFBundleLocalizations -json '["en", "zh-Hans", "zh-Hant", "ja"]' "$PLIST"
+
 # Menubar-only ("agent") mode, added in M5.5. With LSUIElement=true,
 # macOS knows BEFORE exec that LinkPilot doesn't want a Dock icon, a
 # Cmd+Tab presence, or a main menu at the top of the screen. The tray

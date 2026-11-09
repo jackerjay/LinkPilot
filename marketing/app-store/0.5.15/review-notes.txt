@@ -1,0 +1,19 @@
+LinkPilot 0.5.15: localized store information and an optional browser-profile companion.
+
+No account or sign-in is required. The Store application remains sandboxed and works independently as a local browser-level link router.
+
+Standalone review:
+1. Open LinkPilot Store. In Settings, choose an installed browser as the default target.
+2. Add a rule for a website host and select another installed browser.
+3. Use Test URL to inspect the decision and Open test link to verify its destination.
+4. To test links from other apps, select LinkPilot Store as the macOS default web browser. Existing in-browser navigation normally stays in that browser; no browser extension is included.
+5. Change the app language in Settings to English, Simplified Chinese, Traditional Chinese, or Japanese. The bundle declares the same four supported languages.
+
+Optional profile enhancement:
+LinkPilot Helper is a separate, optional, Developer ID signed/notarized native companion, distributed through https://github.com/jackerjay/LinkPilot/releases/tag/v0.5.15 . The Store app opens the official release page only when the user chooses Get Helper; it does not download or install executable code.
+
+To test profiles, install/open the architecture-matched Helper application, then open Browsers in LinkPilot Store. Grant Helper access only to the browser being tested if macOS requests it. Choose an existing Chrome or Brave profile as a rule or default target and open a test link. A missing Helper, denied permission, or deleted profile produces an error without silently opening a different profile.
+
+The external Helper registers its own on-demand, per-user XPC service. Store does not contain an unsandboxed executable or write a LaunchAgent. XPC uses mutual Apple code-signing requirements and the same signing team's App Group. No root service, temporary sandbox exception, Automation or Accessibility permission is used. Profile discovery reads metadata only, not browsing history, passwords or Cookies.
+
+App updates continue through the App Store. The optional Helper is installed/updated separately. Rules, preferences and optional routing observations remain on the Mac; there is no developer analytics, advertising, tracking, account or subscription.

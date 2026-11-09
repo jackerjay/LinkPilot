@@ -1,0 +1,35 @@
+{
+  "locale": "zh-Hans",
+  "version": "0.5.15",
+  "support_url": "https://github.com/jackerjay/LinkPilot/issues",
+  "marketing_url": "https://github.com/jackerjay/LinkPilot",
+  "privacy_policy_url": "https://github.com/jackerjay/LinkPilot/blob/main/docs/privacy.md",
+  "name": "LinkPilot：浏览器选择与链接分流",
+  "subtitle": "按规则打开网址，工作生活分开",
+  "keywords": "默认,切换,打开,自动,管理,效率,隐私,菜单栏,快捷访问",
+  "promotional_text": "工作链接交给工作浏览器，生活链接交给个人浏览器。按规则自动分流，也能每次手动选择。另装可选 Helper 后，支持 Chrome 和 Brave 的 profile。",
+  "description": "让每个链接，打开在合适的浏览器里。\n\nLinkPilot 是 Mac 上的浏览器选择与链接分流工具。工作网站用一个浏览器，个人网站用另一个；需要自己决定时弹出选择器，也可以交给规则自动处理。\n\n按你的规则打开链接\n• 按网站域名、网址路径或来源应用匹配链接。\n• 将匹配的链接发送到指定浏览器、弹出选择器，或直接阻止。\n• 调整规则顺序，并用分组管理不同场景。\n• 为未匹配规则的链接设置默认目标。\n• 用“测试 URL”查看匹配结果与原因，再决定是否打开。\n\n需要选择时，由你决定\nAsk 选择器让你按次选择浏览器。还可设置快捷按键，跳过 Ask，按列表顺序执行后续第一个匹配的非 Ask 规则，并保留该规则的浏览器与 profile。\n\n可选增强：Chrome 和 Brave 的 profile\n从官方 GitHub Release 单独安装 LinkPilot Helper 后，可选择 Chrome 和 Brave 的浏览器 profile。基础浏览器分流无需 Helper。若 macOS 提示，请按需允许 Helper 访问对应浏览器的数据。其他浏览器仍支持按浏览器分流，本版 Helper 暂不支持其 profile。\n\n本地处理，自己掌控\n规则、偏好设置和可选的路由记录保留在你的 Mac 上。无需账号，没有广告、跟踪或订阅。LinkPilot 和 Helper 均不读取浏览历史、密码或 Cookies。导入、导出配置时使用 macOS 系统文件选择器。\n\n开始使用\n在 macOS 设置中将 LinkPilot Store 设为默认浏览器，来自其他应用的链接即可按规则分流。在浏览器内部点击的链接通常仍留在原浏览器中；本应用不包含浏览器扩展。\n\n应用支持英语、简体中文、繁体中文和日语。应用更新由 App Store 提供；可选 Helper 需单独安装和更新。\n\nLinkPilot 为开源项目。",
+  "whats_new": "• 可选的 LinkPilot Helper 为 Chrome 和 Brave 增加 profile 选择。\n• Helper 不可用、权限不足或 profile 失效时明确报错，不悄悄换用其他 profile。\n• Ask 快速打开会继续匹配后续规则，并保留命中规则的目标。\n• 完善英语、简中、繁中和日语商店文案，以及安装包的支持语言声明。\n\nHelper 需单独下载，基础浏览器分流无需安装 Helper。",
+  "screenshots": [
+    {
+      "id": "01-rules",
+      "headline": "每个链接，都去合适的浏览器。",
+      "caption": "工作与生活链接，按你的选择分别打开。"
+    },
+    {
+      "id": "02-rule-editor",
+      "headline": "规则设一次，链接自动分流。",
+      "caption": "按网站、网址路径或来源应用匹配。"
+    },
+    {
+      "id": "03-test-url",
+      "headline": "打开之前，先看会去哪里。",
+      "caption": "测试网址，查看匹配规则和目标浏览器。"
+    },
+    {
+      "id": "04-profiles",
+      "headline": "工作 profile，个人 profile。",
+      "caption": "Chrome 和 Brave 的 profile 需单独安装 Helper。"
+    }
+  ]
+}

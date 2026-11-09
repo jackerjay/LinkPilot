@@ -1,0 +1,35 @@
+{
+  "locale": "en-US",
+  "version": "0.5.15",
+  "support_url": "https://github.com/jackerjay/LinkPilot/issues",
+  "marketing_url": "https://github.com/jackerjay/LinkPilot",
+  "privacy_policy_url": "https://github.com/jackerjay/LinkPilot/blob/main/docs/privacy.md",
+  "name": "LinkPilot: Browser Chooser",
+  "subtitle": "Route links with your rules",
+  "keywords": "switcher,url,opener,default,work,personal,productivity,menu bar,automatic",
+  "promotional_text": "Work links in one browser. Personal links in another. Choose each time or let rules decide. Add the optional Helper for Chrome and Brave profiles.",
+  "description": "Open each link in the browser that fits.\n\nLinkPilot is a browser chooser and link router for your Mac. Keep work links in one browser and personal links in another. Decide as you click, or let your rules choose automatically.\n\nMAKE LINKS FOLLOW YOUR RULES\n• Match a website host, a URL path, or the app a link comes from.\n• Send matching links to an installed browser, ask you to choose, or block them.\n• Arrange rules in order and organize them into groups.\n• Pick a default browser target for links without a matching rule.\n• Test a URL and see why a rule applies before you change your setup.\n\nCHOOSE WHEN YOU WANT CONTROL\nUse the Ask picker when you want to decide where a link opens. Configure a shortcut key to skip Ask and continue to the next matching non-Ask rule. Its selected browser and profile are preserved.\n\nOPTIONAL CHROME AND BRAVE PROFILES\nInstall LinkPilot Helper separately from our official GitHub releases to select Chrome and Brave profiles. The companion is optional: browser-level routing works without it. Allow browser-data access for Helper if macOS requests it. Other browsers continue to use browser-level routing; their profiles are not supported by this Helper version.\n\nLOCAL BY DESIGN\nRules, preferences, and optional routing observations stay on your Mac. No account, advertising, tracking, or subscription. Neither LinkPilot nor Helper reads browsing history, passwords, or Cookies. Import and export your configuration with the macOS file picker.\n\nGET STARTED\nChoose LinkPilot Store as your default web browser in macOS settings. Links opened by other apps can then follow your rules. Links clicked inside an existing browser normally stay in that browser; no browser extension is included.\n\nThe app supports English, Simplified Chinese, Traditional Chinese, and Japanese. App updates arrive through the App Store. The optional Helper is installed and updated separately.\n\nLinkPilot is open source.",
+  "whats_new": "• Optional LinkPilot Helper adds Chrome and Brave profile selection.\n• Helper failures and unavailable profiles now show an error without silently switching to another profile.\n• Ask quick open continues through later rules and preserves the matching target.\n• English, Simplified Chinese, Traditional Chinese, and Japanese store information and app language declarations.\n\nThe Helper is a separate, optional download. Browser-level routing remains available without it.",
+  "screenshots": [
+    {
+      "id": "01-rules",
+      "headline": "Your links. Your browser.",
+      "caption": "Keep work and personal links in the browsers you choose."
+    },
+    {
+      "id": "02-rule-editor",
+      "headline": "Make every link follow your rules.",
+      "caption": "Match websites, URL paths, or the app a link comes from."
+    },
+    {
+      "id": "03-test-url",
+      "headline": "Know where a link will go.",
+      "caption": "Test your rules and see the matching target before opening."
+    },
+    {
+      "id": "04-profiles",
+      "headline": "Work profile. Personal profile.",
+      "caption": "Chrome and Brave profiles require the separately installed Helper."
+    }
+  ]
+}

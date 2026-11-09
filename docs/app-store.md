@@ -7,6 +7,12 @@ identifier, `app.linkpilot.store` (local product name: `LinkPilot Store`).
 It supports browser-level routing by itself. The optional, separately installed
 [browser Helper](browser-helper.md) adds Chrome and Brave profile routing.
 
+The [0.5.15 store asset package](../marketing/app-store/0.5.15/README.md) contains
+the four localized metadata sets, screenshots and release checks. Storefront
+copy and the bundle's supported-language declaration are separate: both must
+be updated for the new version. `patch-info-plist.sh` declares `en`, `zh-Hans`,
+`zh-Hant` and `ja` before either distribution build is signed.
+
 The local build command produces a development-signed Store candidate, not an
 App Store upload or an assurance of review acceptance. No Store record, provisioning profile,
 distribution package or submission is created by the local build command.
