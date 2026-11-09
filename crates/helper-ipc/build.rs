@@ -4,7 +4,7 @@ fn main() {
         cc::Build::new()
             .file("native/peer.m")
             .flag("-fobjc-arc")
-            .flag("-mmacosx-version-min=11.0")
+            .flag("-mmacosx-version-min=12.0")
             .compile("helper_peer");
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rustc-link-lib=framework=Security");
