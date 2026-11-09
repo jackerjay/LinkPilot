@@ -37,6 +37,8 @@ jobs:
         run: cargo test --workspace --exclude linkpilot-desktop
 
       - name: Test official signed update and tamper rejection
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           case "$(uname -m)" in
             arm64) update_arch=aarch64 ;;
@@ -44,9 +46,9 @@ jobs:
             *) exit 1 ;;
           esac
           export LINKPILOT_TEST_DMG="$RUNNER_TEMP/LinkPilot_0.5.11_${update_arch}.dmg"
-          curl --fail --location --retry 3 --max-time 120 \
-            "https://github.com/jackerjay/LinkPilot/releases/download/v0.5.11/LinkPilot_0.5.11_${update_arch}.dmg" \
-            --output "$LINKPILOT_TEST_DMG"
+          gh release download v0.5.11 --repo "$GITHUB_REPOSITORY" \
+            --pattern "LinkPilot_0.5.11_${update_arch}.dmg" \
+            --output "$LINKPILOT_TEST_DMG" --clobber
           cargo test -p linkpilot-updater signed_release_authentication_and_tamper_rejection -- --ignored
 
       - name: Link Helper in release mode
