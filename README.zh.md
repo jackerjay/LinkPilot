@@ -107,6 +107,10 @@ Settings 提供手动重试和打开 DMG 的备用入口。正在使用浏览器
 早于 0.5.12 的版本需先手动升级一次，之后才有静默安装能力。
 App Store 版由 Apple 更新。详见[更新与故障恢复](docs/updates.md)。
 
+App Store 沙盒版可单独安装已签名的 **LinkPilot Helper**，增强 Chrome、Brave 的
+profile 选择；不安装 Helper 时仍支持按浏览器分流。开源直接分发版与 Helper
+共用浏览器后端，无需额外安装伴随应用。详见 [Helper 安装与架构](docs/browser-helper.md)。
+
 ## 支持语言
 
 LinkPilot 当前内置以下界面语言：

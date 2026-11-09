@@ -1,0 +1,35 @@
+{
+  "locale": "zh-Hant",
+  "version": "0.5.15",
+  "support_url": "https://github.com/jackerjay/LinkPilot/issues",
+  "marketing_url": "https://github.com/jackerjay/LinkPilot",
+  "privacy_policy_url": "https://github.com/jackerjay/LinkPilot/blob/main/docs/privacy.md",
+  "name": "LinkPilot：瀏覽器選擇與連結分流",
+  "subtitle": "依規則開啟網址，工作生活分開",
+  "keywords": "預設,切換,開啟,自動,管理,效率,隱私,選單列,快速存取",
+  "promotional_text": "工作連結交給工作瀏覽器，生活連結交給個人瀏覽器。依規則自動分流，也能每次自行選擇。另行安裝選用 Helper 後，支援 Chrome 和 Brave 設定檔。",
+  "description": "讓每個連結，都在合適的瀏覽器開啟。\n\nLinkPilot 是 Mac 上的瀏覽器選擇與連結分流工具。工作網站用一個瀏覽器，個人網站用另一個；需要自己決定時顯示選擇器，也可以交由規則自動處理。\n\n依你的規則開啟連結\n• 依網站網域、網址路徑或來源應用程式比對連結。\n• 將符合條件的連結交給指定瀏覽器、顯示選擇器，或直接阻擋。\n• 調整規則順序，並使用群組管理不同情境。\n• 為沒有符合規則的連結設定預設目標。\n• 用「測試 URL」查看比對結果與原因，再決定是否開啟。\n\n需要選擇時，由你決定\nAsk 選擇器讓你逐次選擇瀏覽器。你也能設定快捷按鍵，略過 Ask，依清單順序執行後續第一個符合條件的非 Ask 規則，保留該規則的瀏覽器與設定檔。\n\n選用增強：Chrome 和 Brave 設定檔\n從官方 GitHub Release 另行安裝 LinkPilot Helper 後，即可選擇 Chrome 和 Brave 的瀏覽器設定檔。基本瀏覽器分流不需要 Helper。若 macOS 提示，請依需要允許 Helper 存取對應瀏覽器的資料。其他瀏覽器仍支援依瀏覽器分流，本版 Helper 暫不支援其設定檔。\n\n本機處理，自己掌控\n規則、偏好設定與選用的路由記錄保留在你的 Mac 上。無須帳號，沒有廣告、追蹤或訂閱。LinkPilot 與 Helper 均不讀取瀏覽記錄、密碼或 Cookies。匯入與匯出設定時，使用 macOS 系統檔案選擇器。\n\n開始使用\n在 macOS 設定中將 LinkPilot Store 設為預設瀏覽器，來自其他應用程式的連結即可依規則分流。在瀏覽器內點按的連結通常仍留在原瀏覽器；本應用程式不包含瀏覽器擴充功能。\n\n應用程式支援英語、簡體中文、繁體中文與日語。應用程式由 App Store 提供更新；選用 Helper 需另行安裝與更新。\n\nLinkPilot 是開源專案。",
+  "whats_new": "• 選用的 LinkPilot Helper 為 Chrome 和 Brave 加入設定檔選擇。\n• Helper 無法使用、權限不足或設定檔失效時明確顯示錯誤，不會悄悄改用其他設定檔。\n• Ask 快速開啟會繼續比對後續規則，並保留符合規則的目標。\n• 完善英語、簡中、繁中與日語商店文案，以及安裝套件的支援語言宣告。\n\nHelper 需另行下載，基本瀏覽器分流不需要安裝 Helper。",
+  "screenshots": [
+    {
+      "id": "01-rules",
+      "headline": "每個連結，都到合適的瀏覽器。",
+      "caption": "工作與生活連結，依你的選擇分別開啟。"
+    },
+    {
+      "id": "02-rule-editor",
+      "headline": "規則設一次，連結自動分流。",
+      "caption": "依網站、網址路徑或來源應用程式比對。"
+    },
+    {
+      "id": "03-test-url",
+      "headline": "開啟之前，先看會去哪裡。",
+      "caption": "測試網址，查看符合的規則與目標瀏覽器。"
+    },
+    {
+      "id": "04-profiles",
+      "headline": "工作設定檔，個人設定檔。",
+      "caption": "Chrome 和 Brave 設定檔需另行安裝 Helper。"
+    }
+  ]
+}

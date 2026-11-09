@@ -57,6 +57,8 @@ export const ipc = {
     invoke<void>("workspace_set_enabled", { id, enabled }),
 
   listBrowsers: () => invoke<InstalledBrowser[]>("list_browsers"),
+  helperStatus: () => invoke<HelperStatus>("helper_status"),
+  helperStart: () => invoke<HelperStatus>("helper_start"),
   addCustomBrowser: (browser: InstalledBrowser) =>
     invoke<void>("add_custom_browser", { browser }),
   removeCustomBrowser: (id: BrowserId) =>
@@ -141,6 +143,13 @@ export const ipc = {
   observationsExport: (dest: string) =>
     invoke<void>("observations_export", { dest }),
 };
+
+export interface HelperStatus {
+  connected: boolean;
+  version: string | null;
+  profile_browsers: string[];
+  error: string | null;
+}
 
 export interface CliInstallStatus {
   /** Absolute path of `lpt` inside the running .app bundle, or `null` for

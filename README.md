@@ -128,6 +128,11 @@ Versions before 0.5.12 need one manual upgrade to enable silent installation.
 The App Store edition receives updates through Apple. See
 [update behavior and recovery](docs/updates.md).
 
+The sandboxed App Store edition can optionally use the separately installed,
+signed **LinkPilot Helper** for Chrome and Brave profile selection. It works
+without Helper for browser-level routing. The direct edition reuses the same
+browser backend and needs no companion. See [Helper setup and architecture](docs/browser-helper.md).
+
 ## Languages
 
 LinkPilot currently ships UI translations for:

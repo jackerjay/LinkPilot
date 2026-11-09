@@ -19,8 +19,8 @@
   },
   "store": {
     "title": "App Store 版",
-    "description": "按浏览器路由链接，不指定 profile、不请求浏览器数据权限，也不控制无痕模式和新窗口。请在设置中选择默认路由浏览器。",
-    "updates": "更新由 App Store 提供。本版不提供 CLI 安装、外部后台服务和 LaunchAgent。",
+    "description": "按浏览器分流链接。单独安装可选 Helper 后，可选择 Chrome 和 Brave 的 profile。在设置中选择默认目标。",
+    "updates": "应用更新通过 App Store 提供。可选浏览器 Helper 需单独安装和更新。CLI 安装由直接分发版提供。",
     "engine": "路由引擎",
     "browserCount": "{{browsers}} 个浏览器",
     "settingsSubtitle": "默认浏览器、路由目标、外观和本地行为记录。",
@@ -35,5 +35,18 @@
     "imported": "配置已导入。",
     "exported": "配置已导出。",
     "defaultBrowserHint": "macOS 会显示确认弹窗。"
+  },
+  "helper": {
+    "title": "可选浏览器 Helper",
+    "description": "单独安装已签名的 LinkPilot Helper，即可选择 Chrome 和 Brave 的 profile。其他浏览器仍可正常打开。浏览器数据权限由 Helper 申请。",
+    "connected": "已连接 · {{version}}",
+    "disconnected": "Helper 未连接",
+    "start": "启动 Helper",
+    "refresh": "重新检查",
+    "download": "获取 Helper",
+    "required": "请启动 LinkPilot Helper，以使用已保存的 profile。",
+    "permissions": "浏览器数据授权",
+    "dismiss": "关闭",
+    "checking": "正在检查 Helper…"
   }
 }

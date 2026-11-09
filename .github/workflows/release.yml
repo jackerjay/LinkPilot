@@ -149,6 +149,9 @@ jobs:
       - name: Build daemon
         run: cargo build --release --target ${{ matrix.target }} -p linkpilot-headless-daemon
 
+      - name: Build optional browser Helper
+        run: cargo build --locked --release --target ${{ matrix.target }} -p linkpilot-browser-helper
+
       - name: Build desktop .app
         working-directory: apps/desktop
         run: corepack yarn run tauri build --target ${{ matrix.target }} --bundles app --no-sign
@@ -203,6 +206,25 @@ jobs:
           ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/LinkPilot.zip"
           bash "$NOTARIZE_SCRIPT" "$RUNNER_TEMP/LinkPilot.zip" "$APP"
           spctl --assess --type execute --verbose=2 "$APP"
+
+      - name: Package and notarize the independent browser Helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          HELPER_DIR="$RUNNER_TEMP/browser-helper"
+          python3 apps/desktop/scripts/package-helper.py \
+            --binary "target/${{ matrix.target }}/release/linkpilot-helper" \
+            --output "$HELPER_DIR" --identity "$APPLE_SIGNING_IDENTITY" \
+            --version "${RELEASE_TAG#v}"
+          HELPER="$HELPER_DIR/LinkPilot Helper.app"
+          ditto -c -k --keepParent "$HELPER" "$RUNNER_TEMP/LinkPilot-Helper-submit.zip"
+          bash "$NOTARIZE_SCRIPT" "$RUNNER_TEMP/LinkPilot-Helper-submit.zip" "$HELPER"
+          spctl --assess --type execute --verbose=2 "$HELPER"
+          # Real signed App Sandbox clients, including rejected peer identities.
+          python3 scripts/test_helper_integration.py --helper "$HELPER" --identity "$APPLE_SIGNING_IDENTITY"
+          mkdir -p dist/release
+          ditto -c -k --keepParent "$HELPER" \
+            "dist/release/LinkPilot_Helper_${RELEASE_TAG#v}_${{ matrix.arch }}.zip"
 
       # DMG built with create-dmg, not `tauri build --bundles dmg` (which
       # re-bundles the .app from scratch and clobbers the patched
@@ -281,7 +303,7 @@ jobs:
           # Per-arch checksums file — the publish job concatenates both
           # arches' files into a single unified `checksums.txt`.
           # Hash payloads only: the redirected manifest already exists here.
-          (cd dist/release && shasum -a 256 -- *.dmg lpt-macos-* linkpilot-daemon-macos-*) > "dist/release/checksums-${ARCH}.txt"
+          (cd dist/release && shasum -a 256 -- *.dmg *.zip lpt-macos-* linkpilot-daemon-macos-*) > "dist/release/checksums-${ARCH}.txt"
 
       - name: Upload arch artifacts
         uses: actions/upload-artifact@v7
@@ -347,7 +369,7 @@ jobs:
           # a single source of truth.
           find dist/incoming -type f ! -name 'checksums-*.txt' -exec cp {} dist/release/ \;
           # Hash payloads only: the redirected manifest already exists here.
-          (cd dist/release && shasum -a 256 -- *.dmg lpt-macos-* linkpilot-daemon-macos-*) > dist/release/checksums.txt
+          (cd dist/release && shasum -a 256 -- *.dmg *.zip lpt-macos-* linkpilot-daemon-macos-*) > dist/release/checksums.txt
           ls -la dist/release
 
       # This repo has immutable releases enabled, so assets can only be

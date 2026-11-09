@@ -1,4 +1,6 @@
 import { isAppStore } from "@/lib/distribution";
+import { HelperCard } from "@/components/HelperCard";
+import { useHelper } from "@/lib/helper";
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -52,6 +54,7 @@ export function SettingsPage({
   const [browsers, setBrowsers] = useState<InstalledBrowser[]>([]);
   const [importPath, setImportPath] = useState("");
   const [exportPath, setExportPath] = useState("");
+  const helper = useHelper();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cliStatus, setCliStatus] = useState<CliInstallStatus | null>(null);
@@ -525,7 +528,7 @@ export function SettingsPage({
             onChange={(v) => changePickerStyle(v)}
           />
         </div>
-        {!isAppStore && <>
+        {(!isAppStore || helper.status?.connected) && <>
         <div
           className="mac-row"
           style={{ alignItems: "flex-start", flexDirection: "column", gap: 4 }}
@@ -830,6 +833,7 @@ export function SettingsPage({
 
       </>}
       {isAppStore && <>
+        <HelperCard />
         <div className="mac-card-title">{t("io.card")}</div>
         <div className="mac-card mac-card-pad" style={{ display: "flex", gap: 12 }}>
           <button type="button" className="mac-tbtn" onClick={() => void transferStoreConfig(false)}>{t("io.importButton")}…</button>

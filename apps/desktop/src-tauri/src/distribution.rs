@@ -27,10 +27,9 @@ pub fn validate_document(doc: &ConfigDocument) -> Result<(), String> {
         validate_target(&doc.default_target)?;
         if doc.settings.launch_at_login
             || doc.settings.auto_check_updates
-            || !doc.settings.profile_orders.is_empty()
             || !doc.custom_browsers.is_empty()
         {
-            return Err("App Store settings cannot enable LaunchAgents, external updates, profile ordering or custom browsers".into());
+            return Err("App Store settings cannot enable LaunchAgents, external updates or custom browsers".into());
         }
         for rule in &doc.rules {
             validate_matcher(&rule.when)?;
@@ -64,9 +63,12 @@ mod tests {
         assert!(validate_document(&doc).is_err()); // Direct builds check GitHub by default.
         doc.settings.auto_check_updates = false;
         assert!(validate_document(&doc).is_ok());
-        doc.default_target.profile = Some("Default".into());
+        doc.default_target = BrowserTarget::new(linkpilot_core::browser::BrowserId::new("safari"))
+            .with_profile("Default");
         assert!(validate_document(&doc).is_err());
         assert_eq!(doc.default_target.profile.as_deref(), Some("Default"));
+        doc.default_target.browser = linkpilot_core::browser::BrowserId::new("chrome");
+        assert!(validate_document(&doc).is_ok()); // Retained even while Helper is offline.
     }
     #[test]
     fn nested_extension_matchers_cannot_enter_store_configuration() {

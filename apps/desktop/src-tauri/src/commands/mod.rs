@@ -174,7 +174,6 @@ pub fn set_profile_order(
     browser: String,
     profile_ids: Vec<String>,
 ) -> Result<(), String> {
-    crate::distribution::require_direct("Profile ordering")?;
     let mut doc = state.config.document();
     if profile_ids.is_empty() {
         doc.settings.profile_orders.remove(&browser);
@@ -197,6 +196,61 @@ pub fn set_profile_order(
 
 // ----------------------------------------------------------------------------
 // inventory
+
+#[derive(serde::Serialize)]
+pub struct HelperStatus {
+    connected: bool,
+    version: Option<String>,
+    profile_browsers: Vec<String>,
+    error: Option<String>,
+}
+
+#[tauri::command]
+pub async fn helper_status() -> Result<HelperStatus, String> {
+    #[cfg(target_os = "macos")]
+    return tauri::async_runtime::spawn_blocking(
+        || match linkpilot_helper_ipc::transport::status() {
+            Ok(caps) => HelperStatus {
+                connected: true,
+                version: Some(caps.version),
+                profile_browsers: caps.profile_browsers,
+                error: None,
+            },
+            Err(error) => HelperStatus {
+                connected: false,
+                version: None,
+                profile_browsers: Vec::new(),
+                error: Some(error),
+            },
+        },
+    )
+    .await
+    .map_err(|e| e.to_string());
+    #[cfg(not(target_os = "macos"))]
+    Err("Helper requires macOS".into())
+}
+
+#[tauri::command]
+pub async fn helper_start() -> Result<HelperStatus, String> {
+    #[cfg(target_os = "macos")]
+    {
+        tauri::async_runtime::spawn_blocking(|| {
+            linkpilot_helper_ipc::transport::start()?;
+            for _ in 0..20 {
+                if linkpilot_helper_ipc::transport::status().is_ok() {
+                    return Ok(());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err("Helper started but did not become ready. Open Helper and retry".to_string())
+        })
+        .await
+        .map_err(|e| e.to_string())??;
+        helper_status().await
+    }
+    #[cfg(not(target_os = "macos"))]
+    Err("Helper requires macOS".into())
+}
 
 /// Merged "every browser this app knows about" — auto-detected from
 /// the platform inventory + user-added custom entries from the config.
@@ -301,7 +355,6 @@ impl From<PlatformError> for ProfileScanError {
 
 #[tauri::command]
 pub fn open_profile_privacy_settings(app: AppHandle) -> Result<(), String> {
-    crate::distribution::require_direct("Profile access")?;
     #[cfg(target_os = "macos")]
     {
         use tauri_plugin_opener::OpenerExt;

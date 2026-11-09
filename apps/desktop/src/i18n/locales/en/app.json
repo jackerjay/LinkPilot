@@ -19,8 +19,8 @@
   },
   "store": {
     "title": "App Store edition",
-    "description": "Routes links by browser. This edition does not select profiles, request browser data access, or control private mode and new windows. Choose your fallback browser in Settings.",
-    "updates": "Updates are delivered through the App Store. CLI installation, external background services and LaunchAgents are unavailable in this edition.",
+    "description": "Route links by browser. The optional, separately installed Helper adds Chrome and Brave profile selection. Choose your fallback target in Settings.",
+    "updates": "App updates are delivered through the App Store. The optional browser Helper is installed and updated separately. CLI installation is available in the direct edition.",
     "engine": "Routing engine",
     "browserCount": "{{browsers}} browsers",
     "settingsSubtitle": "Default browser, routing target, appearance and local behavior history.",
@@ -35,5 +35,18 @@
     "imported": "Configuration imported.",
     "exported": "Configuration exported.",
     "defaultBrowserHint": "macOS will ask you to confirm the change."
+  },
+  "helper": {
+    "title": "Optional browser Helper",
+    "description": "Install the separately signed LinkPilot Helper to choose Chrome and Brave profiles. Other browsers continue to open normally. Browser data permissions belong to Helper.",
+    "connected": "Connected · {{version}}",
+    "disconnected": "Helper is not connected",
+    "start": "Start Helper",
+    "refresh": "Check again",
+    "download": "Get Helper",
+    "required": "Start LinkPilot Helper to use this saved profile.",
+    "permissions": "Browser permissions",
+    "dismiss": "Dismiss",
+    "checking": "Checking Helper…"
   }
 }

@@ -72,6 +72,8 @@ test('embeds helpers, patches browser registration, and signs inside out', macOn
   const info = JSON.parse(plist.stdout);
   assert.equal(info.CFBundleURLTypes[0].CFBundleTypeRole, 'Viewer');
   assert.equal(info.LSUIElement, true);
+  assert.equal(info.CFBundleDevelopmentRegion, 'en');
+  assert.deepEqual(info.CFBundleLocalizations, ['en', 'zh-Hans', 'zh-Hant', 'ja']);
   const signing = result.calls.filter(call => call.command === 'codesign');
   assert.deepEqual(signing.map(call => call.args.at(-1)), [
     join(app, 'Contents/MacOS/lpt'), join(app, 'Contents/MacOS/linkpilot-daemon'), app, app,

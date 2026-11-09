@@ -4,6 +4,8 @@ import { Trans, useTranslation } from "react-i18next";
 import { Plus, RefreshCcw, Trash2, User } from "lucide-react";
 import { AppIcon } from "@/components/AppIcon";
 import { ProfileAccessDialog } from "@/components/ProfileAccessDialog";
+import { HelperCard } from "@/components/HelperCard";
+import { HELPER_CHANGED } from "@/lib/helper";
 import { appPathFromExecutable } from "@/lib/browsers";
 import { ipc } from "@/lib/ipc";
 import { isProfileAccessDenied } from "@/lib/profile-access";
@@ -48,7 +50,7 @@ export function BrowsersPage() {
           try {
             return {
               browser: b,
-              profiles: isAppStore ? [] : await ipc.listProfiles(b.id),
+              profiles: await ipc.listProfiles(b.id),
               custom: customIds.has(b.id),
               disabled,
             };
@@ -57,7 +59,7 @@ export function BrowsersPage() {
               browser: b,
               profiles: [],
               error: String(err),
-              permissionDenied: isProfileAccessDenied(err),
+              permissionDenied: !isAppStore && isProfileAccessDenied(err),
               custom: customIds.has(b.id),
               disabled,
             };
@@ -73,6 +75,9 @@ export function BrowsersPage() {
 
   useEffect(() => {
     refresh();
+    const changed = () => void refresh();
+    window.addEventListener(HELPER_CHANGED, changed);
+    return () => window.removeEventListener(HELPER_CHANGED, changed);
   }, [refresh]);
 
   const addManually = async () => {
@@ -168,6 +173,7 @@ export function BrowsersPage() {
     <div>
       <h2 className="mac-h2">{t("title")}</h2>
       <p className="mac-subtitle">{t(isAppStore ? "app:store.description" : "subtitle")}</p>
+      {isAppStore && <HelperCard />}
 
       {/* Action bar */}
       <div
@@ -204,7 +210,7 @@ export function BrowsersPage() {
         <span style={{ flex: 1 }} />
         {entries !== null && entries.length > 0 && (
           <span className="mac-muted" style={{ fontSize: 12 }}>
-            {t(isAppStore ? "app:store.browserCount" : "summary", {
+            {t("summary", {
               browsers: entries.length,
               profiles: totalProfiles,
             })}
