@@ -1,0 +1,19 @@
+[package]
+name = "linkpilot-helper-ipc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Narrow, authenticated protocol for the optional LinkPilot browser Helper."
+
+[dependencies]
+linkpilot-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+
+[build-dependencies]
+cc = "1"

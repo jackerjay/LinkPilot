@@ -45,6 +45,7 @@ def distribution_entitlements(profile, bundle_id, certificate_sha1, now=None):
         "com.apple.security.app-sandbox": True,
         "com.apple.security.network.client": True,
         "com.apple.security.files.user-selected.read-write": True,
+        "com.apple.security.application-groups": [f"{team}.app.linkpilot"],
     }
 
 

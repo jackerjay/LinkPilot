@@ -41,6 +41,7 @@ base64 = "0.22"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 linkpilot-platform-mac = { workspace = true }
+linkpilot-helper-ipc.workspace = true
 linkpilot-updater = { workspace = true, optional = true }
 # Translucent + frosted-glass background for the picker window.
 window-vibrancy = { version = "0.6", optional = true }

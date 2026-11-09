@@ -527,7 +527,7 @@ export function HaloShell({
       </div>
 
       <div className="pk-pop-foot">
-        {!isAppStore && <>
+        {(!isAppStore || choices.some((choice) => choice.profiles.length > 0)) && <>
         <span className="pk-foot-group">
           <span className="pk-kbd">{SUMMON_KEY_LABEL}</span>{" "}
           {t("halo.footer.summon")}

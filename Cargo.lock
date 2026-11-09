@@ -2164,8 +2164,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "linkpilot-browser-helper"
+version = "0.5.15"
+dependencies = [
+ "cc",
+ "clap",
+ "libc",
+ "linkpilot-core",
+ "linkpilot-helper-ipc",
+ "linkpilot-platform-mac",
+ "plist",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "linkpilot-cli"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "anyhow",
  "clap",
@@ -2184,7 +2199,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-core"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "libc",
  "notify",
@@ -2198,11 +2213,12 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-desktop"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
  "linkpilot-core",
+ "linkpilot-helper-ipc",
  "linkpilot-ipc",
  "linkpilot-platform-linux",
  "linkpilot-platform-mac",
@@ -2223,7 +2239,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-headless-daemon"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "anyhow",
  "clap",
@@ -2236,15 +2252,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "linkpilot-helper-ipc"
+version = "0.5.15"
+dependencies = [
+ "cc",
+ "libc",
+ "linkpilot-core",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "linkpilot-icon-padder"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "image",
 ]
 
 [[package]]
 name = "linkpilot-ipc"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "linkpilot-core",
  "serde",
@@ -2257,7 +2285,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-native-host"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "anyhow",
  "linkpilot-core",
@@ -2268,18 +2296,19 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-platform-linux"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "linkpilot-core",
 ]
 
 [[package]]
 name = "linkpilot-platform-mac"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "core-foundation",
  "core-foundation-sys",
  "linkpilot-core",
+ "linkpilot-helper-ipc",
  "objc2 0.5.2",
  "objc2-app-kit 0.2.2",
  "objc2-foundation 0.3.2",
@@ -2293,14 +2322,14 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-platform-win"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "linkpilot-core",
 ]
 
 [[package]]
 name = "linkpilot-sandbox-probe"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "linkpilot-core",
  "serde_json",
@@ -2309,7 +2338,7 @@ dependencies = [
 
 [[package]]
 name = "linkpilot-updater"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "anyhow",
  "libc",

@@ -19,8 +19,8 @@
   },
   "store": {
     "title": "App Store 版",
-    "description": "依瀏覽器路由連結，不指定 profile、不要求瀏覽器資料權限，也不控制私密模式和新視窗。請在設定中選擇預設路由瀏覽器。",
-    "updates": "更新由 App Store 提供。本版不提供 CLI 安裝、外部背景服務和 LaunchAgent。",
+    "description": "依瀏覽器分流連結。另行安裝選用 Helper 後，可選擇 Chrome 和 Brave 的設定檔。在設定中選擇預設目標。",
+    "updates": "應用程式透過 App Store 更新。選用瀏覽器 Helper 需另行安裝與更新。CLI 安裝由直接發佈版提供。",
     "engine": "路由引擎",
     "browserCount": "{{browsers}} 個瀏覽器",
     "settingsSubtitle": "預設瀏覽器、路由目標、外觀與本機行為記錄。",
@@ -35,5 +35,18 @@
     "imported": "已匯入設定。",
     "exported": "已匯出設定。",
     "defaultBrowserHint": "macOS 會顯示確認視窗。"
+  },
+  "helper": {
+    "title": "選用瀏覽器 Helper",
+    "description": "另行安裝已簽章的 LinkPilot Helper，即可選擇 Chrome 和 Brave 的設定檔。其他瀏覽器仍可正常開啟。瀏覽器資料權限由 Helper 申請。",
+    "connected": "已連線 · {{version}}",
+    "disconnected": "Helper 未連線",
+    "start": "啟動 Helper",
+    "refresh": "重新檢查",
+    "download": "取得 Helper",
+    "required": "請啟動 LinkPilot Helper，以使用已儲存的設定檔。",
+    "permissions": "瀏覽器資料授權",
+    "dismiss": "關閉",
+    "checking": "正在檢查 Helper…"
   }
 }

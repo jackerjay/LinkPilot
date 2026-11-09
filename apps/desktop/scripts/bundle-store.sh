@@ -46,7 +46,16 @@ for binary in lpt linkpilot-daemon linkpilot-native-host; do
     exit 1
   fi
 done
+TEAM="$(python3 apps/desktop/scripts/signing-team.py "$IDENTITY")"
+ENTITLEMENTS="$CARGO_TARGET_DIR/Entitlements.store.local.plist"
+python3 - "$TEAM" "$ENTITLEMENTS" <<'PY'
+import plistlib, sys
+from pathlib import Path
+entitlements = plistlib.loads(Path("apps/desktop/src-tauri/Entitlements.store.plist").read_bytes())
+entitlements["com.apple.security.application-groups"] = [f"{sys.argv[1]}.app.linkpilot"]
+Path(sys.argv[2]).write_bytes(plistlib.dumps(entitlements))
+PY
 codesign --force --sign "$IDENTITY" --timestamp=none --options runtime \
-  --entitlements apps/desktop/src-tauri/Entitlements.store.plist "$APP"
+  --entitlements "$ENTITLEMENTS" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 echo "Local sandbox build (not an App Store upload package): $APP"

@@ -2,11 +2,13 @@
 
 LinkPilot uses one codebase with two distribution builds. The direct download
 build keeps its existing profile routing, CLI, daemon and update flow. The Store
-build is a sandboxed, browser-only application with its own container and bundle
+build is a sandboxed application with its own container and bundle
 identifier, `app.linkpilot.store` (local product name: `LinkPilot Store`).
+It supports browser-level routing by itself. The optional, separately installed
+[browser Helper](browser-helper.md) adds Chrome and Brave profile routing.
 
-This is a local development-signed Store candidate, not an App Store upload or
-an assurance of review acceptance. No Store record, provisioning profile,
+The local build command produces a development-signed Store candidate, not an
+App Store upload or an assurance of review acceptance. No Store record, provisioning profile,
 distribution package or submission is created by the local build command.
 
 ## Build locally
@@ -77,20 +79,26 @@ The UI omits unsupported options, and native configuration/launch boundaries
 enforce the same rules. Imported or manually edited configurations cannot
 silently enable them:
 
-- No profile selection/enumeration, private mode or new-window launch flags.
+- Profile selection/enumeration, private mode and new-window flags require the
+  trusted external Helper and are limited to its supported browsers (initially
+  Chrome and Brave). Workspace targets remain unavailable. Missing Helper or a
+  missing selected profile produces an error without a default-profile fallback.
 - No source-browser/source-profile matchers or keep-source action, which require
   browser integration. No browser extension integration is added.
 - Custom browser entries are deferred; the shared known-browser registry is
-  supported. No per-browser profile data access is requested.
+  supported. Store requests no per-browser data access; Helper requests its own
+  browser-data permissions when the user enables these optional features.
 - No LaunchAgent, external daemon/IPC server, CLI installation or launch-at-login
-  setting. The application must remain running to provide the menu-bar UI; URL
+  setting inside Store. The separately installed Helper owns its own per-user,
+  on-demand XPC service. The application must remain running to provide the menu-bar UI; URL
   handler registration lets macOS launch it when selected by the user.
 - No GitHub update checks or DMG downloads; Store updates belong to App Store.
 
 Entitlements are App Sandbox, network client (required for WKWebView even when
 displaying local assets), and user-selected read/write files for explicit config
-import/export. There is no full-disk access, browser-data entitlement, temporary
-sandbox exception, automation entitlement or unsandboxed helper.
+import/export, plus a signing-team App Group for authenticated Helper XPC.
+There is no full-disk access, browser-data entitlement, temporary sandbox
+exception, automation entitlement or unsandboxed executable in the Store bundle.
 
 ## Verification
 

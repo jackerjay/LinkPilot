@@ -7,7 +7,7 @@ use linkpilot_core::browser::{apply_profile_order, BrowserTarget};
 use linkpilot_core::config::AskQuickOpenModifier;
 use linkpilot_core::platform::UrlLauncher;
 use linkpilot_core::routing::RoutingDecision;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use url::Url;
 
 use crate::picker::{self, PickerChoice, PickerProfile};
@@ -35,6 +35,13 @@ enum OpenPlan {
     Primary,
     Default,
     Ask,
+}
+
+pub fn report_launch_failure(app: &AppHandle, error: &str) {
+    let _ = app.emit("route-failed", error);
+    if crate::distribution::APP_STORE {
+        crate::tray::show_main_window(app);
+    }
 }
 
 /// Preserve an in-app click's keys across the asynchronous renderer handoff.
@@ -100,6 +107,14 @@ pub fn execute(
 
     match decision {
         RoutingDecision::Open { target, .. } => {
+            if crate::distribution::APP_STORE
+                && (target.profile.is_some() || target.incognito || target.new_window)
+            {
+                return match state.platform.url_launcher().open(target, &parsed) {
+                    Ok(()) => LaunchOutcome::Launched(target.clone()),
+                    Err(error) => LaunchOutcome::Failed(error.to_string()),
+                };
+            }
             let installed_ids = installed_browser_ids(state);
             match plan_open_target(target, &default_target, &installed_ids) {
                 OpenPlan::Primary => {
@@ -228,6 +243,7 @@ fn spawn_ask(
             &parsed,
         ) {
             tracing::error!(err, "ask: launcher failed (default fallback exhausted)");
+            report_launch_failure(&app, &err);
         }
     });
     LaunchOutcome::Pending
@@ -254,6 +270,11 @@ fn open_with_default_fallback(
     match launcher.open(primary, url) {
         Ok(()) => Ok(primary.clone()),
         Err(primary_err) => {
+            if crate::distribution::APP_STORE
+                && (primary.profile.is_some() || primary.incognito || primary.new_window)
+            {
+                return Err(format!("Helper launch failed: {primary_err}. The requested profile/mode was preserved; no fallback was opened"));
+            }
             if primary.browser == default_target.browser {
                 return Err(format!(
                     "launch failed: {primary_err} (no fallback — primary already matches default browser '{}')",
@@ -535,11 +556,26 @@ mod tests {
     #[test]
     fn unsupported_profile_does_not_launch_or_fall_back() {
         let launcher = ScriptedLauncher::new(vec![Ok(())]);
-        let mut primary = BrowserTarget::new(BrowserId::new("chrome"));
+        let mut primary = BrowserTarget::new(BrowserId::new("safari"));
         primary.profile = Some("Default".into());
         let fallback = BrowserTarget::new(BrowserId::new("safari"));
         assert!(open_with_default_fallback(&launcher, &primary, &fallback, &url()).is_err());
         assert!(launcher.calls().is_empty());
+    }
+
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    #[test]
+    fn helper_failure_preserves_selected_profile_without_default_fallback() {
+        let launcher = ScriptedLauncher::new(vec![
+            Ok(()),
+            Err(linkpilot_core::platform::PlatformError::Other(
+                "Helper unavailable".into(),
+            )),
+        ]);
+        let primary = BrowserTarget::new(BrowserId::new("chrome")).with_profile("Profile 1");
+        let fallback = BrowserTarget::new(BrowserId::new("safari"));
+        assert!(open_with_default_fallback(&launcher, &primary, &fallback, &url()).is_err());
+        assert_eq!(launcher.calls().len(), 1);
     }
 
     #[test]

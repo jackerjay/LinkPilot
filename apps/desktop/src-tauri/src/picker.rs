@@ -601,6 +601,7 @@ pub fn picker_preview(app: AppHandle, test_url: Option<String>) -> Result<(), St
             .open(&target, &parsed_url)
         {
             tracing::error!(?err, ?target, url = %parsed_url, "picker preview launch failed");
+            crate::dispatch::report_launch_failure(&app_clone, &err.to_string());
         }
     });
     Ok(())

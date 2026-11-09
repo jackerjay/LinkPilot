@@ -19,8 +19,8 @@
   },
   "store": {
     "title": "App Store 版",
-    "description": "ブラウザ単位でリンクを振り分けます。プロファイルの指定、ブラウザデータへのアクセス、プライベートモードや新規ウィンドウの制御は行いません。設定で既定の転送先を選んでください。",
-    "updates": "アップデートは App Store から提供されます。この版では CLI、外部バックグラウンドサービス、LaunchAgent を利用できません。",
+    "description": "リンクをブラウザごとに振り分けます。別途インストールする Helper を使うと Chrome と Brave のプロファイルを選択できます。設定で既定の対象を選んでください。",
+    "updates": "アプリは App Store から更新されます。追加のブラウザ Helper は別途インストール・更新します。CLI のインストールは直接配布版で利用できます。",
     "engine": "ルーティングエンジン",
     "browserCount": "ブラウザ {{browsers}} 個",
     "settingsSubtitle": "既定のブラウザ、転送先、外観、ローカルの操作履歴。",
@@ -35,5 +35,18 @@
     "imported": "設定を読み込みました。",
     "exported": "設定を書き出しました。",
     "defaultBrowserHint": "macOS が変更の確認を求めます。"
+  },
+  "helper": {
+    "title": "追加のブラウザ Helper",
+    "description": "署名済みの LinkPilot Helper を別途インストールすると、Chrome と Brave のプロファイルを選択できます。他のブラウザは通常どおり開けます。ブラウザデータへのアクセス権は Helper が要求します。",
+    "connected": "接続済み · {{version}}",
+    "disconnected": "Helper は未接続です",
+    "start": "Helper を起動",
+    "refresh": "再確認",
+    "download": "Helper を入手",
+    "required": "保存済みのプロファイルを使うには LinkPilot Helper を起動してください。",
+    "permissions": "ブラウザのアクセス権",
+    "dismiss": "閉じる",
+    "checking": "Helper を確認中…"
   }
 }

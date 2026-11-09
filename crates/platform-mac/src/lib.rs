@@ -7,6 +7,7 @@ pub mod app_picker;
 mod autostart;
 pub use autostart::LAUNCH_AT_LOGIN_ARG;
 mod default_browser;
+pub mod helper;
 mod inventory;
 pub mod keyboard;
 pub mod launch_agent;

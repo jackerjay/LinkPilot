@@ -39,7 +39,8 @@ class StoreProfileTests(unittest.TestCase):
         self.assertTrue(result["com.apple.security.app-sandbox"])
         self.assertEqual(result["com.apple.application-identifier"],
                          "348D74H42G.app.linkpilot.store")
-        self.assertEqual(len(result), 5)
+        self.assertEqual(result["com.apple.security.application-groups"], ["348D74H42G.app.linkpilot"])
+        self.assertEqual(len(result), 6)
 
     def test_rejects_expired_profile(self):
         self.profile["ExpirationDate"] = datetime.datetime(2026, 10, 20)

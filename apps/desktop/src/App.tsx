@@ -140,6 +140,14 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(() =>
     !isAppStore && isOnboardingNeeded(),
   );
+  const [routeError, setRouteError] = useState<string | null>(null);
+  useEffect(() => {
+    const subscription = listen<string>("route-failed", (event) => {
+      setRouteError(event.payload);
+      if (isAppStore) { setSelectedWorkspaceId(null); setTab("browsers"); }
+    });
+    return () => { void subscription.then((unlisten) => unlisten()); };
+  }, []);
 
   const refreshSidebarData = useCallback(async () => {
     try {
@@ -493,6 +501,10 @@ export default function App() {
             </span>
           </div>
           <div className="mac-scroll">
+            {routeError && <div role="alert" className="mac-card mac-card-pad" style={{ marginBottom: 16 }}>
+              <p style={{ overflowWrap: "anywhere" }}>{routeError}</p>
+              <button className="mac-tbtn" type="button" onClick={() => setRouteError(null)}>{t("helper.dismiss")}</button>
+            </div>}
             {isAppStore && <div role="note" className="mac-card mac-card-pad" style={{ marginBottom: 16 }}>
               <strong>{t("store.title")}</strong>
               <p className="mac-muted" style={{ marginTop: 6 }}>{t("store.description")}</p>

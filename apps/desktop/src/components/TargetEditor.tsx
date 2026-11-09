@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { appPathFromExecutable } from "@/lib/browsers";
 import { ipc } from "@/lib/ipc";
+import { useHelper } from "@/lib/helper";
 import type {
   BrowserProfile,
   BrowserTarget,
@@ -31,25 +32,30 @@ interface Props {
 export function TargetEditor({ value, browsers, onChange }: Props) {
   const { t } = useTranslation("rules");
   const [profiles, setProfiles] = useState<BrowserProfile[]>([]);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const helper = useHelper();
+  const supportsProfiles = helper.supports(value.browser);
 
   useEffect(() => {
-    if (isAppStore || !value.browser) {
+    setProfileError(null);
+    if (!supportsProfiles || !value.browser) {
       setProfiles([]);
       return;
     }
     let alive = true;
+    setProfiles([]);
     ipc
       .listProfiles(value.browser)
       .then((p) => {
         if (alive) setProfiles(p);
       })
-      .catch(() => {
-        if (alive) setProfiles([]);
+      .catch((error) => {
+        if (alive) { setProfiles([]); setProfileError(String(error)); }
       });
     return () => {
       alive = false;
     };
-  }, [value.browser]);
+  }, [value.browser, supportsProfiles, helper.status?.version]);
 
   return (
     <>
@@ -79,7 +85,7 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
         </SelectContent>
       </Select>
 
-      {!isAppStore && <>
+      {(supportsProfiles || value.profile) && <>
       <Select
         value={value.profile ?? "__any"}
         onValueChange={(v) =>
@@ -92,6 +98,7 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="__any">{t("target.anyProfile")}</SelectItem>
+          {value.profile && !profiles.some((p) => p.id === value.profile) && <SelectItem value={value.profile}>{value.profile}</SelectItem>}
           {profiles.map((p) => (
             <SelectItem key={p.id} value={p.id}>
               {p.display_name}
@@ -100,6 +107,11 @@ export function TargetEditor({ value, browsers, onChange }: Props) {
         </SelectContent>
       </Select>
 
+      </>}
+      {profileError && <span role="alert" className="mac-muted">{profileError}</span>}
+      {isAppStore && value.profile && !supportsProfiles && <span role="status" className="mac-muted">{t("app:helper.required")}</span>}
+
+      {(supportsProfiles || value.incognito) && <>
       <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Checkbox
           checked={value.incognito ?? false}

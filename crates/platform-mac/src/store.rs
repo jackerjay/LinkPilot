@@ -1,5 +1,5 @@
-//! Public AppKit APIs for the sandboxed, browser-only Store edition.
-//! No subprocesses, browser data access, or LaunchAgent writes.
+//! Sandboxed browser routing, with optional authenticated external Helper.
+//! The Store process never reads browser data or executes browser binaries.
 use std::ffi::CStr;
 use std::path::{Path, PathBuf};
 
@@ -96,9 +96,8 @@ impl BrowserInventory for StoreProvider {
     fn installed_browsers(&self) -> Result<Vec<InstalledBrowser>> {
         Ok(crate::inventory::store_browsers())
     }
-    fn profiles(&self, _browser: &BrowserId) -> Result<Vec<BrowserProfile>> {
-        // This edition routes by browser; it does not request profile permissions.
-        Ok(Vec::new())
+    fn profiles(&self, browser: &BrowserId) -> Result<Vec<BrowserProfile>> {
+        crate::helper::list_profiles(browser).map_err(PlatformError::Other)
     }
 }
 
@@ -108,9 +107,7 @@ pub fn validate_target(target: &BrowserTarget) -> Result<()> {
         || target.new_window
         || target.workspace.is_some()
     {
-        return Err(PlatformError::Other(
-            "The App Store edition supports browser targets without a profile, private mode, workspace or new-window flag".into(),
-        ));
+        linkpilot_helper_ipc::validate_target(target).map_err(PlatformError::Other)?;
     }
     Ok(())
 }
@@ -122,6 +119,9 @@ impl UrlLauncher for StoreProvider {
             return Err(PlatformError::Other(
                 "Only HTTP and HTTPS links can be routed".into(),
             ));
+        }
+        if target.profile.is_some() || target.incognito || target.new_window {
+            return crate::helper::open(target, url).map_err(PlatformError::Other);
         }
         let browsers = self.installed_browsers()?;
         let bundle_id = browsers
@@ -379,8 +379,8 @@ mod tests {
         });
     }
     #[test]
-    fn browser_only_targets_reject_every_unsupported_hint() {
-        let plain = BrowserTarget::new(BrowserId::new("chrome"));
+    fn unsupported_browsers_reject_enhanced_hints() {
+        let plain = BrowserTarget::new(BrowserId::new("safari"));
         assert!(validate_target(&plain).is_ok());
         for value in ["profile", "incognito", "new-window", "workspace"] {
             let mut target = plain.clone();

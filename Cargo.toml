@@ -9,6 +9,8 @@ members = [
     "crates/native-host",
     "crates/cli",
     "crates/updater",
+    "crates/helper-ipc",
+    "crates/browser-helper",
     "crates/headless-daemon",
     "apps/desktop/src-tauri",
     "tools/icon-padder",
@@ -16,7 +18,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.5.14"
+version = "0.5.15"
 edition = "2021"
 rust-version = "1.80"
 license = "MIT"
@@ -26,6 +28,7 @@ repository = "https://github.com/jackerjay/linkpolit"
 linkpilot-core = { path = "crates/core" }
 linkpilot-ipc = { path = "crates/ipc" }
 linkpilot-updater = { path = "crates/updater" }
+linkpilot-helper-ipc = { path = "crates/helper-ipc" }
 linkpilot-platform-mac = { path = "crates/platform-mac" }
 linkpilot-platform-win = { path = "crates/platform-win" }
 linkpilot-platform-linux = { path = "crates/platform-linux" }
